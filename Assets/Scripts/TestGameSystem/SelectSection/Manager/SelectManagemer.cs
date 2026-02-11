@@ -1,8 +1,9 @@
+﻿using gameManagerModule;
 using NUnit.Framework;
-using UnityEngine;
 using System.Collections.Generic;
+using System.Drawing;
+using UnityEngine;
 using UnityEngine.InputSystem;
-using gameManagerModule;
 public class SelectManager : MonoBehaviour, IFixedUpdateModule
 {
 
@@ -50,7 +51,11 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             foreach (SelectableObject obj in selectedobjects)
             {
                 if(obj is DragSelectableObject)
-                    obj.gameObject.GetComponent<DragSelectableObject>().OnMoveTo(MousePos);
+                {
+                    TargetCommand command= new TargetCommand(obj,MousePos);
+                    command.Execute();
+                }
+                    
             }
         }
     }
@@ -85,14 +90,22 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
                 selectedobjects.Add((SelectableObject)obj);
             }
         }
-        
     }
+
+    public StartEndRect GetCurrentSelectionRect()
+    {
+        return selectingRect;
+    }
+
 }
 
 public class StartEndRect
 {
     public Vector2 StartPoint;
     public Vector2 EndPoint;
+    Texture2D whiteTexture;
+    UnityEngine.Color textureColor = UnityEngine.Color.white;
+    
 
     public void ExpandTo(Vector2 point)
     {
@@ -105,6 +118,9 @@ public class StartEndRect
     {
         StartPoint = start;
         EndPoint = start;
+        whiteTexture = new Texture2D(1,1);
+        whiteTexture.SetPixel(0,0, UnityEngine.Color.white);
+        whiteTexture.Apply();
     }
 
     public bool isContains(Vector2 point) { 
@@ -121,6 +137,21 @@ public class StartEndRect
             return false;
         }
         return true;
+    }
+
+    public Rect ToRect()
+    {
+        float minX = Mathf.Min(StartPoint.x, EndPoint.x);
+        float maxX = Mathf.Max(StartPoint.x, EndPoint.x);
+        float minY = Mathf.Min(StartPoint.y, EndPoint.y);
+        float maxY = Mathf.Max(StartPoint.y, EndPoint.y);
+
+        return new Rect(
+            minX,
+            Screen.height - maxY,          
+            maxX - minX,
+            maxY - minY
+        );
     }
 
     private bool Inrange(float min, float current, float max) {
