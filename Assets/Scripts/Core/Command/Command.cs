@@ -31,6 +31,7 @@ public class TargetCommand : ICommand
         {
             if (targetobj.GetComponent<ResourceNode>() != null)
             {
+
                 if (unit.GetComponent<ResourceGatherable>() != null)
                 {
                     unit.GetComponent<ResourceGatherable>().ChangeNode(targetobj.GetComponent<ResourceNode>());

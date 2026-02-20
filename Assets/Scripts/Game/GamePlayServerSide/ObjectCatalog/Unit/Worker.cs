@@ -14,7 +14,7 @@ public class ResourceGatherable : MonoBehaviour, Ability
     [SerializeField] private float GatheringSpeed; // amount of resource gathered per second
 
     [SerializeField]private float currentlyCarryingAmount;
-    private ResourceNode currentResourceNode;
+    [SerializeField]private ResourceNode currentResourceNode;
     [SerializeField]private ResourceType resourceType = ResourceType.None;
     [SerializeField]private GatheringState gatheringState=GatheringState.Idle;
     [SerializeField]private Storage targetStorage;
@@ -164,8 +164,13 @@ public class ResourceGatherable : MonoBehaviour, Ability
             {
                 other.GetComponent<Storage>().ReceiveResource(currentlyCarryingAmount,resourceType);
                 currentlyCarryingAmount = 0;
+                if (GetComponent<MoveAbilityComponent>() != null)
+                {
+                    GetComponent<MoveAbilityComponent>().Stop();
+                }
                 if (currentResourceNode != null)
                 {
+                    Debug.Log("Returning to node after delivering resource");
                     MovingToNode();
                 }
                 else
@@ -173,10 +178,7 @@ public class ResourceGatherable : MonoBehaviour, Ability
                     ReturnToIdle();
                 }
             }
-            if (GetComponent<MoveAbilityComponent>()!=null)
-            {
-                GetComponent<MoveAbilityComponent>().Stop();
-            }    
+            
         }
         else if (gatheringState == GatheringState.MovingToNode && other.GetComponent<ResourceNode>() == currentResourceNode)
         {
