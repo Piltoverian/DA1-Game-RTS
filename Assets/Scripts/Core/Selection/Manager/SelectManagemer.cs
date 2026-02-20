@@ -50,12 +50,8 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         if (Mouse.current.rightButton.isPressed) {
             foreach (SelectableObject obj in selectedobjects)
             {
-                if(obj is DragSelectableObject)
-                {
                     TargetCommand command= new TargetCommand(obj,MousePos);
-                    command.Execute();
-                }
-                    
+                    command.Execute();   
             }
         }
     }
