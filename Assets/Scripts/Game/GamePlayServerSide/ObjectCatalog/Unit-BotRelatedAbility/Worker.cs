@@ -250,11 +250,10 @@ public class ResourceGatherable : MonoBehaviour, Ability
             GatherResource();
         }
     }
-
     public void OnCollisionEnter(Collision other)
     {
         if (gatheringState == GatheringState.ReturningToBase &&
-            other.gameObject.GetComponent<Storage>())
+    other.gameObject.GetComponent<Storage>())
         {
             Storage storage = other.gameObject.GetComponent<Storage>();
 
@@ -262,13 +261,18 @@ public class ResourceGatherable : MonoBehaviour, Ability
             {
                 storage.ReceiveResource(currentlyCarryingAmount, resourceType);
                 currentlyCarryingAmount = 0;
-                if (currentResourceNode != null)
-                    MovingToNode();
-                else
-                    ReturnToIdle();
                 var move = GetComponent<MoveAbilityComponent>();
                 if (move != null)
                     move.Stop();
+                if (currentResourceNode != null)
+                {
+                    MovingToNode();
+
+                }
+                else
+                {
+                    ReturnToIdle();
+                }
             }
         }
         else if (gatheringState == GatheringState.MovingToNode &&
@@ -282,12 +286,17 @@ public class ResourceGatherable : MonoBehaviour, Ability
         }
     }
 
-    public void OnTriggerExit(Collider collision)
+    public void OnCollisionStay(Collision other)
     {
-        if (gatheringState == GatheringState.Gathering && collision.GetComponent<ResourceNode>() == currentResourceNode)
+        if (gatheringState == GatheringState.MovingToNode &&
+                 other.gameObject.GetComponent<ResourceNode>() == currentResourceNode)
         {
-            MovingToNode();
-        } 
+            gatheringState = GatheringState.Gathering;
+
+            var move = GetComponent<MoveAbilityComponent>();
+            if (move != null)
+                move.Stop();
+        }
     }
     #endregion
 }
