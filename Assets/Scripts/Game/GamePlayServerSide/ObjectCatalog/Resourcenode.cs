@@ -14,6 +14,7 @@ public class ResourceNode : SelectableObject
     [SerializeField]protected float amount;
     [SerializeField] Collider threshholdCollider;
     [SerializeField] Collider collider;
+    [SerializeField] private bool isDepleted = false;
     public ResourceType GetNodeType()
     {
         return nodetype;
@@ -21,15 +22,22 @@ public class ResourceNode : SelectableObject
 
     public void OnDepleted()
     {
+        isDepleted = true;
         //playsound,...
         Destroy(gameObject);
     }
+
+    public bool IsDepleted()
+    {
+        return isDepleted;
+    }
+
 
     public float Extract(float ExpectedTakenAmount)
     {
         float takenamount = Mathf.Min(amount, ExpectedTakenAmount);
         this.amount -= takenamount;
-        if (this.amount <= 0)
+        if (Mathf.Abs(this.amount) <= 0.01)
         {
             OnDepleted();
         }

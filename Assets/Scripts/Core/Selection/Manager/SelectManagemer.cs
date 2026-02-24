@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Drawing;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 public class SelectManager : MonoBehaviour, IFixedUpdateModule
@@ -16,12 +17,13 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     }
     public void OnGameStart()
     {
-        objlist = new List<SelectableObject>(FindObjectsByType<SelectableObject>(FindObjectsSortMode.None));
+        
     }
 
     // Update is called once per frame
     public void FixedUpdateModule()
     {
+        objlist = new List<SelectableObject>(FindObjectsByType<SelectableObject>(FindObjectsSortMode.None));
         Vector2 MousePos = Mouse.current.position.ReadValue();
         if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.leftButton))
         {
@@ -55,6 +57,12 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             }
         }
     }
+
+    public void RemoveASelectableObject(SelectableObject obj)
+    {
+        objlist.Remove(obj);
+        selectedobjects.Remove(obj);
+    }
     public void SingleSelecting()
     {
         //if InputManager is implemented check if multi select by ctrl press enable
@@ -76,10 +84,6 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     {
         foreach (SelectableObject obj in objlist)
         { 
-            if(selectedobjects.Contains(obj))
-            {
-                continue;
-            }
             Vector2 Screenpoint = Camera.main.WorldToScreenPoint(obj.gameObject.transform.position);
             if (selectingRect.isContains(Screenpoint)&&obj is DragSelectableObject)
             {
