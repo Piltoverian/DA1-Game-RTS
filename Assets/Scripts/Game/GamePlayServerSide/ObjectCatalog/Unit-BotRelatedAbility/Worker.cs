@@ -71,14 +71,6 @@ public class ResourceGatherable : MonoBehaviour, Ability
             ReturnToBase();
             return;
         }
-
-        if (currentResourceNode != null &&
-            Vector3.Distance(transform.position, currentResourceNode.transform.position) > gatheringRange)
-        {
-            MovingToNode();
-            return;
-        }
-
         if (currentResourceNode != null && !currentResourceNode.IsDepleted())
         {
             gatheringState = GatheringState.Gathering;
@@ -270,15 +262,13 @@ public class ResourceGatherable : MonoBehaviour, Ability
             {
                 storage.ReceiveResource(currentlyCarryingAmount, resourceType);
                 currentlyCarryingAmount = 0;
-
-                var move = GetComponent<MoveAbilityComponent>();
-                if (move != null)
-                    move.Stop();
-
                 if (currentResourceNode != null)
                     MovingToNode();
                 else
                     ReturnToIdle();
+                var move = GetComponent<MoveAbilityComponent>();
+                if (move != null)
+                    move.Stop();
             }
         }
         else if (gatheringState == GatheringState.MovingToNode &&
@@ -292,5 +282,12 @@ public class ResourceGatherable : MonoBehaviour, Ability
         }
     }
 
+    public void OnTriggerExit(Collider collision)
+    {
+        if (gatheringState == GatheringState.Gathering && collision.GetComponent<ResourceNode>() == currentResourceNode)
+        {
+            MovingToNode();
+        } 
+    }
     #endregion
 }
