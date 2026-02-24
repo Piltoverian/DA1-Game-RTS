@@ -41,6 +41,12 @@ public class MoveAbilityComponent : MonoBehaviour, Ability
     {
         agent.isStopped=true;
         agent.ResetPath();
+        Rigidbody rb= GetComponent<Rigidbody>();
+        if (rb!=null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
     }
 
     public void FixedUpdate()
