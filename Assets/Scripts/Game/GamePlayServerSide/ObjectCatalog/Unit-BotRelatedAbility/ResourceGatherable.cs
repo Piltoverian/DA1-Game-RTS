@@ -1,5 +1,7 @@
 using NUnit.Framework;
+using System;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class ResourceGatherable : MonoBehaviour, Ability
 {
@@ -144,8 +146,6 @@ public class ResourceGatherable : MonoBehaviour, Ability
             move.OnMoveToWorld(targetStorage.transform.position);
         else
             Debug.LogError("MoveAbilityComponent is missing from the worker");
-
-        targetStorage = null;
     }
 
     public void ReturnToIdle()
@@ -243,49 +243,79 @@ public class ResourceGatherable : MonoBehaviour, Ability
 
     #region ====== Unity Events ======
 
+
+    NavMeshAgent agent;
+    MoveAbilityComponent move;
+
+    void Awake()
+    {
+        agent = GetComponent<NavMeshAgent>();
+        move = GetComponent<MoveAbilityComponent>();
+    }
+
     private void FixedUpdate()
     {
         if (gatheringState == GatheringState.Gathering)
         {
             GatherResource();
         }
-    }
-    public void OnCollisionEnter(Collision other)
-    {
-        if (gatheringState == GatheringState.ReturningToBase &&
-    other.gameObject.GetComponent<Storage>())
+        if (gatheringState == GatheringState.MovingToNode)
         {
-            Storage storage = other.gameObject.GetComponent<Storage>();
-
-            if (storage.GetStorageTypes().Contains(resourceType))
+            if(currentResourceNode==null)
             {
-                storage.ReceiveResource(currentlyCarryingAmount, resourceType);
-                currentlyCarryingAmount = 0;
-                var move = GetComponent<MoveAbilityComponent>();
-                if (move != null)
-                    move.Stop();
-                if (currentResourceNode != null)
-                {
-                    MovingToNode();
+                ReturnToBase();
+                return;
+            }
+            Collider nodecollider = currentResourceNode.GetComponent<Collider>();
 
-                }
-                else
-                {
-                    ReturnToIdle();
-                }
+            float distance = Vector3.Distance(transform.position, nodecollider.ClosestPoint(transform.position));
+
+            if (!agent.pathPending &&
+                distance <= gatheringRange)
+            {
+                move.Stop();
+                gatheringState = GatheringState.Gathering;
             }
         }
-        else if (gatheringState == GatheringState.MovingToNode &&
-                 other.gameObject.GetComponent<ResourceNode>() == currentResourceNode)
-        {
-            gatheringState = GatheringState.Gathering;
 
-            var move = GetComponent<MoveAbilityComponent>();
-            if (move != null)
-                move.Stop();
+        if (gatheringState == GatheringState.ReturningToBase)
+        {
+            if (targetStorage == null)
+            {
+                ReturnToIdle();
+                return;
+            }
+            Collider storageCollider = targetStorage.GetComponent<Collider>();
+
+            float distance = Vector3.Distance(transform.position, storageCollider.ClosestPoint(transform.position));
+       
+            if (!agent.pathPending &&
+                distance <= gatheringRange)
+            {
+                Debug.Log("Reached storage, depositing resource");
+                DepositResource();
+            }
         }
     }
 
+    private void DepositResource()
+    {
+        if (targetStorage == null) return;
+        if (resourceType == ResourceType.None)
+        {
+            ReturnToIdle();
+            return;
+        }
+        targetStorage.ReceiveResource(currentlyCarryingAmount, resourceType);
+
+        currentlyCarryingAmount = 0;
+        if (move != null)
+            move.Stop();
+        if (currentResourceNode != null)
+            MovingToNode();
+        else
+            ReturnToIdle();
+    }
     public void OnCollisionStay(Collision other)
     {
         if (gatheringState == GatheringState.MovingToNode &&

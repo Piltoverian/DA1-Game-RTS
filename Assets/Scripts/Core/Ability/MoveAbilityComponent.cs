@@ -1,12 +1,17 @@
 using UnityEngine;
 using UnityEngine.AI;
 
+
+
 public class MoveAbilityComponent : MonoBehaviour, Ability
 {
     NavMeshAgent agent = null;
     private void Awake()
     {
         agent = gameObject.GetComponent<NavMeshAgent>();
+        agent.radius = 0.5f;
+        agent.avoidancePriority = Random.Range(30, 60);
+        agent.obstacleAvoidanceType = ObstacleAvoidanceType.MedQualityObstacleAvoidance;
     }
     public void OnMoveToScreen(Vector2 position)
     {
@@ -40,14 +45,15 @@ public class MoveAbilityComponent : MonoBehaviour, Ability
     public void Stop()
     {
         agent.isStopped=true;
-        agent.ResetPath();
-        Rigidbody rb= GetComponent<Rigidbody>();
-        if (rb!=null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
     }
+
+    bool IsMoving(NavMeshAgent agent)
+    {
+        return !agent.pathPending &&
+               agent.remainingDistance <= agent.stoppingDistance &&
+               (!agent.hasPath || agent.velocity.sqrMagnitude == 0f);
+    }
+
 
     public void FixedUpdate()
     {
