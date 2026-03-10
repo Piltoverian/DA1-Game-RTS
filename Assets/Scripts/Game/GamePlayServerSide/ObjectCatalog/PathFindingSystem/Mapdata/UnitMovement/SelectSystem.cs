@@ -56,6 +56,7 @@ partial struct SelectSystem : ISystem
         var bucket = bucketContainer.ValueRW.Bucket;
 
         var transformLookup = state.GetComponentLookup<LocalTransform>(true);
+        var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
         var selectedLookup = state.GetComponentLookup<SelectedTag>(true);
 
         Trapezoid trapezoid = new Trapezoid(
@@ -104,6 +105,9 @@ partial struct SelectSystem : ISystem
                 {
                     do
                     {
+                        if (!dragSelectableLookup.HasComponent(unit))
+                            continue;
+
                         float3 pos = transformLookup[unit].Position;
 
                         if (pos.z < trapezoid.MinZ || pos.z > trapezoid.MaxZ)
