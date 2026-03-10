@@ -15,11 +15,12 @@ public class SelectionRectViewModule : MonoBehaviour
 
     void Update()
     {
+        Debug.Log(selectingRect);
         selectingRect =
             GameManager.Instance.GetModule<SelectManager>()
             .GetCurrentSelectionRect();
 
-        if (selectingRect != null)
+        if (selectingRect.isNotNull)
         {
             SetVisible(true);
             UpdateRect(selectingRect.StartPoint, selectingRect.EndPoint);

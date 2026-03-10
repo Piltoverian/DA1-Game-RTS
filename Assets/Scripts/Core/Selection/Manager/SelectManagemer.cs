@@ -2,18 +2,22 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Drawing;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Mathematics;
+using Unity.Physics;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 public class SelectManager : MonoBehaviour, IFixedUpdateModule
 {
-
-    [SerializeField] private List<SelectableObject> objlist;
-    [SerializeField] private List<SelectableObject> selectedobjects=new List<SelectableObject>();
     [SerializeField] private StartEndRect selectingRect;
+    float holdbuffer = 0;
+    bool addbuffer = false;
+    Camera cam = null;  
     public void AwakeModule()
     {
-
+        cam=Camera.main;
     }
     public void OnGameStart()
     {
@@ -23,72 +27,84 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     // Update is called once per frame
     public void FixedUpdateModule()
     {
-        objlist = new List<SelectableObject>(FindObjectsByType<SelectableObject>(FindObjectsSortMode.None));
+        if (addbuffer)
+        {
+            holdbuffer += Time.fixedDeltaTime;
+        }
+        var worldECS = World.DefaultGameObjectInjectionWorld;
+        var em = worldECS.EntityManager;
         Vector2 MousePos = Mouse.current.position.ReadValue();
         if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.leftButton))
         {
-            SingleSelecting();
+            SingleSelecting(MousePos, em);
             return;
         }
-        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton))
+        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton)&&holdbuffer>0.1)
         {
-            if (selectingRect == null)
+            if (!selectingRect.isNotNull)
             {
                 selectingRect = new StartEndRect(MousePos);
             }
             else
             {
                 selectingRect.ExpandTo(MousePos);
-                DragSelect();
-                Debug.Log(selectedobjects);
-                Debug.Log("Holding");
+                DragSelect(MousePos,em);
             }
             return;
+        }
+        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton))
+        {
+            addbuffer = true;
         }
         else
         {
-            selectingRect = null;
-        }
-        if (Mouse.current.rightButton.isPressed) {
-            foreach (SelectableObject obj in selectedobjects)
-            {
-                    TargetCommand command= new TargetCommand(obj,MousePos);
-                    command.Execute();   
-            }
+            addbuffer = false;
+            holdbuffer = 0;
+            selectingRect.DeleteRect();
         }
     }
-
-    public void RemoveASelectableObject(SelectableObject obj)
+    public void SingleSelecting(Vector2 currentMousePos,EntityManager em)
     {
-        objlist.Remove(obj);
-        selectedobjects.Remove(obj);
-    }
-    public void SingleSelecting()
-    {
-        //if InputManager is implemented check if multi select by ctrl press enable
-        selectedobjects.Clear();
-        if (Camera.main==null)
+        if (cam==null)
         {
-            Debug.Log("?????");
+            Debug.Log("WhereMyCam Wth", cam);
             return;
         }
-        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
-        if (Physics.Raycast(ray, out RaycastHit hitInfo, Mathf.Infinity,LayerMask.GetMask("Selectable")))
+        
+        if (em != null)
         {
-            SelectableObject obj = hitInfo.collider.gameObject.GetComponent<SelectableObject>();
-            selectedobjects.Add(obj);
+            Entity selectmanagerentity = em.CreateEntityQuery(typeof(DOTSSelectManagerComponent)).GetSingletonEntity();
+            em.AddComponentData(selectmanagerentity, new SelectionRequest
+            {
+                mode = SelectionMode.Click,
+                playerId = 1,
+                targetpos = PhysicConvertHelper.ConvertScreenToWorldPos(currentMousePos,cam),
+                v1 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MinPoint,cam),
+                v2 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MaxPoint, cam),
+                v3 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MinPoint.x, selectingRect.MaxPoint.y), cam),
+                v4 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MaxPoint.x, selectingRect.MinPoint.y), cam)
+            });
         }
+
     }
 
-    public void DragSelect()
+    public void DragSelect(Vector2 currentMousePos, EntityManager em)
     {
-        foreach (SelectableObject obj in objlist)
-        { 
-            Vector2 Screenpoint = Camera.main.WorldToScreenPoint(obj.gameObject.transform.position);
-            if (selectingRect.isContains(Screenpoint)&&obj is DragSelectableObject)
+      
+
+        if (em != null)
+        {
+            Entity selectmanagerentity = em.CreateEntityQuery(typeof(DOTSSelectManagerComponent)).GetSingletonEntity();
+            em.AddComponentData(selectmanagerentity, new SelectionRequest
             {
-                selectedobjects.Add((SelectableObject)obj);
-            }
+                mode = SelectionMode.Drag,
+                playerId = 1,
+                targetpos = PhysicConvertHelper.ConvertScreenToWorldPos(currentMousePos, cam),
+                v1 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MinPoint, cam),
+                v2 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MaxPoint, cam),
+                v3 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MinPoint.x, selectingRect.MaxPoint.y), cam),
+                v4 =PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MaxPoint.x, selectingRect.MinPoint.y), cam)
+            });
         }
     }
 
@@ -99,63 +115,46 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 
 }
 
-public class StartEndRect
+public struct StartEndRect
 {
-    public Vector2 StartPoint;
-    public Vector2 EndPoint;
-    Texture2D whiteTexture;
-    UnityEngine.Color textureColor = UnityEngine.Color.white;
-    
+    public float2 StartPoint;
+    public float2 EndPoint;
+    public float2 MinPoint;
+    public float2 MaxPoint;
+    public bool isNotNull;
 
-    public void ExpandTo(Vector2 point)
+    public StartEndRect(float2 mousePos)
+    {
+        StartPoint = mousePos;
+        EndPoint = mousePos;
+        isNotNull = true;
+        MinPoint = mousePos;
+        MaxPoint = mousePos;
+    }
+
+    public void ExpandTo(float2 point)
     {
         EndPoint = point;
+        MinPoint=math.min(StartPoint, EndPoint);
+        MaxPoint=math.max(StartPoint, EndPoint);
     }
-    private StartEndRect()
+    public bool isContains(float2 point)
     {
-    }
-    public StartEndRect(Vector2 start)
-    {
-        StartPoint = start;
-        EndPoint = start;
-        whiteTexture = new Texture2D(1,1);
-        whiteTexture.SetPixel(0,0, UnityEngine.Color.white);
-        whiteTexture.Apply();
-    }
-
-    public bool isContains(Vector2 point) { 
-        float minX=Mathf.Min(StartPoint.x, EndPoint.x);
-        float maxX=Mathf.Max(StartPoint.x,EndPoint.x);
-        float minY=Mathf.Min(StartPoint.y, EndPoint.y);
-        float maxY=Mathf.Max(StartPoint.y,EndPoint.y);
-        if(!Inrange(minX,point.x,maxX))
+        if (!Inrange(MinPoint.x, point.x, MaxPoint.x))
         {
             return false;
         }
-        if (!Inrange(minY, point.y, maxY))
+        if (!Inrange(MinPoint.y, point.y, MaxPoint.y))
         {
             return false;
         }
         return true;
     }
 
-    public Rect ToRect()
+    public bool Inrange(float min, float current, float max)
     {
-        float minX = Mathf.Min(StartPoint.x, EndPoint.x);
-        float maxX = Mathf.Max(StartPoint.x, EndPoint.x);
-        float minY = Mathf.Min(StartPoint.y, EndPoint.y);
-        float maxY = Mathf.Max(StartPoint.y, EndPoint.y);
-
-        return new Rect(
-            minX,
-            Screen.height - maxY,          
-            maxX - minX,
-            maxY - minY
-        );
-    }
-
-    private bool Inrange(float min, float current, float max) {
-        if (min > current) { 
+        if (min > current)
+        {
             return false;
         }
         if (max < current)
@@ -166,5 +165,48 @@ public class StartEndRect
         {
             return true;
         }
+    }
+
+    public void DeleteRect()
+    {
+        isNotNull = false;
+        StartPoint=default(float2);
+        EndPoint=default(float2);
+    }
+}
+public static class PhysicConvertHelper
+{
+    public static RaycastInput GetRayCastInput(Vector2 screenPos,Camera cam)
+    {
+        UnityEngine.Ray ray = cam.ScreenPointToRay(screenPos);
+        float3 start = ray.origin;
+        float3 end = ray.origin + ray.direction * 1000f;
+        RaycastInput raycastInput = new RaycastInput
+        {
+            Start = start,
+            End = end,
+            Filter = new CollisionFilter
+            {
+                BelongsTo = uint.MaxValue,
+                CollidesWith = PhysicsLayersDefine.Ground
+            }
+        };
+
+        return raycastInput;
+    }
+
+    public static float3 ConvertScreenToWorldPos(Vector2 screenPos,Camera cam)
+    {
+        RaycastInput input = GetRayCastInput(screenPos,cam);
+        var world = World.DefaultGameObjectInjectionWorld;
+        var entityManager = world.EntityManager;
+
+        var physicsWorld = entityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton))
+                                        .GetSingleton<PhysicsWorldSingleton>();
+        if (physicsWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
+        {
+            return hit.Position;
+        }
+        return default;
     }
 }

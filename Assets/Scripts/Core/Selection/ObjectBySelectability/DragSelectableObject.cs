@@ -1,19 +1,23 @@
+using Unity.Entities;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 public class DragSelectableObject : SelectableObject
 {
-    //Player this object is assigned to
-    //Check if Player is null so it is neutral so can be selected by any player
-    private void FixedUpdate()
+    class UnitBaker : Baker<DragSelectableObject>
     {
-        if(Mouse.current.rightButton.isPressed)
-        { 
-        }
-    }
+        public override void Bake(DragSelectableObject authoring)
+        {
+            Entity entity = GetEntity(TransformUsageFlags.Dynamic);
 
-    private void Start()
-    {
+            AddComponent(entity, new DragSelectableEntity());
+            AddComponent(entity, new Selectable
+            {
+                playerID = 1,
+                GridIndex = -1//new Unit
+            });
+            
+        }
     }
 }

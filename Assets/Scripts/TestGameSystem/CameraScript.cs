@@ -14,7 +14,7 @@ public class CameraScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        transform.position += new Vector3(move.ReadValue<Vector2>().x, 0, move.ReadValue<Vector2>().y) * Time.deltaTime * 5f;
+        transform.position += new Vector3(move.ReadValue<Vector2>().x, 0, move.ReadValue<Vector2>().y) * Time.deltaTime * 50f;
     }
 
     Vector3 ConvertCamToWorld(Vector2 vector)
