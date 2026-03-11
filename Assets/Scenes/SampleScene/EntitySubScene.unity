@@ -260,8 +260,8 @@ GameObject:
   - component: {fileID: 1734989605}
   - component: {fileID: 1734989604}
   - component: {fileID: 1734989609}
-  - component: {fileID: 1734989610}
   - component: {fileID: 1734989611}
+  - component: {fileID: 1734989612}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -386,18 +386,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b35e1216858f9df4b91a2321a64ab1cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveOnlyCommandReceiver
---- !u!114 &1734989610
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1734989603}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 163a49f8aa8f07c4e99a3782039f6aab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DragSelectableObject
 --- !u!114 &1734989611
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -410,6 +398,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7bafc31c0e63c7a40a8dd36ff6d35be4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EntityTransformSync
+--- !u!114 &1734989612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1734989603}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6b9a1ff7d4ae284aa4348e3156e79eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DragSelectableObject
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

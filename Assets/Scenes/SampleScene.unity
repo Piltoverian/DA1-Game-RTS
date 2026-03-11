@@ -696,6 +696,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!224 &1618360863 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 1356716992516414630, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
+  m_PrefabInstance: {fileID: 4497856324189650106}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2141670528
 GameObject:
   m_ObjectHideFlags: 0
@@ -757,6 +762,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1221148205013989440, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
+      propertyPath: side
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 1356716992516414630, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -837,10 +846,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5630747371804081022, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
+      propertyPath: side
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5934314432871306042, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
+      propertyPath: side
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 6072923927667986662, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
       propertyPath: m_Name
       value: Canvas
       objectReference: {fileID: 0}
+    - target: {fileID: 8718967057554906738, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
+      propertyPath: canvasRect
+      value: 
+      objectReference: {fileID: 1618360863}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
