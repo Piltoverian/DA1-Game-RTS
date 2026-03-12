@@ -39,7 +39,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             SingleSelecting(MousePos, em);
             return;
         }
-        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton)&&holdbuffer>0.1)
+        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton)&&holdbuffer>0.03)
         {
             if (!selectingRect.isNotNull)
             {

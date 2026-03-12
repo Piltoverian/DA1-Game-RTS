@@ -24,7 +24,7 @@ partial struct GridInitSystem : ISystem
             var clone = collider.Value.Value.Clone();
 
             var filter = clone.Value.GetCollisionFilter();
-            filter.BelongsTo = PhysicsLayersDefine.Ground;
+            //filter.BelongsTo = PhysicsLayersDefine.Ground;
             clone.Value.SetCollisionFilter(filter);
             collider.Value = clone;
             state.EntityManager.SetComponentData(entity, collider);
