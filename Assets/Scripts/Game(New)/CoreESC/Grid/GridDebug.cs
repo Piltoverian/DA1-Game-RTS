@@ -32,7 +32,7 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         Entity gridEntity = query.GetSingletonEntity();
 
         GridComponent grid = em.GetComponentData<GridComponent>(gridEntity);
-        DynamicBuffer<GridNode> buffer = em.GetBuffer<GridNode>(gridEntity);
+        DynamicBuffer<FieldNode> buffer = em.GetBuffer<FieldNode>(gridEntity);
 
         if (buffer.Length == 0)
             return;
@@ -74,7 +74,7 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         }
     }
 
-    void DrawIntegration(GridComponent grid, DynamicBuffer<GridNode> buffer)
+    void DrawIntegration(GridComponent grid, DynamicBuffer<FieldNode> buffer)
     {
         for (int i = 0; i < buffer.Length; i++)
         {
@@ -100,7 +100,7 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         }
     }
 
-    void DrawDirection(GridComponent grid, DynamicBuffer<GridNode> buffer)
+    void DrawDirection(GridComponent grid, DynamicBuffer<FieldNode> buffer)
     {
         Gizmos.color = Color.yellow;
 

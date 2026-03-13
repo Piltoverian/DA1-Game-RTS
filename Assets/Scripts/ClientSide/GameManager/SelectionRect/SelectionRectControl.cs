@@ -15,7 +15,6 @@ public class SelectionRectViewModule : MonoBehaviour
 
     void Update()
     {
-        Debug.Log(selectingRect);
         selectingRect =
             GameManager.Instance.GetModule<SelectManager>()
             .GetCurrentSelectionRect();

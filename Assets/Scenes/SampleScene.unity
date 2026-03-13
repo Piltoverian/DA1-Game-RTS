@@ -458,7 +458,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GridGizmoDrawer
   mode: 3
   drawStep: 4
-  arrowScale: 4
+  arrowScale: 1
 --- !u!4 &602996859
 Transform:
   m_ObjectHideFlags: 0

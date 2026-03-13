@@ -17,7 +17,7 @@ partial struct GridInitSystem : ISystem
     {
 
        
-        foreach (var (grid, nodebuffer, costBuffer,entity) in SystemAPI.Query<RefRW<GridComponent>, DynamicBuffer<GridNode>, DynamicBuffer<GridNodeCost>>().WithEntityAccess())
+        foreach (var (grid, costBuffer,entity) in SystemAPI.Query<RefRW<GridComponent>, DynamicBuffer<GridNodeCost>>().WithEntityAccess())
         {
             PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
 
@@ -28,14 +28,11 @@ partial struct GridInitSystem : ISystem
             clone.Value.SetCollisionFilter(filter);
             collider.Value = clone;
             state.EntityManager.SetComponentData(entity, collider);
-            var nbuffer = nodebuffer;
             var cbuffer = costBuffer;
             int totalNodes = grid.ValueRO.width * grid.ValueRO.height;
             cbuffer.ResizeUninitialized(totalNodes);
-            nbuffer.ResizeUninitialized(totalNodes);
             for (int i = 0; i < totalNodes; i++)
             {
-                nbuffer[i] = new GridNode { bestcost = int.MaxValue, direction = float2.zero };
                 cbuffer[i] = new GridNodeCost { cost = 1 };
             }
         }

@@ -48,7 +48,6 @@ public class GridAuthoring : MonoBehaviour
                 origin= bounds.min
             };
             AddComponent(entity, gridComponent);
-            AddBuffer<GridNode>(entity);
             AddBuffer<GridNodeCost>(entity);
         }
     }

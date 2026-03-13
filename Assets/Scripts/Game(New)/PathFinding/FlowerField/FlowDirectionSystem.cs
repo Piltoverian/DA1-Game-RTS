@@ -21,31 +21,33 @@ partial struct FlowDirectionSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach(var(grid,nodebufferRO,costbufferRO)in SystemAPI.Query<RefRO<GridComponent>, DynamicBuffer<GridNode>, DynamicBuffer<GridNodeCost>>())
+        var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
+        var grid = SystemAPI.GetComponent<GridComponent>(gridEntity);
+        EntityCommandBuffer ecb= new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+        foreach (var(field,_,nodebuffer,entity)in SystemAPI.Query<RefRO<FlowField>, FieldUpdateRequest,DynamicBuffer<FieldNode>>().WithEntityAccess())
         {
-            var nbuffer = nodebufferRO;
-            var cbuffer = costbufferRO;
+            var nbuffer = nodebuffer;
             if (nbuffer.Length == 0)
             {
-                return;
+                continue;
             }
             for (int i = 0; i < nbuffer.Length; i++)
             {
-                int2 cell = GridHelper.GetGridPosFromIndex(i,grid.ValueRO);
+                int2 cell = GridHelper.GetGridPosFromIndex(i,grid);
                 int bestcost= nbuffer[i].bestcost;
                 float2 bestdirection=float2.zero;
-                if(!(cell.x< 0|| cell.x>= grid.ValueRO.width||cell.y<0||cell.y>=grid.ValueRO.height))
+                if(!(cell.x< 0|| cell.x>= grid.width||cell.y<0||cell.y>=grid.height))
                 {
                     for( int j=0;j<8;j++)
                     {
                         int2 neighborcell=cell+ neighborsdir[j];
 
-                        if(neighborcell.x < 0 || neighborcell.x >= grid.ValueRO.width || neighborcell.y < 0 || neighborcell.y >= grid.ValueRO.height)
+                        if(neighborcell.x < 0 || neighborcell.x >= grid.width || neighborcell.y < 0 || neighborcell.y >= grid.height)
                         {
                             continue;
                         }
 
-                        int neighborindex=GridHelper.GetNodeIndex(neighborcell,grid.ValueRO);
+                        int neighborindex=GridHelper.GetNodeIndex(neighborcell,grid);
                         int neighborcost= nbuffer[neighborindex].bestcost;
                         if (neighborcost<bestcost)
                         {
@@ -54,12 +56,14 @@ partial struct FlowDirectionSystem : ISystem
                         }
                     }
                 }
-                GridNode node = nbuffer[i];
+                FieldNode node = nbuffer[i];
                 node.direction = bestdirection;
                 nbuffer[i] = node;
+                ecb.RemoveComponent<FieldUpdateRequest>(entity);
             }
+            
         }
-        state.Enabled = false;
+        ecb.Playback(state.EntityManager);
     }
 
     [BurstCompile]
