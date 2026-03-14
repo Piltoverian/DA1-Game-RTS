@@ -16,6 +16,7 @@ using static UnityEngine.EventSystems.EventTrigger;
 
 
 [UpdateAfter(typeof(BucketArrangeSystem))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct SelectSystem : ISystem
 {
     public void OnCreate(ref SystemState state) { }

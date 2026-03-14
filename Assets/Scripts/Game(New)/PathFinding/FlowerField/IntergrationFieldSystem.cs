@@ -36,7 +36,7 @@ partial struct IntergrationFieldSystem : ISystem
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var grid = SystemAPI.GetComponent<GridComponent>(gridEntity);
         var cbuffer = state.EntityManager.GetBuffer<GridNodeCost>(gridEntity);
-        foreach (var(field,_,nodebuffer,entity) in SystemAPI.Query<RefRO<FlowField>,FieldUpdateRequest,DynamicBuffer<FieldNode>>().WithEntityAccess())
+        foreach (var(field,_,nodebuffer,entity) in SystemAPI.Query<RefRO<FlowField>,FieldCreateRequest,DynamicBuffer<FieldNode>>().WithEntityAccess())
         {
             var nbuffer = nodebuffer;
             if (nbuffer.Length == 0)

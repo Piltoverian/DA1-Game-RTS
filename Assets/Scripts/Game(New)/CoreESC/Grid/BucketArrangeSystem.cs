@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 [UpdateAfter(typeof(UnitMovementSystem))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct BucketArrangeSystem : ISystem
 {
     [BurstCompile]

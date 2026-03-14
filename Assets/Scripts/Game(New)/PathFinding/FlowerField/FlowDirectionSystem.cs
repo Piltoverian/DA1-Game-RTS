@@ -24,7 +24,7 @@ partial struct FlowDirectionSystem : ISystem
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var grid = SystemAPI.GetComponent<GridComponent>(gridEntity);
         EntityCommandBuffer ecb= new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-        foreach (var(field,_,nodebuffer,entity)in SystemAPI.Query<RefRO<FlowField>, FieldUpdateRequest,DynamicBuffer<FieldNode>>().WithEntityAccess())
+        foreach (var(field,_,nodebuffer,entity)in SystemAPI.Query<RefRO<FlowField>, FieldCreateRequest,DynamicBuffer<FieldNode>>().WithEntityAccess())
         {
             var nbuffer = nodebuffer;
             if (nbuffer.Length == 0)
@@ -59,7 +59,7 @@ partial struct FlowDirectionSystem : ISystem
                 FieldNode node = nbuffer[i];
                 node.direction = bestdirection;
                 nbuffer[i] = node;
-                ecb.RemoveComponent<FieldUpdateRequest>(entity);
+                ecb.RemoveComponent<FieldCreateRequest>(entity);
             }
             
         }

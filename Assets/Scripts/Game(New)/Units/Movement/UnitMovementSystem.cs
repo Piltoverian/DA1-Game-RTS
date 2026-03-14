@@ -2,6 +2,12 @@
 using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
+using UnityEditor;
+
+struct FieldChangeRequest:IComponentData
+{
+    public Entity Field;
+}
 
 [UpdateAfter(typeof(FlowDirectionSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
@@ -20,6 +26,8 @@ partial struct UnitMovementSystem : ISystem
 
         GridComponent grid = SystemAPI.GetSingleton<GridComponent>();
         EntityCommandBuffer ecb= new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+        FixedFrameCount fixedFrameCount=SystemAPI.GetSingleton<FixedFrameCount>();
+        Entity FieldCacheEnity = SystemAPI.GetSingletonEntity<FlowFieldCache>();
         foreach (var (transform, move, entity) in
             SystemAPI.Query<RefRW<LocalTransform>, RefRW<UnitMovementComponent>>()
             .WithEntityAccess())
@@ -42,16 +50,28 @@ partial struct UnitMovementSystem : ISystem
                         y * grid.cellsize);
 
                 Entity field =
-                    PathFindingHelper.FlowerFieldInit(
-                        state.EntityManager,
-                        worldTarget,
-                        grid,ecb);
+                   FlowFieldCacheHelper.GetOrCreateFlowField(ref state, FieldCacheEnity, ecb, worldTarget,(uint)fixedFrameCount.value,grid);
 
-                move.ValueRW.FieldEntity = field;
+                
                 move.ValueRW.hastarget = true;
-
+                ecb.AddComponent(entity, new FieldChangeRequest
+                {
+                    Field = field,
+                });
                 continue;
             }
+        }
+        ecb.Playback(state.EntityManager);
+        var ecb2= new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+        foreach(var (fieldChangeRequest,move,entity) in SystemAPI.Query<RefRO<FieldChangeRequest>,RefRW<UnitMovementComponent>>().WithEntityAccess()){
+            PathFindingHelper.AssignFieldToMoveComponent(ref move.ValueRW, fieldChangeRequest.ValueRO.Field, ref state);
+            ecb2.RemoveComponent<FieldChangeRequest>(entity);
+        }
+        ecb2.Playback(state.EntityManager);
+        foreach (var (transform, move, entity) in
+            SystemAPI.Query<RefRW<LocalTransform>, RefRW<UnitMovementComponent>>()
+            .WithEntityAccess())
+        {
 
             Entity fieldEntity = move.ValueRO.FieldEntity;
 
@@ -78,7 +98,6 @@ partial struct UnitMovementSystem : ISystem
 
             transform.ValueRW.Position = pos;
         }
-        ecb.Playback(state.EntityManager);
     }
 
     [BurstCompile]
