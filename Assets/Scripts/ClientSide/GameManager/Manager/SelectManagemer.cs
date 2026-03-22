@@ -1,9 +1,8 @@
-﻿using gameManagerModule;
+using gameManagerModule;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Drawing;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.VisualScripting;
@@ -39,7 +38,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             SingleSelecting(MousePos, em);
             return;
         }
-        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton)&&holdbuffer>0.03)
+        else if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsHolding(Mouse.current.leftButton)&&holdbuffer>0.05)
         {
             if (!selectingRect.isNotNull)
             {

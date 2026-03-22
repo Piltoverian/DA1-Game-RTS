@@ -22,10 +22,8 @@ public class ResourceGatherableAuthoring : MonoBehaviour
     public float GatheringSpeed;
     public float gatheringRange;
     public float currentlyCarryingAmount;
-    ResourceNode currentResourceNode=null;
     public ResourceType resourceType=ResourceType.None;
     public ResourceGatherableComp.GatheringState gatheringState= ResourceGatherableComp.GatheringState.Idle;
-    Storage targetStorage=null;
 
     public class Baker : Baker<ResourceGatherableAuthoring>
     {

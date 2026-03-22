@@ -13,7 +13,7 @@ public class ResourceNode : SelectableObject
     [SerializeField]protected ResourceType nodetype;
     [SerializeField]protected float amount;
     [SerializeField] Collider threshholdCollider;
-    [SerializeField] Collider collider;
+    [SerializeField] Collider nodeCollider;
     [SerializeField] private bool isDepleted = false;
     public ResourceType GetNodeType()
     {

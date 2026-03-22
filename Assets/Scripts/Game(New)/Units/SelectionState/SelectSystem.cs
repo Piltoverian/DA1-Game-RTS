@@ -15,7 +15,7 @@ using UnityEngine;
 using static UnityEngine.EventSystems.EventTrigger;
 
 
-[UpdateAfter(typeof(BucketArrangeSystem))]
+[UpdateAfter(typeof(SelectableSpatialSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct SelectSystem : ISystem
 {
@@ -56,7 +56,7 @@ partial struct SelectSystem : ISystem
 
         var bucket = bucketContainer.ValueRW.Bucket;
 
-        var transformLookup = state.GetComponentLookup<LocalTransform>(true);
+        var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
         var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
         var selectedLookup = state.GetComponentLookup<SelectedTag>(true);
@@ -156,14 +156,14 @@ partial struct SelectSystem : ISystem
         var bucket = bucketContainer.ValueRW.Bucket;
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
         var selectedLookup = state.GetComponentLookup<SelectedTag>(true);
-        var transformLookup = state.GetComponentLookup<LocalTransform>(true);
+        var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
         var singleselectableLookup = state.GetComponentLookup<SingleSelectableEntity>(true);
         var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
         int2 targetToGrid = GridHelper.WorldToGrid(request.targetpos, grid);
         int maxRow = targetToGrid.y + 1;
         int minRow = targetToGrid.y - 1;
-        int maxcolumn= targetToGrid.y + 1;
-        int mincolumn = targetToGrid.y - 1;
+        int maxcolumn= targetToGrid.x + 1;
+        int mincolumn = targetToGrid.x - 1;
         for (int i=minRow; i<=maxRow; i++)
         {
             for(int j=mincolumn;j<=maxcolumn;j++)
@@ -262,13 +262,17 @@ public struct Trapezoid
 
     public float LeftX(float z)
     {
-        float t = (z - B0.z) / (T0.z - B0.z);
+        float denom = T0.z - B0.z;
+        if (math.abs(denom) < 0.0001f) return math.min(B0.x, T0.x);
+        float t = (z - B0.z) / denom;
         return math.lerp(B0.x, T0.x, t);
     }
 
     public float RightX(float z)
     {
-        float t = (z - B1.z) / (T1.z - B1.z);
+        float denom = T1.z - B1.z;
+        if (math.abs(denom) < 0.0001f) return math.max(B1.x, T1.x);
+        float t = (z - B1.z) / denom;
         return math.lerp(B1.x, T1.x, t);
     }
 

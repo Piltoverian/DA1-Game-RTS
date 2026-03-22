@@ -10,7 +10,6 @@ public class GameManager : MonoBehaviour
     private List<IModule> modules = new List<IModule>();
     private static GameManager instance;
     private GameManager() { }
-
     private List<Type> moduleTypeList = new List<Type>()
     {
         //AddClassOfModuleHere
