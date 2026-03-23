@@ -19,7 +19,10 @@ using static UnityEngine.EventSystems.EventTrigger;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct SelectSystem : ISystem
 {
-    public void OnCreate(ref SystemState state) { }
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<SelectableBucketContainer>();
+    }
 
     public void OnUpdate(ref SystemState state)
     {
@@ -52,7 +55,7 @@ partial struct SelectSystem : ISystem
         ref EntityCommandBuffer ecb)
     {
         var grid = SystemAPI.GetSingleton<GridComponent>();
-        var bucketContainer = SystemAPI.GetSingletonRW<BucketContainer>();
+        var bucketContainer = SystemAPI.GetSingletonRW<SelectableBucketContainer>();
 
         var bucket = bucketContainer.ValueRW.Bucket;
 
@@ -151,7 +154,7 @@ partial struct SelectSystem : ISystem
             ecb.RemoveComponent<SelectedTag>(entity);
         }
         var grid = SystemAPI.GetSingleton<GridComponent>();
-        var bucketContainer = SystemAPI.GetSingletonRW<BucketContainer>();
+        var bucketContainer = SystemAPI.GetSingletonRW<SelectableBucketContainer>();
 
         var bucket = bucketContainer.ValueRW.Bucket;
         var selectableLookup = state.GetComponentLookup<Selectable>(true);

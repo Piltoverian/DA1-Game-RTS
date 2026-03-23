@@ -22,7 +22,7 @@ public struct SelectedTag : IComponentData
     public int playerID;
 }
 
-public struct BucketContainer : IComponentData
+public struct SelectableBucketContainer : IComponentData
 {
     public NativeParallelMultiHashMap<int, Entity> Bucket;
 }

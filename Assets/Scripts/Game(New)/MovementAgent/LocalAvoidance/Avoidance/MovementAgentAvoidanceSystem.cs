@@ -14,7 +14,7 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         var grid = SystemAPI.GetSingleton<GridComponent>();
-        var container = SystemAPI.GetSingleton<BucketContainer>();
+        var container = SystemAPI.GetSingleton<MovementAgentBucket>();
         var deltaTime = SystemAPI.Time.DeltaTime;
 
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();

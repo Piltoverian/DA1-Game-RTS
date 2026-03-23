@@ -6,8 +6,8 @@ using Unity.Transforms;
 
 /// <summary>
 /// [_SpatialGrid] Sub-layer: Unit Spatial Index
-/// Cập nhật vị trí của các Unit có UnitAvoidanceComponent vào BucketMap (HashMap<cell, Entity>).
-/// Tạo và sở hữu BucketContainer singleton. Chạy trước LocalAvoidance để neighbor lookup luôn mới nhất.
+/// Cập nhật vị trí của các Unit có UnitAvoidanceComponent vào MovementAgentBucket (HashMap<cell, Entity>).
+/// Hệ thống này sở hữu MovementAgentBucket singleton chuyên biệt cho tránh né và di chuyển.
 /// </summary>
 [UpdateAfter(typeof(FlowDirectionSystem))]
 [UpdateBefore(typeof(MovementAgentTargetSystem))]
@@ -17,18 +17,19 @@ public partial struct UnitSpatialSystem : ISystem
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        // Tạo singleton BucketContainer dùng chung với SelectableSpatialSystem và LocalAvoidanceSystem
-        if (!SystemAPI.HasSingleton<BucketContainer>())
+        // Tạo singleton MovementAgentBucket chuyên biệt cho tránh né và di chuyển
+        if (!SystemAPI.HasSingleton<MovementAgentBucket>())
         {
             var bucket = new NativeParallelMultiHashMap<int, Entity>(10000, Allocator.Persistent);
-            state.EntityManager.CreateSingleton(new BucketContainer { Bucket = bucket });
+            state.EntityManager.CreateSingleton(new MovementAgentBucket { Bucket = bucket });
         }
+        state.RequireForUpdate<GridComponent>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        var container = SystemAPI.GetSingletonRW<BucketContainer>();
+        var container = SystemAPI.GetSingletonRW<MovementAgentBucket>();
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var bucketMap = container.ValueRW.Bucket;
 
@@ -58,9 +59,9 @@ public partial struct UnitSpatialSystem : ISystem
     public void OnDestroy(ref SystemState state)
     {
         // UnitSpatialSystem là owner của BucketContainer → chịu trách nhiệm Dispose
-        if (SystemAPI.HasSingleton<BucketContainer>())
+        if (SystemAPI.HasSingleton<MovementAgentBucket>())
         {
-            var container = SystemAPI.GetSingleton<BucketContainer>();
+            var container = SystemAPI.GetSingleton<MovementAgentBucket>();
             if (container.Bucket.IsCreated)
                 container.Bucket.Dispose();
         }

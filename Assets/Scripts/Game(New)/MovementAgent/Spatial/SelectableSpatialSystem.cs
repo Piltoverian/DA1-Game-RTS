@@ -6,8 +6,8 @@ using Unity.Transforms;
 
 /// <summary>
 /// [_SpatialGrid] Sub-layer: Selectable Spatial Index
-/// Cập nhật vị trí của các Selectable entity vào BucketMap (HashMap<cell, Entity>).
-/// Dùng chung BucketContainer singleton do UnitSpatialSystem tạo ra.
+/// Cập nhật vị trí của các Selectable entity vào SelectableBucketContainer (HashMap<cell, Entity>).
+/// Hệ thống này sở hữu SelectableBucketContainer singleton riêng, tách biệt với UnitSpatialSystem.
 /// Chạy sau UnitSpatialSystem và trước SelectSystem.
 /// </summary>
 [UpdateAfter(typeof(UnitSpatialSystem))]
@@ -15,18 +15,22 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct SelectableSpatialSystem : ISystem
 {
-    // Đảm bảo BucketContainer đã được tạo bởi UnitSpatialSystem trước khi system này chạy
+    // Đảm bảo Bucket đã được khởi tạo
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        state.RequireForUpdate<BucketContainer>();
+       if (!SystemAPI.HasSingleton<SelectableBucketContainer>())
+        {
+            var bucket = new NativeParallelMultiHashMap<int, Entity>(10000, Allocator.Persistent);
+            state.EntityManager.CreateSingleton(new SelectableBucketContainer { Bucket = bucket });
+        }
         state.RequireForUpdate<GridComponent>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        var container = SystemAPI.GetSingletonRW<BucketContainer>();
+        var container = SystemAPI.GetSingletonRW<SelectableBucketContainer>();
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var bucketMap = container.ValueRW.Bucket;
 
@@ -49,6 +53,17 @@ public partial struct SelectableSpatialSystem : ISystem
 
             bucketMap.Add(newIndex, entity);
             selectable.ValueRW.GridIndex = newIndex;
+        }
+    }
+
+    [BurstCompile]
+    public void OnDestroy(ref SystemState state)
+    {
+        if (SystemAPI.HasSingleton<SelectableBucketContainer>())
+        {
+            var container = SystemAPI.GetSingleton<SelectableBucketContainer>();
+            if (container.Bucket.IsCreated)
+                container.Bucket.Dispose();
         }
     }
 }
