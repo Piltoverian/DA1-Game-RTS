@@ -149,9 +149,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MovementAgentDebugAuthoring
   showVelocity: 0
-  showDesiredVelocity: 1
+  showDesiredVelocity: 0
   showContextSteer: 0
-  showTargetLines: 1
+  showTargetLines: 0
   showProximity: 1
 --- !u!4 &417926975
 Transform:
