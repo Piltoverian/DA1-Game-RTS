@@ -34,6 +34,8 @@ public partial struct SelectableSpatialSystem : ISystem
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var bucketMap = container.ValueRW.Bucket;
 
+        bucketMap.Clear();
+
         foreach (var (transform, selectable, entity)
             in SystemAPI.Query<RefRO<LocalTransform>, RefRW<Selectable>>()
             .WithEntityAccess())
@@ -44,12 +46,6 @@ public partial struct SelectableSpatialSystem : ISystem
                 GridHelper.WorldToGrid(pos, grid),
                 grid
             );
-
-            int oldIndex = selectable.ValueRO.GridIndex;
-            if (newIndex == oldIndex) continue;
-
-            if (oldIndex >= 0)
-                bucketMap.Remove(oldIndex, entity);
 
             bucketMap.Add(newIndex, entity);
             selectable.ValueRW.GridIndex = newIndex;

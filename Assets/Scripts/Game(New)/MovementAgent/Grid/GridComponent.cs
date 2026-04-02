@@ -6,6 +6,8 @@ public struct GridComponent : IComponentData
     public int height;
     public float cellsize;
     public float3 origin;
+    public uint generation;
+    public uint islandGeneration;
 }
 
 public struct GridNodeCost:IBufferElementData

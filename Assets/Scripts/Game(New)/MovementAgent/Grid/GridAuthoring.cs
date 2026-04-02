@@ -45,11 +45,14 @@ public class GridAuthoring : MonoBehaviour
                 width = (int)mapTypeSize,
                 height = (int)mapTypeSize,
                 cellsize = sizeX / mapTypeSize,
-                origin= bounds.min
+                origin = bounds.min,
+                generation = 0,
+                islandGeneration = uint.MaxValue
             };
             AddComponent(entity, gridComponent);
             AddBuffer<GridNodeCost>(entity);
             AddBuffer<GridIsland>(entity);
+            AddBuffer<CostChangeRequest>(entity);
         }
     }
 }

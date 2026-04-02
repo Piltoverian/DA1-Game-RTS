@@ -12,6 +12,7 @@ public static class FlowFieldHelper
         ecb.AddComponent(fieldEntity, new FlowField
         {
             targetcell = targetcell,
+            gridgeneration = grid.generation,
         });
 
         ecb.AddComponent(fieldEntity, new FlowFieldRefCount

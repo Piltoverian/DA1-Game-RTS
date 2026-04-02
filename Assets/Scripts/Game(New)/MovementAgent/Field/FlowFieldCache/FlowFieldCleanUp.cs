@@ -2,7 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
-[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
 public partial struct FlowFieldCleanupSystem : ISystem
 {

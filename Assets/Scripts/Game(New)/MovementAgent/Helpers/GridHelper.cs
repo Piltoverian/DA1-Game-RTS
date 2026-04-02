@@ -28,4 +28,22 @@ public static class GridHelper
         int y = index / grid.width;
         return new int2(x, y);
     }
+
+    public static GridRect ConvertWorldRectToGridRect(GridRect gridRect,GridComponent grid)
+    {
+        int2 minGrid= WorldToGrid(new float3(gridRect.min.x, 0, gridRect.min.y), grid);
+        int2 maxGrid= WorldToGrid(new float3(gridRect.max.x, 0, gridRect.max.y), grid);
+        return new GridRect(minGrid, maxGrid);
+    }
+}
+
+public struct GridRect
+    {
+    public int2 min;
+    public int2 max;
+    public GridRect(int2 min, int2 max)
+    {
+        this.min = min;
+        this.max = max;
+    }
 }

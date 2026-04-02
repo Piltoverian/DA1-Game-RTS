@@ -17,6 +17,7 @@ public struct IslandSeed : IBufferElementData
 public struct FlowField : IComponentData
 {
     public int2 targetcell;
+    public uint gridgeneration;
 }
 
 public struct FlowFieldRefCount : IComponentData

@@ -10,7 +10,7 @@ using UnityEngine;
 public partial struct IntegrationFieldSystem : ISystem
 {
     private EntityQuery m_FieldQuery;
-
+    public const int MaxIslands = 1000;
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -98,7 +98,7 @@ public struct CalculateIntegrationFieldJob : IJobChunk
 
         for (int e = 0; e < chunk.Count; e++)
         {
-            if (statuses[e].Value != FieldState.Requested)
+            if (statuses[e].Value != FieldState.Requested && statuses[e].Value != FieldState.PendingRecalculation)
                 continue;
 
             FlowFieldStatus status = statuses[e];
@@ -132,8 +132,8 @@ public struct CalculateIntegrationFieldJob : IJobChunk
             NativeQueue<int> queryforBFS = new NativeQueue<int>(Allocator.Temp);
 
             // 2. Multi-Seed CRP
-            NativeArray<int> bestSeedPerIsland = new NativeArray<int>(1000, Allocator.Temp); 
-            NativeArray<float> minDistancePerIsland = new NativeArray<float>(1000, Allocator.Temp);
+            NativeArray<int> bestSeedPerIsland = new NativeArray<int>(IntegrationFieldSystem.MaxIslands, Allocator.Temp); 
+            NativeArray<float> minDistancePerIsland = new NativeArray<float>(IntegrationFieldSystem.MaxIslands, Allocator.Temp);
             
             for(int i=0; i<1000; i++) {
                 bestSeedPerIsland[i] = -1;

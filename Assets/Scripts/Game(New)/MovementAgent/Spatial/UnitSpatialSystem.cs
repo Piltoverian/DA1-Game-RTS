@@ -17,7 +17,6 @@ public partial struct UnitSpatialSystem : ISystem
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        // Tạo singleton MovementAgentBucket chuyên biệt cho tránh né và di chuyển
         if (!SystemAPI.HasSingleton<MovementAgentBucket>())
         {
             var bucket = new NativeParallelMultiHashMap<int, Entity>(10000, Allocator.Persistent);
@@ -33,6 +32,8 @@ public partial struct UnitSpatialSystem : ISystem
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var bucketMap = container.ValueRW.Bucket;
 
+        bucketMap.Clear();
+
         foreach (var (transform, avoidance, entity)
             in SystemAPI.Query<RefRO<LocalTransform>, RefRW<MovementAgentAvoidanceComponent>>()
             .WithEntityAccess())
@@ -44,21 +45,14 @@ public partial struct UnitSpatialSystem : ISystem
                 grid
             );
 
-            int oldIndex = avoidance.ValueRO.gridIndex;
-            if (newIndex == oldIndex) continue;
-
-            if (oldIndex >= 0)
-                bucketMap.Remove(oldIndex, entity);
-
             bucketMap.Add(newIndex, entity);
-            avoidance.ValueRW.gridIndex = newIndex;
+            avoidance.ValueRW.gridIndex = newIndex; 
         }
     }
 
     [BurstCompile]
     public void OnDestroy(ref SystemState state)
     {
-        // UnitSpatialSystem là owner của BucketContainer → chịu trách nhiệm Dispose
         if (SystemAPI.HasSingleton<MovementAgentBucket>())
         {
             var container = SystemAPI.GetSingleton<MovementAgentBucket>();

@@ -14,6 +14,8 @@ public partial struct GridIslandSystem : ISystem
     {
         foreach (var (grid, entity) in SystemAPI.Query<RefRW<GridComponent>>().WithEntityAccess())
         {
+            if (grid.ValueRW.islandGeneration == grid.ValueRW.generation)
+                continue;
             var costBuffer = SystemAPI.GetBuffer<GridNodeCost>(entity);
             var islandBuffer = SystemAPI.GetBuffer<GridIsland>(entity);
             int width = grid.ValueRO.width;
@@ -27,6 +29,7 @@ public partial struct GridIslandSystem : ISystem
 
             for (int i = 0; i < totalNodes; i++)
             {
+               
                 if (visited[i] || costBuffer[i].cost == int.MaxValue)
                     continue;
 
@@ -77,10 +80,8 @@ public partial struct GridIslandSystem : ISystem
 
             visited.Dispose();
             queue.Dispose();
+            grid.ValueRW.islandGeneration = grid.ValueRW.generation;
         }
-
-        // Tạm thời dừng system sau khi chạy xong để tiết kiệm tài nguyên
-        state.Enabled = false;
     }
 
     [BurstCompile]
