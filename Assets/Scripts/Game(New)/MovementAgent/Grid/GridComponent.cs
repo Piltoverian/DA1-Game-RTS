@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+
 public struct GridComponent : IComponentData
 {
     public int width;
@@ -8,6 +9,9 @@ public struct GridComponent : IComponentData
     public float3 origin;
     public uint generation;
     public uint islandGeneration;
+    public bool isDirty;
+    public int HeartbeatTimer;
+    public int RecalcPerframe;
 }
 
 public struct GridNodeCost:IBufferElementData

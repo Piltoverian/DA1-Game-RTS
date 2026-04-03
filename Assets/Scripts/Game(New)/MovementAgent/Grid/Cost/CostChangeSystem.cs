@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Mathematics.Geometry;
+using UnityEngine;
 
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
@@ -10,6 +11,7 @@ using Unity.Mathematics.Geometry;
 
 partial struct CostChangeSystem : ISystem
 {
+    public const int HEARTBEAT_INTERVAL = 12;
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -23,6 +25,7 @@ partial struct CostChangeSystem : ISystem
         {
             var requestbuffer = SystemAPI.GetBuffer<CostChangeRequest>(entity);
             var costbuffer = SystemAPI.GetBuffer<GridNodeCost>(entity);
+           
             if (requestbuffer.Length == 0) continue;
             foreach(var request in requestbuffer)
             {
@@ -43,8 +46,19 @@ partial struct CostChangeSystem : ISystem
                     }
                 }
             }
-            grid.ValueRW.generation++;
+            grid.ValueRW.isDirty = true;
             requestbuffer.Clear();
+        }
+        foreach(var grid in SystemAPI.Query<RefRW<GridComponent>>())
+        {
+            if (grid.ValueRO.isDirty)
+                grid.ValueRW.HeartbeatTimer += 1;
+            if (grid.ValueRW.isDirty && grid.ValueRW.HeartbeatTimer >= HEARTBEAT_INTERVAL)
+            {
+                grid.ValueRW.generation++;
+                grid.ValueRW.HeartbeatTimer = 0;
+                grid.ValueRW.isDirty = false;
+            }
         }
     }
 
