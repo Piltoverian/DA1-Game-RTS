@@ -1,7 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.DebugDisplay;
-using Mono.Cecil;
 public enum TargetChangeResult
 {
     Success,
@@ -10,7 +9,7 @@ public enum TargetChangeResult
 }
 public static class MovementAgentAPI
 {
-    public static TargetChangeResult SetTarget(EntityManager entityManager, Entity agentEntity, float3 worldTarget,GridComponent gridComponent)
+    public static TargetChangeResult SetTarget(EntityManager entityManager, Entity agentEntity, float3 worldTarget, GridComponent gridComponent, EntityCommandBuffer ecb)
     {
         if (!entityManager.HasComponent<MovementAgentComponent>(agentEntity))
         {
@@ -25,7 +24,7 @@ public static class MovementAgentAPI
         agent.currentworldtarget = worldTarget;
         agent.hastarget = true;
         agent.useSlotTarget = false; 
-        entityManager.SetComponentData(agentEntity, agent);
+        ecb.SetComponent(agentEntity, agent);
 
         if (entityManager.HasComponent<MovementSteeringComponent>(agentEntity))
         {
@@ -33,7 +32,7 @@ public static class MovementAgentAPI
             steering.isSettled = false;
             steering.stuckTime = 0;
             steering.minDistanceToTarget = float.MaxValue;
-            entityManager.SetComponentData(agentEntity, steering);
+            ecb.SetComponent(agentEntity, steering);
         }
 
         return TargetChangeResult.Success;
