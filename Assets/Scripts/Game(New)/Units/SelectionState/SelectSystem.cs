@@ -186,6 +186,8 @@ partial struct SelectSystem : ISystem
                         {
                             if(!selectedLookup.HasComponent(unit))
                             {
+                                if(selectableLookup[unit].playerID!=request.playerId)
+                                    continue;
                                 ecb.AddComponent(unit,new SelectedTag {playerID=request.playerId });
                                 return;
                             }
