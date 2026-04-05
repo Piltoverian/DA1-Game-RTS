@@ -79,11 +79,22 @@ public static class FlowFieldHelper
                     ecb.AddComponent(field, new FlowFieldRefCount { value = 1 });
                 }
             }
-            else
+        }
+    }
+
+    public static void ReleaseFieldFromMoveComponent(ref MovementAgentComponent unit, EntityCommandBuffer ecb, EntityManager em)
+    {
+        if (unit.FieldEntity != Entity.Null && em.Exists(unit.FieldEntity))
+        {
+            if (em.HasComponent<FlowFieldRefCount>(unit.FieldEntity))
             {
-                
-                ecb.SetComponent(field, new FlowFieldRefCount { value = 1 });
+                var oldRef = em.GetComponentData<FlowFieldRefCount>(unit.FieldEntity);
+                oldRef.value--;
+                ecb.SetComponent(unit.FieldEntity, oldRef);
             }
         }
+        unit.FieldEntity = Entity.Null;
+        unit.hastarget = false;
+        unit.useSlotTarget = false;
     }
 }

@@ -39,14 +39,38 @@ public static class MovementAgentAPI
         return TargetChangeResult.Success;
     }
 
-    public static void ClearTarget(EntityManager entityManager, Entity agentEntity)
+    public static void ClearTarget(EntityManager entityManager, Entity agentEntity,EntityCommandBuffer ecb)
     {
         if (!entityManager.HasComponent<MovementAgentComponent>(agentEntity))
         {
             return;
         }
-        var agent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
-        agent.hastarget = false;
-        entityManager.SetComponentData(agentEntity, agent);
+        var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
+        var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
+        FlowFieldHelper.ReleaseFieldFromMoveComponent(ref agentComponent, ecb, entityManager);
+        agentComponent.hastarget = false;
+        agentComponent.velocity= float3.zero;
+        ecb.SetComponent(agentEntity, agentComponent);
+        steeringComponent.isSettled = true;
+        steeringComponent.stuckTime = 0;
+        steeringComponent.minDistanceToTarget = float.MaxValue;
+        ecb.SetComponent(agentEntity, steeringComponent);
+    }
+
+    public static void StopAgent(EntityManager entityManager, Entity agentEntity, EntityCommandBuffer ecb)
+    {
+        if (!entityManager.HasComponent<MovementAgentComponent>(agentEntity))
+        {
+            return;
+        }
+        var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
+        var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
+        agentComponent.hastarget = false;
+        agentComponent.velocity= float3.zero;
+        ecb.SetComponent(agentEntity, agentComponent);
+        steeringComponent.isSettled = true;
+        steeringComponent.stuckTime = 0;
+        steeringComponent.minDistanceToTarget = float.MaxValue;
+        ecb.SetComponent(agentEntity, steeringComponent);
     }
 }
