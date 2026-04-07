@@ -7,6 +7,7 @@ using Unity.Mathematics;
 [UpdateBefore(typeof(IntegrationFieldSystem))]
 partial struct FlowFieldInvalidationSystem : ISystem
 {
+    const int MinRecalcPerFrame = 12;
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -30,7 +31,7 @@ partial struct FlowFieldInvalidationSystem : ISystem
             return;
         }
         if (grid.ValueRW.RecalcPerframe == 0)
-            grid.ValueRW.RecalcPerframe = math.max(1, (int)math.ceil(flowfieldEntities.Length / (float)CostChangeSystem.HEARTBEAT_INTERVAL));
+            grid.ValueRW.RecalcPerframe = math.max(MinRecalcPerFrame, (int)math.ceil(flowfieldEntities.Length / (float)CostChangeSystem.HEARTBEAT_INTERVAL));
         flowfieldEntities.Sort();
         int ToRecalc = math.min(grid.ValueRW.RecalcPerframe, flowfieldEntities.Length);
         for(int i=0;i<ToRecalc;i++)
