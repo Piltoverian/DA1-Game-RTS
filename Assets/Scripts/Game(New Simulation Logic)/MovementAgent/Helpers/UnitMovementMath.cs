@@ -62,7 +62,7 @@ public static class UnitMovementMath
 
         if (math.lengthsq(interpolatedDir) > 0.001f)
             return new float3(interpolatedDir.x, 0, interpolatedDir.y) * speed;
-        
+
         return float3.zero;
     }
 
@@ -80,12 +80,42 @@ public static class UnitMovementMath
     }
 
     /// <summary>
+    /// Tính nửa-góc bóng (apparent half-angle) mà một obstacle chiếm trên context map.
+    /// combinedRadius = radiusA + radiusB (tổng bán kính hai vật thể)
+    /// dist = khoảng cách giữa tâm hai vật thể
+    /// Trả về: nửa góc bằng radian. Clamp [0, π/2] để tránh NaN khi chồng lấn.
+    /// </summary>
+    public static float CalculateApparentHalfAngle(float combinedRadius, float dist)
+    {
+        return math.asin(math.clamp(combinedRadius / math.max(dist, 0.01f), 0f, 1f));
+    }
+
+    /// <summary>
+    /// Tính lực đẩy separation có xét radius (phi tuyến).
+    /// dist = khoảng cách giữa tâm hai vật thể
+    /// localSeparationZone = ngưỡng separation (từ CalculateSumOfRadii)
+    /// combinedRadius = radiusA + radiusB
+    /// </summary>
+    public static float CalculateSeparationMagnitude(float dist, float localSeparationZone, float combinedRadius)
+    {
+        if (dist >= localSeparationZone) return 0f;
+
+        float penetration = (localSeparationZone - dist) / localSeparationZone;
+        // Phi tuyến: penetration^1.5 → overlap sâu bị đẩy mạnh hơn nhiều
+        float nonLinearPush = math.pow(penetration, 1.5f);
+        // Radius scale: object lớn cần lực đẩy lớn hơn tỉ lệ
+        float radiusScale = combinedRadius * 0.5f;  // normalized: radius=1+1 → scale=1.0
+
+        return nonLinearPush * math.max(radiusScale, 1.0f);
+    }
+
+    /// <summary>
     /// Tính toán vector Gradient hướng ra xa các vật cản gần nhất trên Grid.
     /// </summary>
     public static float2 CalculateGridGradient(
-        float3 worldPos, 
-        NativeArray<GridNodeCost> gridCosts, 
-        GridComponent grid, 
+        float3 worldPos,
+        NativeArray<GridNodeCost> gridCosts,
+        GridComponent grid,
         float searchRadius)
     {
         int2 centralCell = GridHelper.WorldToGrid(worldPos, grid);
@@ -107,7 +137,7 @@ public static class UnitMovementMath
                     float3 obstacleWorldPos = GridHelper.GridToWorld(neighbor, grid);
                     float2 diff = new float2(worldPos.x - obstacleWorldPos.x, worldPos.z - obstacleWorldPos.z);
                     float distSq = math.lengthsq(diff);
-                    
+
                     if (distSq < searchRadius * searchRadius)
                     {
                         // Lực đẩy tỉ lệ nghịch với bình phương khoảng cách
@@ -120,29 +150,49 @@ public static class UnitMovementMath
     }
 
     /// <summary>
-    /// Tính toán mức độ nguy hiểm (Danger) có xét đến vận tốc tương đối (Time-To-Collision lite).
+    /// Tính toán mức độ nguy hiểm (Danger) có xét đến vận tốc tương đối (Time-To-Collision lite)
+    /// và angular coverage (Radius-Aware).
+    /// angularCoverage: [0, 1] = tỉ lệ góc bóng / (π/2), cho biết object chiếm bao nhiêu % bán cầu.
     /// </summary>
     public static float CalculateDanger(
-        float dist, 
-        float avoidRadius, 
-        float contactZone, 
-        float dot, 
-        float staticMultiplier, 
-        float3 myVel, 
-        float3 neighborVel)
+        float dist,
+        float avoidRadius,
+        float contactZone,
+        float dot,
+        float staticMultiplier,
+        float3 myVel,
+        float3 neighborVel,
+        float angularCoverage)
     {
         // 1. Khoảng cách cơ bản (Distance-based danger)
-        float danger = math.clamp((avoidRadius - dist) / (avoidRadius - contactZone), 0f, 1f) * dot;
+        float distanceDanger = math.clamp((avoidRadius - dist) / (avoidRadius - contactZone), 0f, 1f);
+        // angularCoverage boost: object chiếm nhiều góc → danger mạnh hơn trên mỗi slot bị ảnh hưởng
+        // Base = 1.0 (small object), lên tới 2.0 (rất lớn, chiếm ~π/2 radian)
+        float radiusBoost = 1.0f + angularCoverage;
+        float danger = distanceDanger * dot * radiusBoost;
 
         // 2. Velocity-aware adjustment (ORCA-lite)
         // Nếu hai đơn vị đang đi cùng hướng (Consensus cao), chúng ta giảm nguy hiểm.
-        float3 relativeVel = myVel - neighborVel;
         float consensus = math.dot(math.normalizesafe(myVel), math.normalizesafe(neighborVel));
-        
-        if (consensus > 0.8f) 
+
+        if (consensus > 0.8f)
         {
-            // Đi song song: Giảm danger xuống 10% để bầy đàn nén chặt hơn
-            danger *= 0.1f;
+            // Kiểm tra tốc độ tiếp cận: nếu tôi nhanh hơn → đang đuổi kịp, KHÔNG giảm danger
+            float mySpeed = math.length(myVel);
+            float neighborSpeed = math.length(neighborVel);
+            float speedRatio = mySpeed / math.max(neighborSpeed, 0.1f);
+
+            if (speedRatio > 1.2f)
+            {
+                // Đuổi kịp: scale danger theo tốc độ tiếp cận
+                float catchUpFactor = math.clamp(speedRatio - 1.0f, 0f, 1f);
+                danger *= math.lerp(0.1f, 1.0f, catchUpFactor);
+            }
+            else
+            {
+                // Thực sự song song đồng tốc: giảm danger bình thường
+                danger *= 0.1f;
+            }
         }
         else if (consensus < -0.5f)
         {

@@ -883,7 +883,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82284fc1dad91984aac6fc63acec54dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlowFieldDebugDrawer
-  mode: 3
+  mode: 1
   drawStep: 1
   arrowScale: 0.5
   showLabel: 0

@@ -27,8 +27,8 @@ public partial struct MovementAgentActuatorSystem : ISystem
     {
         public float DeltaTime;
 
-        public void Execute(Entity entity, ref LocalTransform transform, 
-            ref MovementAgentComponent move, 
+        public void Execute(Entity entity, ref LocalTransform transform,
+            ref MovementAgentComponent move,
             ref MovementSteeringComponent steering,
             [ReadOnly] in MovementAgentAvoidanceComponent avoidance)
         {
@@ -41,8 +41,15 @@ public partial struct MovementAgentActuatorSystem : ISystem
             float3 goalDir = math.lengthsq(targetVelocity) > 0.001f ? math.normalize(targetVelocity) : float3.zero;
             float3 avoidDir = math.lengthsq(lastAvoidDir) > 0.001f ? math.normalize(lastAvoidDir) : float3.zero;
 
-            // Tính toán trọng số né tránh dựa trên số lượng hàng xóm và cường độ né
-            float avoidWeight = math.clamp(avoidance.neighborCount * 0.2f, 0f, 0.8f);
+            // Proximity urgency: càng gần → avoidWeight càng cao, dựa trên khoảng cách so với radius
+            float proximityUrgency = 0f;
+            if (avoidance.closestDistance < float.MaxValue && avoidance.closestDistance > 0.001f)
+            {
+                float dangerRatio = avoidance.radius * 2.0f / avoidance.closestDistance;
+                proximityUrgency = math.clamp(dangerRatio, 0f, 1f);
+            }
+            float countWeight = math.clamp(avoidance.neighborCount * 0.15f, 0f, 0.6f);
+            float avoidWeight = math.clamp(math.max(countWeight, proximityUrgency), 0f, 0.85f);
             if (avoidance.neighborCount == 0) avoidWeight = 0;
 
             float3 blendDir = math.lerp(goalDir, avoidDir, avoidWeight);
@@ -90,11 +97,13 @@ public partial struct MovementAgentActuatorSystem : ISystem
             }
 
             // --- 4. UPDATE VELOCITY & POSITION ---
-            // Khôi phục logic Lerp Factor cũ dựa trên khoảng cách tới đích
             float distToGlobalActual = math.distance(pos, move.currentworldtarget);
-            float lerpFactor = distToGlobalActual < steering.formationRange ? 5.0f : 10.0f;
+            float baseLerp = distToGlobalActual < steering.formationRange ? 5.0f : 10.0f;
+            // Tăng tốc xoay hướng khi gần obstacle — phản ứng nhanh hơn thay vì chờ lerp chậm
+            float urgencyBoost = proximityUrgency > 0.5f ? 2.0f : 1.0f;
+            float lerpFactor = baseLerp * urgencyBoost;
             move.velocity = math.lerp(move.velocity, desiredVelocity, DeltaTime * lerpFactor);
-            
+
             if (math.lengthsq(move.velocity) > 0.001f)
             {
                 transform.Position += move.velocity * DeltaTime;
@@ -103,6 +112,19 @@ public partial struct MovementAgentActuatorSystem : ISystem
             else
             {
                 steering.isSettled = true;
+            }
+
+            // --- HARD COLLISION RESOLUTION (Direct Position Correction) ---
+            // Khi overlap nghiêm trọng, bypass velocity lerp và đẩy trực tiếp position
+            // Đây là lớp "safety net" — giải quyết overlap trong 1-2 frames thay vì 5-10
+            if (avoidance.closestDistance < avoidance.radius * 1.8f &&
+                math.lengthsq(avoidance.separationForce) > 0.01f)
+            {
+                float overlapDepth = 1.0f - avoidance.closestDistance / (avoidance.radius * 1.8f);
+                float3 pushDir = math.normalizesafe(avoidance.separationForce);
+                float3 directCorrection = pushDir * overlapDepth * avoidance.radius * DeltaTime * 5.0f;
+                directCorrection.y = 0;
+                transform.Position += directCorrection;
             }
 
             // --- 5. ROTATION LOGIC ---
