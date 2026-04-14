@@ -1,16 +1,23 @@
+using Unity.Entities;
 using UnityEngine;
 
 public class HealthAuthoring : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public float healthAmount;
+    public class Baker : Baker<HealthAuthoring>
     {
-        
+        public override void Bake(HealthAuthoring authoring)
+        {
+            var entity = GetEntity(TransformUsageFlags.None);
+            AddComponent(entity, new Health
+            {
+                healthAmount = authoring.healthAmount
+            });
+        }
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+     
+}
+public struct Health : IComponentData
+{
+    public float healthAmount;
 }

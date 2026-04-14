@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Transforms;
 using Unity.Physics;
 using UnityEngine;
+using System.Threading;
 partial struct FindTargetSystem : ISystem
 {
 
@@ -16,11 +17,20 @@ partial struct FindTargetSystem : ISystem
 
         foreach ((
             RefRO<LocalTransform> localTransform,
-            RefRO<FindTarget> findTarget)
+            RefRW<FindTarget> findTarget,
+            RefRW<Target> target)
             in SystemAPI.Query<
                 RefRO<LocalTransform>,
-                RefRO<FindTarget>>())
+                RefRW<FindTarget>,
+                RefRW<Target>>())
         {
+            findTarget.ValueRW.timer -= SystemAPI.Time.DeltaTime;
+            if (findTarget.ValueRO.timer > 0.0f)
+            {
+                continue;
+            }
+            findTarget.ValueRW.timer = findTarget.ValueRO.timerMax;
+            //Debug.Log("Finding target");
             distancesHitList.Clear();
             CollisionFilter collisionFilter = new CollisionFilter
             {
@@ -28,7 +38,7 @@ partial struct FindTargetSystem : ISystem
                 CollidesWith = 1u << GameAssets.UNITS_LAYER,
                 GroupIndex = 0
             };
-            Debug.Log("hmm");
+            //Debug.Log("Checking target");
             if (collisionWorld.OverlapSphere(localTransform.ValueRO.Position, findTarget.ValueRO.range, ref distancesHitList, collisionFilter))
             {
                 foreach (DistanceHit distanceHit in distancesHitList)
@@ -36,7 +46,9 @@ partial struct FindTargetSystem : ISystem
                     Unit targetUnit = SystemAPI.GetComponent<Unit>(distanceHit.Entity);
                     if (targetUnit.faction == findTarget.ValueRO.targetFaction)
                     {
-                        Debug.Log(distanceHit.Entity);
+                        //Debug.Log("found");
+                        target.ValueRW.targetEntity = distanceHit.Entity;
+                        break;
                     }
                 }   
             }

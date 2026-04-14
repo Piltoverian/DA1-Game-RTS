@@ -1,16 +1,22 @@
+using Unity.Entities;
 using UnityEngine;
 
 public class TargetAuthoring : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public GameObject targetGameObject;
+    public class Baker : Baker<TargetAuthoring>
     {
-        
+        public override void Bake(TargetAuthoring authoring)
+        {
+            Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent(entity, new Target
+            {
+                targetEntity = GetEntity(authoring.targetGameObject, TransformUsageFlags.Dynamic)
+            });
+        }
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+}
+public struct Target : IComponentData
+{
+    public Entity targetEntity;
 }

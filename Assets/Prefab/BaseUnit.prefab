@@ -9,11 +9,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3510181012055626075}
-  - component: {fileID: 5632144463901509254}
   - component: {fileID: 3126437901299115466}
   - component: {fileID: 7115821188983602947}
-  - component: {fileID: 2438192010348092242}
-  - component: {fileID: 1329776999935172306}
+  - component: {fileID: 3120659631628476173}
+  - component: {fileID: 8971010792095477125}
+  - component: {fileID: 2430260115171946512}
+  - component: {fileID: 8938032757841855522}
   m_Layer: 6
   m_Name: BaseUnit
   m_TagString: Untagged
@@ -38,20 +39,6 @@ Transform:
   - {fileID: 8905869307957326188}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5632144463901509254
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382223461976398644}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 202e1c6b2073ed94f93bcee7886d3978, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MoveSpeedAuthoring
-  moveSpeed: 20
-  rotationSpeed: 20
 --- !u!136 &3126437901299115466
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -102,7 +89,7 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 116
   m_CollisionDetection: 0
---- !u!114 &2438192010348092242
+--- !u!114 &3120659631628476173
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -111,12 +98,39 @@ MonoBehaviour:
   m_GameObject: {fileID: 3382223461976398644}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b09b7311a23fb0e4aa7c9eccc9f9c8b0, type: 3}
+  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  faction: 1
+--- !u!114 &8971010792095477125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3382223461976398644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8133c3264f701a40a0f10795ea94439, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitMoverAuthoring
+  moveSpeed: 50
+  rotationSpeed: 5
+--- !u!114 &2430260115171946512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3382223461976398644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce06c9f099a420442a6e9adf02892904, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SelectedAuthoring
   visualGameObject: {fileID: 8882249327758270422}
-  showScale: 20
---- !u!114 &1329776999935172306
+  showScale: 2
+--- !u!114 &8938032757841855522
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -125,9 +139,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 3382223461976398644}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cbde7ed7c4de368479b8acbaf518c734, type: 3}
+  m_Script: {fileID: 11500000, guid: b3c1a20afe62fc14996bf54de148069f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  m_EditorClassIdentifier: Assembly-CSharp::FriendAuthoring
 --- !u!1 &4184377831044824465
 GameObject:
   m_ObjectHideFlags: 0
@@ -296,12 +310,12 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: a0e35f6b808bb7447826cc6c69ffe448, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 304e5184823e99b4891de3fba545bf6c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.16, y: 0.16}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
