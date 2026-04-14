@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 811054072743892492}
   - component: {fileID: 6893045146745899635}
   - component: {fileID: 4634117686915790728}
-  - component: {fileID: 6406004509467278548}
   m_Layer: 5
   m_Name: Right
   m_TagString: Untagged
@@ -76,20 +75,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &6406004509467278548
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 829778101797058090}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26436e72368f54e4d8e047ef14277006, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RectBorderSide
-  side: 3
-  thickness: 2
 --- !u!1 &4778000384283548728
 GameObject:
   m_ObjectHideFlags: 0
@@ -100,7 +85,6 @@ GameObject:
   m_Component:
   - component: {fileID: 8714308065625594843}
   - component: {fileID: 6801955031983531704}
-  - component: {fileID: 3524962413651335910}
   m_Layer: 5
   m_Name: SelectionRect
   m_TagString: Untagged
@@ -139,20 +123,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4778000384283548728}
   m_CullTransparentMesh: 1
---- !u!114 &3524962413651335910
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4778000384283548728}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2843892e2f8506042b028c56831e7c39, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SelectionRectViewModule
-  rectTransform: {fileID: 0}
-  canvasRect: {fileID: 0}
 --- !u!1 &6190827815879470074
 GameObject:
   m_ObjectHideFlags: 0
@@ -164,7 +134,6 @@ GameObject:
   - component: {fileID: 8569717375673628957}
   - component: {fileID: 468970989280817200}
   - component: {fileID: 5979285372911478542}
-  - component: {fileID: 7057871084605763109}
   m_Layer: 5
   m_Name: Top
   m_TagString: Untagged
@@ -229,20 +198,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &7057871084605763109
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6190827815879470074}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26436e72368f54e4d8e047ef14277006, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RectBorderSide
-  side: 0
-  thickness: 2
 --- !u!1 &7912471507573324474
 GameObject:
   m_ObjectHideFlags: 0
@@ -254,7 +209,6 @@ GameObject:
   - component: {fileID: 7759847751220640085}
   - component: {fileID: 774474013246332037}
   - component: {fileID: 1165804282484523920}
-  - component: {fileID: 446065396852113386}
   m_Layer: 5
   m_Name: Bottom
   m_TagString: Untagged
@@ -319,20 +273,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &446065396852113386
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7912471507573324474}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26436e72368f54e4d8e047ef14277006, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RectBorderSide
-  side: 1
-  thickness: 2
 --- !u!1 &8327789775349211718
 GameObject:
   m_ObjectHideFlags: 0
@@ -344,7 +284,6 @@ GameObject:
   - component: {fileID: 7932106850107381382}
   - component: {fileID: 1216366765869003945}
   - component: {fileID: 5684053663372119053}
-  - component: {fileID: 1895517856891312046}
   m_Layer: 5
   m_Name: Left
   m_TagString: Untagged
@@ -409,17 +348,3 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &1895517856891312046
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8327789775349211718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26436e72368f54e4d8e047ef14277006, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RectBorderSide
-  side: 2
-  thickness: 2
