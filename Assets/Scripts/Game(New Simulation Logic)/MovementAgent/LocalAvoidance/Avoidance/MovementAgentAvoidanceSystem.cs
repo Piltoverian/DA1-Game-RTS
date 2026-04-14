@@ -164,7 +164,7 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
                                     float3 slotDir = new float3(math.cos(angle), 0, math.sin(angle));
                                     float dot = math.dot(slotDir, -normal); 
 
-                                    if (dot > 0.5f) 
+                                    if (dot > math.cos(2f*math.PI/res)) // Chỉ tính danger cho các slot hướng về sát đối phương
                                     {
                                         float staticMultiplier = AvoidanceLookup[neighbor].IsStatic ? 1.2f : 1.0f;
                                         float dangerValue = UnitMovementMath.CalculateDanger(
