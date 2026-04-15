@@ -1,16 +1,25 @@
+using Unity.Entities;
 using UnityEngine;
 
 public class BulletAuthoring : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public float speed;
+    public float damage;
+    public class Baker : Baker<BulletAuthoring>
     {
-        
+        public override void Bake(BulletAuthoring authoring)
+        {
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent(entity, new Bullet
+            {
+                speed = authoring.speed,
+                damage = authoring.damage,
+            });
+        }
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+}
+public struct Bullet : IComponentData
+{
+    public float speed;
+    public float damage;
 }

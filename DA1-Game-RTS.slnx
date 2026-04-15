@@ -24,6 +24,7 @@
   <Project Path="Unity.Entities.Hybrid.csproj" />
   <Project Path="Unity.PerformanceTesting.csproj" />
   <Project Path="Unity.Scenes.Editor.csproj" />
+  <Project Path="Unity.Numerics.Linear.Dense.csproj" />
   <Project Path="Unity.Serialization.csproj" />
   <Project Path="Unity.Burst.Editor.csproj" />
   <Project Path="Unity.VisualScripting.State.csproj" />
@@ -32,6 +33,7 @@
   <Project Path="Unity.Entities.Editor.Properties.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.Physics.Editor.csproj" />
+  <Project Path="Unity.Numerics.Linear.Solvers.Lowlevel.csproj" />
   <Project Path="Unity.InputSystem.ForUI.csproj" />
   <Project Path="Unity.Collections.CodeGen.csproj" />
   <Project Path="Unity.Entities.Hybrid.HybridComponents.csproj" />
@@ -39,13 +41,17 @@
   <Project Path="Unity.VisualScripting.SettingsProvider.Editor.csproj" />
   <Project Path="Unity.Entities.UI.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Unity.ScriptableBuildPipeline.csproj" />
   <Project Path="Unity.Transforms.csproj" />
   <Project Path="Unity.Entities.Build.csproj" />
   <Project Path="Unity.InputSystem.TestFramework.csproj" />
+  <Project Path="Unity.Numerics.Memory.csproj" />
   <Project Path="Unity.VisualScripting.Shared.Editor.csproj" />
   <Project Path="Unity.Profiling.Core.csproj" />
+  <Project Path="Unity.Numerics.Random.csproj" />
   <Project Path="Unity.Core.Editor.csproj" />
   <Project Path="Unity.Mathematics.Extensions.csproj" />
+  <Project Path="Unity.Numerics.Linear.Sparse.csproj" />
   <Project Path="Unity.Entities.Graphics.Editor.csproj" />
   <Project Path="Unity.Transforms.Hybrid.csproj" />
   <Project Path="Unity.Serialization.Editor.csproj" />
@@ -53,6 +59,6 @@
   <Project Path="Unity.Deformations.csproj" />
   <Project Path="Unity.VisualScripting.DocCodeExamples.csproj" />
   <Project Path="Unity.Mathematics.Extensions.Hybrid.csproj" />
-  <Project Path="Unity.ScriptableBuildPipeline.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
+  <Project Path="Unity.Numerics.Linear.csproj" />
 </Solution>
