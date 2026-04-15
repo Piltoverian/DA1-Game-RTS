@@ -17,9 +17,9 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void Awake()
     {
-        
-            Instance = this;
-        
+
+        Instance = this;
+
     }
     private void Update()
     {
@@ -41,7 +41,7 @@ public class UnitSelectionManager : MonoBehaviour
                 entityManager.SetComponentEnabled<Selected>(entityArray[i], false);
             }
 
-            
+
 
             Rect selectionArea = GetSelectionArea();
 
@@ -81,7 +81,7 @@ public class UnitSelectionManager : MonoBehaviour
                     Filter = new CollisionFilter
                     {
                         BelongsTo = ~0u,
-                        CollidesWith = 1u << GameAssets.UNITS_LAYER, 
+                        CollidesWith = 1u << GameAssets.UNITS_LAYER,
                         GroupIndex = 0
                     }
                 };
@@ -95,30 +95,62 @@ public class UnitSelectionManager : MonoBehaviour
                 }
             }
 
-                OnSelectionAreaEnd?.Invoke(this, EventArgs.Empty);
+            OnSelectionAreaEnd?.Invoke(this, EventArgs.Empty);
         }
         if (Input.GetMouseButtonDown(1))
         {
             Vector3 mouseWorldPosition = MouseWorldPosition.Instance.GetPosition();
-
             EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-            EntityQuery entityQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<UnitMover,Selected>()
+
+            // 1. Sử dụng EntityQuery để tìm Grid Entity một cách an toàn
+            EntityQuery gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
+
+            // Thay vì GetSingleton, ta kiểm tra IsEmpty và lấy thực thể đầu tiên tìm thấy
+            if (gridQuery.IsEmpty)
+            {
+                Debug.LogWarning("GridComponent not found in world!");
+                return;
+            }
+
+            Entity gridEntity = gridQuery.GetSingletonEntity();
+            GridComponent gridComponent = entityManager.GetComponentData<GridComponent>(gridEntity);
+
+            // 2. Kiểm tra tính hợp lệ của Grid
+            if (gridComponent.width <= 0 || gridComponent.height <= 0) return;
+
+            // Kiểm tra Buffer tồn tại để tránh crash khi gọi API
+            if (!entityManager.HasBuffer<GridNodeCost>(gridEntity) ||
+                !entityManager.HasBuffer<GridIsland>(gridEntity)) return;
+
+            // 3. Kiểm tra FlowFieldCache Singleton an toàn
+            EntityQuery cacheQuery = entityManager.CreateEntityQuery(typeof(FlowFieldCache));
+            if (cacheQuery.IsEmpty) return;
+
+            Entity cacheEntity = cacheQuery.GetSingletonEntity();
+            if (!entityManager.HasBuffer<FlowFieldCacheEntry>(cacheEntity)) return;
+
+            // 4. Lấy danh sách Unit đang được chọn
+            EntityQuery selectedQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<MovementAgentComponent, Selected>()
                 .Build(entityManager);
 
-            NativeArray<Entity> entityArray = entityQuery.ToEntityArray(Allocator.Temp);
-            NativeArray<UnitMover> unitMoverArray = entityQuery.ToComponentDataArray<UnitMover>(Allocator.Temp);
+            if (selectedQuery.IsEmpty) return;
 
-            for ( int i = 0; i < entityArray.Length; i++)
+            NativeArray<Entity> entityArray = selectedQuery.ToEntityArray(Allocator.Temp);
+
+            // Sử dụng Temp thay vì TempJob vì ta Playback ngay lập tức trên Main Thread
+            EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            for (int i = 0; i < entityArray.Length; i++)
             {
                 Entity entity = entityArray[i];
-                UnitMover unitMover = unitMoverArray[i];
-                // Update the target position of the UnitMover component
-                unitMover.targetPosition = mouseWorldPosition;
-                unitMoverArray[i] = unitMover; // Write back the modified component data
+                // Gọi API thiết lập mục tiêu
+                MovementAgentAPI.SetTarget(entityManager, entity, mouseWorldPosition, gridComponent, ecb);
             }
-            entityQuery.CopyFromComponentDataArray(unitMoverArray);
 
+            ecb.Playback(entityManager);
+            ecb.Dispose();
+            entityArray.Dispose();
         }
     }
     public Rect GetSelectionArea()
