@@ -152,7 +152,7 @@ MonoBehaviour:
   showDesiredVelocity: 0
   showContextSteer: 0
   showTargetLines: 0
-  showProximity: 1
+  showProximity: 0
 --- !u!4 &417926975
 Transform:
   m_ObjectHideFlags: 0
