@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections.LowLevel.Unsafe;
 
+[DisableAutoCreation] // Disabled: dùng ORCA thay thế
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(UnitSpatialSystem))]
 [UpdateAfter(typeof(MovementAgentGroupFormationSystem))]
@@ -40,17 +41,18 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
         [ReadOnly] public NativeParallelMultiHashMap<int, Entity> BucketMap;
         [NativeDisableContainerSafetyRestriction][ReadOnly] public ComponentLookup<MovementAgentAvoidanceComponent> AvoidanceLookup;
         [NativeDisableContainerSafetyRestriction][ReadOnly] public ComponentLookup<Unity.Transforms.LocalTransform> TransformLookup;
-        [ReadOnly] public ComponentLookup<MovementAgentComponent> MoveLookup;
+        [NativeDisableContainerSafetyRestriction][ReadOnly] public ComponentLookup<MovementAgentComponent> MoveLookup;
         [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
         public float DeltaTime;
 
         public void Execute(Entity entity,
+            ref MovementAgentComponent move,
             ref MovementAgentAvoidanceComponent avoidance,
             ref DynamicBuffer<ContextMapElement> contextMap,
             ref DynamicBuffer<ContextHistoryElement> contextHistory,
             [ReadOnly] in ContextSteeringConfig config,
             [ReadOnly] in Unity.Transforms.LocalTransform transform,
-            [ReadOnly] in MovementSteeringComponent steering) // Thêm ReadOnly component ở đây
+            [ReadOnly] in MovementSteeringComponent steering)
         {
             int res = config.Resolution;
             float3 pos = transform.Position;
@@ -63,37 +65,29 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
 
             // --- STATIC CHECK & INTEREST ---
             float distToGlobal = 0f;
-            if (MoveLookup.TryGetComponent(entity, out var move))
-            {
-                avoidance.IsStatic = !move.hastarget;
+            avoidance.IsStatic = !move.hastarget;
 
-                if (move.hastarget)
+            if (move.hastarget)
+            {
+                distToGlobal = math.distance(pos, move.currentworldtarget);
+
+                float3 targetPos = (math.lengthsq(move.slotTarget) > 0.001f && distToGlobal < steering.formationRange)
+                    ? move.slotTarget : move.realTarget;
+
+                float3 targetDir = math.normalize(targetPos - pos);
+                targetDir.y = 0;
+
+                for (int i = 0; i < res; i++)
                 {
-                    distToGlobal = math.distance(pos, move.currentworldtarget);
-
-                    // CHỈ quan tâm đến Slot khi đã vào Range, nếu không thì hướng về đích thực tế của đảo (realTarget)
-                    float3 targetPos = (math.lengthsq(move.slotTarget) > 0.001f && distToGlobal < steering.formationRange)
-                        ? move.slotTarget : move.realTarget;
-
-                    float3 targetDir = math.normalize(targetPos - pos);
-                    targetDir.y = 0;
-
-                    for (int i = 0; i < res; i++)
+                    float angle = i * (2f * math.PI / res);
+                    float3 slotDir = new float3(math.cos(angle), 0, math.sin(angle));
+                    float dot = math.dot(slotDir, targetDir);
+                    contextMap[i] = new ContextMapElement
                     {
-                        float angle = i * (2f * math.PI / res);
-                        float3 slotDir = new float3(math.cos(angle), 0, math.sin(angle));
-                        float dot = math.dot(slotDir, targetDir);
-                        contextMap[i] = new ContextMapElement
-                        {
-                            Interest = math.max(0, dot),
-                            Danger = 0f
-                        };
-                    }
+                        Interest = math.max(0, dot),
+                        Danger = 0f
+                    };
                 }
-            }
-            else
-            {
-                avoidance.IsStatic = true; // Nếu không có move component thì mặc định là vật cản tĩnh
             }
 
             if (avoidance.IsStatic)
@@ -108,6 +102,7 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
 
             float3 sepForce = float3.zero;
             float closestDist = float.MaxValue;
+            float3 closestNormal = float3.zero; // Hướng thoát khỏi neighbor gần nhất
             int neighborCount = 0;
 
             // Dynamic search extent dựa theo radius — object lớn quét rộng hơn
@@ -126,7 +121,7 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
                         {
                             if (neighbor == entity) continue;
                             if (!AvoidanceLookup.HasComponent(neighbor)) continue;
-                            if (neighborCount >= 8) break; // MAX NEIGHBOR CAP — giữ performance ổn định
+                            if (neighborCount >= 25) break; // Tăng từ 8 → 25 cho 100 unit scale
 
                             float3 neighborPos = TransformLookup[neighbor].Position;
                             float3 diff = pos - neighborPos;
@@ -144,7 +139,11 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
 
                             if (dist > 0.001f && dist < localAvoidRadius)
                             {
-                                if (dist < closestDist) closestDist = dist;
+                                if (dist < closestDist)
+                                {
+                                    closestDist = dist;
+                                    closestNormal = diff / math.max(dist, 0.1f); // Hướng từ neighbor đến self
+                                }
                                 neighborCount++;
 
                                 float3 normal = diff / math.max(dist, 0.1f);
@@ -215,6 +214,14 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
             int bestSlot = -1;
             float maxInterest = -1f;
 
+            // Tính maxDanger trước để adaptive alpha
+            // Khi danger cao → tăng alpha → phản ứng nhanh (tránh delay 5-7 frames khi đối đầu)
+            float maxDanger = 0f;
+            for (int i = 0; i < res; i++)
+            {
+                maxDanger = math.max(maxDanger, contextMap[i].Danger);
+            }
+
             for (int i = 0; i < res; i++)
             {
                 var mapItem = contextMap[i];
@@ -223,9 +230,11 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
                 if (mapItem.Danger > config.DangerThreshold) mapItem.Interest = 0f;
                 else mapItem.Interest *= (1.0f - mapItem.Danger); // Weighted avoidance
 
-                // Temporal Hysteresis (EMA) to suppress oscillations
-                // Khi ở gần đích (trong range), chúng ta tăng độ mượt (alpha nhỏ hơn) để tránh đổi hướng liên tục
-                float currentAlpha = distToGlobal < steering.formationRange ? 0.2f : config.H_Alpha;
+                // Temporal Hysteresis (Adaptive EMA) to suppress oscillations
+                // baseAlpha: mượt khi không có obstacle
+                // Khi danger cao (obstacle gần): tăng alpha → phản ứng nhanh
+                float baseAlpha = distToGlobal < steering.formationRange ? 0.2f : config.H_Alpha;
+                float currentAlpha = math.lerp(baseAlpha, 0.6f, math.clamp(maxDanger, 0f, 1f));
                 mapItem.Interest = math.lerp(contextHistory[i].LastInterest, mapItem.Interest, currentAlpha);
                 contextHistory[i] = new ContextHistoryElement { LastInterest = mapItem.Interest };
 
@@ -257,6 +266,22 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
             avoidance.separationForce = sepForce;
             avoidance.neighborCount = neighborCount;
             avoidance.closestDistance = closestDist;
+            avoidance.closestNeighborNormal = closestNormal;
+
+            // --- 6. VELOCITY OUTPUT (bridge cho ActuatorSystem) ---
+            // Convert lastAvoidDir → move.velocity (giống interface của ORCA)
+            if (!avoidance.IsStatic && math.lengthsq(avoidance.lastAvoidDir) > 0.01f)
+            {
+                move.velocity = avoidance.lastAvoidDir * move.speed;
+            }
+            else if (!avoidance.IsStatic)
+            {
+                move.velocity = move.preferredVelocity;
+            }
+            else
+            {
+                move.velocity = float3.zero;
+            }
 
         }
     }

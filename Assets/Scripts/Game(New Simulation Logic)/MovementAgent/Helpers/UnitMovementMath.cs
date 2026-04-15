@@ -101,8 +101,9 @@ public static class UnitMovementMath
         if (dist >= localSeparationZone) return 0f;
 
         float penetration = (localSeparationZone - dist) / localSeparationZone;
-        // Phi tuyến: penetration^1.5 → overlap sâu bị đẩy mạnh hơn nhiều
-        float nonLinearPush = math.pow(penetration, 1.5f);
+        // Tuyến tính: penetration^1.0 → overlap trung bình cũng đẩy đủ mạnh
+        // (1.5 quá yếu ở moderate overlap: 0.44^1.5=0.29, không thắng goal velocity)
+        float nonLinearPush = penetration;
         // Radius scale: object lớn cần lực đẩy lớn hơn tỉ lệ
         float radiusScale = combinedRadius * 0.5f;  // normalized: radius=1+1 → scale=1.0
 

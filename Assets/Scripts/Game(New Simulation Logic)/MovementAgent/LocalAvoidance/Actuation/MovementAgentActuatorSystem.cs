@@ -4,9 +4,19 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+/// <summary>
+/// ActuatorSystem (ORCA pipeline): Apply velocity từ ORCASystem vào position.
+/// 
+/// Pipeline: TargetSystem → ORCASystem → ActuatorSystem
+/// 
+/// Vai trò:
+///   1. Anti-deadlock: stuck detection + force settle
+///   2. Apply velocity → position (trực tiếp, không smoothing thêm)
+///   3. Safety net: hard collision nếu ORCA fail (hiếm khi xảy ra)
+///   4. Rotation
+/// </summary>
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-[UpdateAfter(typeof(MovementAgentTargetSystem))]
-[UpdateAfter(typeof(MovementAgentAvoidanceSystem))]
+[UpdateAfter(typeof(MovementAgentORCASystem))]
 public partial struct MovementAgentActuatorSystem : ISystem
 {
     [BurstCompile]
@@ -33,40 +43,37 @@ public partial struct MovementAgentActuatorSystem : ISystem
             [ReadOnly] in MovementAgentAvoidanceComponent avoidance)
         {
             float3 pos = transform.Position;
-            float3 targetVelocity = move.velocity;
-            float3 lastAvoidDir = avoidance.lastAvoidDir;
 
-            // --- 1. WEIGHTED MULTI-LAYER BLENDING ---
-            // Thay thế việc cộng vector đơn giản bằng hệ thống trọng số cân bằng
-            float3 goalDir = math.lengthsq(targetVelocity) > 0.001f ? math.normalize(targetVelocity) : float3.zero;
-            float3 avoidDir = math.lengthsq(lastAvoidDir) > 0.001f ? math.normalize(lastAvoidDir) : float3.zero;
-
-            // Proximity urgency: càng gần → avoidWeight càng cao, dựa trên khoảng cách so với radius
-            float proximityUrgency = 0f;
-            if (avoidance.closestDistance < float.MaxValue && avoidance.closestDistance > 0.001f)
-            {
-                float dangerRatio = avoidance.radius * 2.0f / avoidance.closestDistance;
-                proximityUrgency = math.clamp(dangerRatio, 0f, 1f);
-            }
-            float countWeight = math.clamp(avoidance.neighborCount * 0.15f, 0f, 0.6f);
-            float avoidWeight = math.clamp(math.max(countWeight, proximityUrgency), 0f, 0.85f);
-            if (avoidance.neighborCount == 0) avoidWeight = 0;
-
-            float3 blendDir = math.lerp(goalDir, avoidDir, avoidWeight);
-            float3 finalDir = math.lengthsq(blendDir) > 0.001f ? math.normalize(blendDir) : float3.zero;
-
-            // --- 2. ANTI-DEADLOCK INCREMENT & EARLY SETTLE ---
+            // --- 1. ANTI-DEADLOCK: Stuck Detection ---
             if (move.hastarget)
             {
                 steering.stuckTime += DeltaTime;
 
                 float distToGlobal = math.distance(pos, move.currentworldtarget);
-                float stuckThreshold = distToGlobal < steering.formationRange ? 1.0f : 2.0f;
+
+                // Stuck threshold phụ thuộc vào MÔI TRƯỜNG:
+                // - Bị chặn bởi neighbor gần → settle RẤT NHANH (0.25s)
+                //   → "first come, settle first" → tạo tường → unit sau dồn ra rìa
+                // - Gần target nhưng không bị chặn → settle trung bình (1.0s)
+                // - Xa target → settle chậm (2.0s) → cho thời gian tìm đường
+                float stuckThreshold;
+                bool blockedByNeighbor = avoidance.closestDistance < avoidance.radius * 2.5f
+                                         && avoidance.neighborCount > 0;
+
+                if (blockedByNeighbor)
+                    stuckThreshold = 0.25f; // ~12 frames → settle nhanh khi bị chặn
+                else if (distToGlobal < steering.formationRange)
+                    stuckThreshold = 1.0f;
+                else
+                    stuckThreshold = 2.0f;
 
                 if (steering.stuckTime > stuckThreshold)
                 {
+                    // Settle bình thường — khi settled, prefVel = 0
+                    // → separation trở thành lực duy nhất → overlap tự giải
                     move.hastarget = false;
                     move.velocity = float3.zero;
+                    move.preferredVelocity = float3.zero;
                     steering.isSettled = true;
                     steering.stuckTime = 0;
                     steering.minDistanceToTarget = float.MaxValue;
@@ -74,36 +81,23 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 }
             }
 
-            float3 desiredVelocity = finalDir * move.speed;
-
-            // --- 3. SEPARATION FORCE (PUSHING) ---
-            if (math.lengthsq(avoidance.separationForce) > 0.01f)
+            // --- 2. APPLY VELOCITY (từ ORCA) ---
+            // --- 2. SAFETY NET: Position Correction (chạy TRƯỚC velocity) ---
+            // Push ra từ TẤT CẢ overlapping neighbors (cumulative từ ORCASystem)
+            // Giải overlap từ frame trước TRƯỚC KHI apply velocity mới
+            // Position-based → đảm bảo 100% không overlap, KHÔNG phụ thuộc ORCA/stuck
+            if (math.lengthsq(avoidance.separationForce) > 0.001f)
             {
-                // Khôi phục hằng số cũ: 2.0f khi đang đi, 1.5f khi đứng yên
-                float pushForce = move.hastarget ? 2.0f : 1.5f;
-                desiredVelocity += avoidance.separationForce * move.speed * pushForce;
+                float3 pushDir = math.normalizesafe(avoidance.separationForce);
+                float pushMag = math.length(avoidance.separationForce);
+                // pushMag = sum of (1-dist/combined) cho mỗi neighbor overlap
+                // Scale với radius để correction tương ứng kích thước agent
+                float3 correction = pushDir * pushMag * avoidance.radius;
+                correction.y = 0;
+                transform.Position += correction;
             }
 
-            // --- 3. ANTI-DEADLOCK (NUDGE) ---
-            if (move.hastarget && steering.stuckTime > 0.5f)
-            {
-                uint seed = (uint)(entity.Index + 1) * 1523u + (uint)(steering.stuckTime * 10000f + 1f);
-                var random = new Unity.Mathematics.Random(math.max(seed, 1u));
-                float3 nudge = random.NextFloat3Direction();
-                nudge.y = 0;
-                float distToGlobal = math.distance(pos, move.currentworldtarget);
-                float nudgeMult = distToGlobal < steering.formationRange ? 0.2f : 0.5f;
-                desiredVelocity += nudge * move.speed * nudgeMult;
-            }
-
-            // --- 4. UPDATE VELOCITY & POSITION ---
-            float distToGlobalActual = math.distance(pos, move.currentworldtarget);
-            float baseLerp = distToGlobalActual < steering.formationRange ? 5.0f : 10.0f;
-            // Tăng tốc xoay hướng khi gần obstacle — phản ứng nhanh hơn thay vì chờ lerp chậm
-            float urgencyBoost = proximityUrgency > 0.5f ? 2.0f : 1.0f;
-            float lerpFactor = baseLerp * urgencyBoost;
-            move.velocity = math.lerp(move.velocity, desiredVelocity, DeltaTime * lerpFactor);
-
+            // --- 3. APPLY VELOCITY (từ ORCA) ---
             if (math.lengthsq(move.velocity) > 0.001f)
             {
                 transform.Position += move.velocity * DeltaTime;
@@ -114,20 +108,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 steering.isSettled = true;
             }
 
-            // --- HARD COLLISION RESOLUTION (Direct Position Correction) ---
-            // Khi overlap nghiêm trọng, bypass velocity lerp và đẩy trực tiếp position
-            // Đây là lớp "safety net" — giải quyết overlap trong 1-2 frames thay vì 5-10
-            if (avoidance.closestDistance < avoidance.radius * 1.8f &&
-                math.lengthsq(avoidance.separationForce) > 0.01f)
-            {
-                float overlapDepth = 1.0f - avoidance.closestDistance / (avoidance.radius * 1.8f);
-                float3 pushDir = math.normalizesafe(avoidance.separationForce);
-                float3 directCorrection = pushDir * overlapDepth * avoidance.radius * DeltaTime * 5.0f;
-                directCorrection.y = 0;
-                transform.Position += directCorrection;
-            }
-
-            // --- 5. ROTATION LOGIC ---
+            // --- 4. ROTATION ---
             if (math.lengthsq(move.velocity) > 0.01f)
             {
                 float3 moveDir = math.normalize(move.velocity);

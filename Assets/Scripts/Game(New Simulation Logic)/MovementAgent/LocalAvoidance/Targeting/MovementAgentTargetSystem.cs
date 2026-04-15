@@ -49,8 +49,8 @@ public partial struct MovementAgentTargetSystem : ISystem
             float distToGlobal = math.distance(pos, globalTarget);
             float3 islandGoal = globalTarget;
 
-            // Mặc định vận tốc mong muốn là zero nếu không có mục tiêu
-            move.velocity = float3.zero;
+            // Mặc định preferred velocity = zero (ORCA sẽ dùng giá trị này)
+            move.preferredVelocity = float3.zero;
 
             if (!move.hastarget)
             {
@@ -119,18 +119,21 @@ public partial struct MovementAgentTargetSystem : ISystem
             float targetWeight = math.clamp(1.0f - (distToFinalGoal / steering.formationRange), 0f, 1f);
             if (distToFinalGoal < Grid.cellsize * 2f) targetWeight = math.max(targetWeight, 0.5f);
 
-            move.velocity = math.lerp(flowVelocity, directVelocity, targetWeight);
+            move.preferredVelocity = math.lerp(flowVelocity, directVelocity, targetWeight);
 
             // --- 5. ARRIVAL DAMPING ---
             if (distToFinalGoal < steering.arrivalRadius)
             {
                 float speedMultiplier = math.clamp(distToFinalGoal / steering.arrivalRadius, 0.1f, 1.0f);
-                move.velocity *= speedMultiplier;
+                move.preferredVelocity *= speedMultiplier;
             }
 
             // --- 6. ANTI-DEADLOCK TRACKING ---
+            // Progress threshold = 0.1 — lọc oscillation nhỏ (0.01/frame) nhưng nhận progress thật
+            // speed=10, dt=0.02 → move 0.2/frame → 0.1 = nửa frame progress = hợp lý
+            // 0.01 cũ quá nhỏ → agent đẩy 0.01/frame qua crowd → reset timer → không bao giờ stuck!
             if (steering.minDistanceToTarget <= 0) steering.minDistanceToTarget = float.MaxValue;
-            if (distToFinal < steering.minDistanceToTarget - 0.01f)
+            if (distToFinal < steering.minDistanceToTarget - 0.1f)
             {
                 steering.minDistanceToTarget = distToFinal;
                 steering.stuckTime = 0; 

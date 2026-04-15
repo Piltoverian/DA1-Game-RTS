@@ -149,10 +149,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MovementAgentAuthoring
   speed: 7
-  radius: 1
-  arrivalRadius: 5.6
+  radius: 3
+  arrivalRadius: 12
   formationRange: 25
-  stoppingDistance: 1.5
+  stoppingDistance: 4.5
   formationType: 0
   useTestTarget: 0
   testTarget:
