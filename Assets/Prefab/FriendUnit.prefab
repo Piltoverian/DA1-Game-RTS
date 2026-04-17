@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6b9a1ff7d4ae284aa4348e3156e79eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DragSelectableObject
-  visualGameObject: {fileID: 4184377831044824465}
+  visualGameObject: {fileID: 8882249327758270422}
   showScale: 1
 --- !u!1 &4184377831044824465
 GameObject:
