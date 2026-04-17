@@ -60,12 +60,12 @@ partial struct ShootAttackSystem : ISystem
             {
                 MovementAgentAPI.StopAgent(state.EntityManager, entity, ecb);
             }
-
+            var steering = SystemAPI.GetComponent<MovementSteeringComponent>(entity);
             float3 aimDirection = math.normalize(targetLocalTransform.Position - localTransform.ValueRO.Position);
             if (!aimDirection.Equals(float3.zero))
             {
                 quaternion targetRotation = quaternion.LookRotationSafe(aimDirection, math.up());
-                localTransform.ValueRW.Rotation = math.slerp(localTransform.ValueRO.Rotation, targetRotation, 8f * SystemAPI.Time.DeltaTime);
+                localTransform.ValueRW.Rotation = math.slerp(localTransform.ValueRO.Rotation, targetRotation, steering.rotationSpeed * SystemAPI.Time.DeltaTime);
             }
 
 
