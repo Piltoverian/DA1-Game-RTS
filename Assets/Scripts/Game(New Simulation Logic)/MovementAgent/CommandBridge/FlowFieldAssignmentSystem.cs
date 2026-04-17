@@ -61,6 +61,7 @@ public partial struct FlowFieldAssignmentSystem : ISystem
                 ref steering.ValueRW, 
                 newField, 
                 request.ValueRO.newWorldTarget, // TRUYỀN TỌA ĐỘ ĐÍCH VÀO ĐÂY
+                entity,
                 ecb, 
                 state.EntityManager);
 

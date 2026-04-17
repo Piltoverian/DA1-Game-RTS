@@ -111,7 +111,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
             // --- 4. ROTATION ---
             if (math.lengthsq(move.velocity) > 0.01f)
             {
-                float3 moveDir = math.normalize(move.velocity);
+                float3 moveDir = math.normalizesafe(move.velocity);
                 quaternion targetRot = quaternion.LookRotationSafe(moveDir, math.up());
                 transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
             }

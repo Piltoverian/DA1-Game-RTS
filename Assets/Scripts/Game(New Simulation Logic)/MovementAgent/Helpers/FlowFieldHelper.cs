@@ -42,6 +42,7 @@ public static class FlowFieldHelper
         ref MovementSteeringComponent steering,
         Entity field,
         float3 worldTarget,
+        Entity unitEntity,
         EntityCommandBuffer ecb,
         EntityManager em)
     {
@@ -56,16 +57,24 @@ public static class FlowFieldHelper
             }
         }
 
+        if (!em.HasComponent<MovementAgentFieldCleanUpData>(unitEntity))
+        {
+            ecb.AddComponent(unitEntity, new MovementAgentFieldCleanUpData { FieldEntity = field });
+        }
+        else
+        {
+            var cleanup = em.GetComponentData<MovementAgentFieldCleanUpData>(unitEntity);
+            cleanup.FieldEntity = field;
+            ecb.SetComponent(unitEntity, cleanup);
+        }
         unit.FieldEntity = field;
         unit.currentworldtarget = worldTarget;
         unit.hastarget = field != Entity.Null;
-        unit.useSlotTarget = false; 
-        steering.isSettled = false; 
+        unit.useSlotTarget = false;
+        steering.isSettled = false;
 
-       
         if (field != Entity.Null)
         {
-           
             if (em.Exists(field))
             {
                 if (em.HasComponent<FlowFieldRefCount>(field))
@@ -82,7 +91,7 @@ public static class FlowFieldHelper
         }
     }
 
-    public static void ReleaseFieldFromMoveComponent(ref MovementAgentComponent unit, EntityCommandBuffer ecb, EntityManager em)
+    public static void ReleaseFieldFromMoveComponent(ref MovementAgentComponent unit, Entity unitEntity, EntityCommandBuffer ecb, EntityManager em)
     {
         if (unit.FieldEntity != Entity.Null && em.Exists(unit.FieldEntity))
         {
@@ -96,5 +105,11 @@ public static class FlowFieldHelper
         unit.FieldEntity = Entity.Null;
         unit.hastarget = false;
         unit.useSlotTarget = false;
+        if (em.HasComponent<MovementAgentFieldCleanUpData>(unitEntity))
+        {
+            var cleanup = em.GetComponentData<MovementAgentFieldCleanUpData>(unitEntity);
+            cleanup.FieldEntity = Entity.Null;
+            ecb.SetComponent(unitEntity, cleanup);
+        }
     }
 }

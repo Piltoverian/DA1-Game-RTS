@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
-
+[UpdateBefore(typeof(HealthDeadTestSystem))]
 partial struct ShootAttackSystem : ISystem
 {
     [BurstCompile]

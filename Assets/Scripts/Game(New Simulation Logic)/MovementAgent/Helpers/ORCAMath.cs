@@ -221,7 +221,7 @@ public static class ORCAMath
     {
         // Khởi tạo: clamp preferredVelocity vào maxSpeed circle
         if (math.lengthsq(optVelocity) > maxSpeed * maxSpeed)
-            result = math.normalize(optVelocity) * maxSpeed;
+            result = math.normalizesafe(optVelocity) * maxSpeed;
         else
             result = optVelocity;
 
@@ -263,7 +263,7 @@ public static class ORCAMath
 
                 // Clamp lại vào maxSpeed circle
                 if (math.lengthsq(result) > maxSpeed * maxSpeed)
-                    result = math.normalize(result) * maxSpeed;
+                    result = math.normalizesafe(result) * maxSpeed;
             }
         }
     }

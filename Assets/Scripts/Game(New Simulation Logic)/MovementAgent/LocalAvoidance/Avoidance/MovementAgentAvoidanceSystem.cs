@@ -74,7 +74,7 @@ public partial struct MovementAgentAvoidanceSystem : ISystem
                 float3 targetPos = (math.lengthsq(move.slotTarget) > 0.001f && distToGlobal < steering.formationRange)
                     ? move.slotTarget : move.realTarget;
 
-                float3 targetDir = math.normalize(targetPos - pos);
+                float3 targetDir = math.normalizesafe(targetPos - pos);
                 targetDir.y = 0;
 
                 for (int i = 0; i < res; i++)

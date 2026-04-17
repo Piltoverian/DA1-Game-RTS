@@ -1,6 +1,11 @@
 using Unity.Entities;
 using Unity.Mathematics;
 
+public struct MovementAgentFieldCleanUpData : ICleanupComponentData
+{
+    public Entity FieldEntity;
+}
+
 public struct MovementAgentComponent : IComponentData
 {
     public float speed;
