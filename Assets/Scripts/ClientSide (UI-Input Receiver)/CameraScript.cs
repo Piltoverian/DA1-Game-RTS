@@ -14,6 +14,10 @@ public class CameraScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (GameManager.Instance.GetModule<SelectManager>().GetCurrentSelectionRect().isNotNull)
+        {
+            return;
+        }
         transform.position += new Vector3(move.ReadValue<Vector2>().x, 0, move.ReadValue<Vector2>().y) * Time.deltaTime * 50f;
     }
 
