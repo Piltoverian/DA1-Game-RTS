@@ -3,7 +3,7 @@ using Unity.Entities;
 public class FindTargetAuthoring : MonoBehaviour
 {
     public float range;
-    public Faction targetFaction;
+    public int playerID;
     public float timerMax;
     public class Baker : Baker<FindTargetAuthoring>
     {
@@ -13,7 +13,7 @@ public class FindTargetAuthoring : MonoBehaviour
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, new FindTarget {
                 range = authoring.range,
-                targetFaction = authoring.targetFaction,
+                playerID = authoring.playerID,
                 timerMax = authoring.timerMax
             });
         }
@@ -22,7 +22,7 @@ public class FindTargetAuthoring : MonoBehaviour
 public struct FindTarget : IComponentData
 {
     public float range;
-    public Faction targetFaction;
+    public int playerID;
     public float timer;
     public float timerMax;
 }

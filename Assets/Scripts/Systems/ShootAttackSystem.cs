@@ -11,23 +11,30 @@ partial struct ShootAttackSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<EntitiesReferences>();
+        state.RequireForUpdate<GridComponent>();
     }
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         EntitiesReferences entitiesReFerences = SystemAPI.GetSingleton<EntitiesReferences>();
+        GridComponent gridComponent = SystemAPI.GetSingleton<GridComponent>();
+
+        var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+        var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+
         foreach ((
             RefRW<LocalTransform> localTransform,
             RefRW<ShootAttack> shootAttack,
             RefRW<Target> target,
-            RefRW<UnitMover> unitMover) 
+            RefRW<MovementAgentComponent> movementAgent,
+            Entity entity) 
             in SystemAPI.Query<
                 RefRW<LocalTransform>,
                 RefRW<ShootAttack>,
                 RefRW<Target>,
-                RefRW<UnitMover>>())
+                RefRW<MovementAgentComponent>>().
+                WithEntityAccess())
         {
-            
 
             Entity targetEntity = target.ValueRO.targetEntity;
 
@@ -42,22 +49,23 @@ partial struct ShootAttackSystem : ISystem
                 target.ValueRW.targetEntity = Entity.Null;
                 continue;
             }
-           
+
             LocalTransform targetLocalTransform = SystemAPI.GetComponent<LocalTransform>(targetEntity);
             if (math.distance(localTransform.ValueRO.Position, targetLocalTransform.Position) > shootAttack.ValueRO.attackDistance)
             {
-                unitMover.ValueRW.targetPosition = targetLocalTransform.Position;
+                MovementAgentAPI.SetTarget(state.EntityManager, entity, targetLocalTransform.Position, gridComponent, ecb);
                 continue;
             }
             else
             {
-                unitMover.ValueRW.targetPosition = localTransform.ValueRO.Position; 
+                MovementAgentAPI.StopAgent(state.EntityManager, entity, ecb);
             }
 
             float3 aimDirection = math.normalize(targetLocalTransform.Position - localTransform.ValueRO.Position);
-            if (!aimDirection.Equals(float3.zero)){
+            if (!aimDirection.Equals(float3.zero))
+            {
                 quaternion targetRotation = quaternion.LookRotationSafe(aimDirection, math.up());
-                localTransform.ValueRW.Rotation = math.slerp(localTransform.ValueRO.Rotation, targetRotation, unitMover.ValueRO.rotationSpeed * SystemAPI.Time.DeltaTime);
+                localTransform.ValueRW.Rotation = math.slerp(localTransform.ValueRO.Rotation, targetRotation, 8f * SystemAPI.Time.DeltaTime);
             }
 
 
@@ -66,7 +74,6 @@ partial struct ShootAttackSystem : ISystem
             if (shootAttack.ValueRW.timer > 0f)
                 continue;
             shootAttack.ValueRW.timer = shootAttack.ValueRO.timerMax;
-
             Entity bulletEntity = state.EntityManager.Instantiate(entitiesReFerences.bulletPrefab);
             SystemAPI.SetComponent(bulletEntity,LocalTransform.FromPosition(localTransform.ValueRO.Position) );
 

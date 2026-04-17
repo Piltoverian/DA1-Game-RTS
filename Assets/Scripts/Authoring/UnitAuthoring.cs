@@ -3,7 +3,7 @@ using UnityEngine;
 
 class UnitAuthoring : MonoBehaviour
 {
-    public Faction faction;
+    public int playerID;
     public class Baker : Baker<UnitAuthoring>
     {
         
@@ -12,12 +12,12 @@ class UnitAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Unit
             {
-                faction = authoring.faction
+                playerID = authoring.playerID
             })    ;
         }
     }
 }
 public struct Unit : IComponentData
 {
-    public Faction faction;
+    public int playerID;
 }

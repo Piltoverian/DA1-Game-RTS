@@ -13,8 +13,10 @@ partial struct EnemySpawnerSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+
         EntitiesReferences entitiesReferences = SystemAPI.GetSingleton<EntitiesReferences>();
         EntityCommandBuffer ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+        if (entitiesReferences.enemyPrefab == Entity.Null || !state.EntityManager.Exists(entitiesReferences.enemyPrefab)) return;
         foreach ((RefRO<LocalTransform> localTransform, RefRW<EnemySpawner> enemySpawner)
             in SystemAPI.Query<RefRO<LocalTransform>, RefRW<EnemySpawner>>())
         {

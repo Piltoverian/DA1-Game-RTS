@@ -22,7 +22,6 @@ partial struct FindTargetSystem : ISystem
         CollisionWorld collisionWorld = physicsWorld.CollisionWorld;
         NativeList<DistanceHit> distancesHitList = new NativeList<DistanceHit>(Allocator.Temp);
 
-        // Cập nhật dữ liệu lookup mới nhất cho frame này
         unitLookup.Update(ref state);
 
         foreach ((
@@ -46,16 +45,15 @@ partial struct FindTargetSystem : ISystem
                 CollidesWith = 1u << GameAssets.UNITS_LAYER,
                 GroupIndex = 0
             };
-
             if (collisionWorld.OverlapSphere(localTransform.ValueRO.Position, findTarget.ValueRO.range, ref distancesHitList, collisionFilter))
             {
                 foreach (DistanceHit distanceHit in distancesHitList)
                 {
-                    // KIỂM TRA AN TOÀN TẠI ĐÂY
                     if (unitLookup.HasComponent(distanceHit.Entity))
                     {
                         Unit targetUnit = unitLookup[distanceHit.Entity];
-                        if (targetUnit.faction == findTarget.ValueRO.targetFaction)
+
+                        if (targetUnit.playerID == findTarget.ValueRO.playerID)
                         {
                             target.ValueRW.targetEntity = distanceHit.Entity;
                             break;
