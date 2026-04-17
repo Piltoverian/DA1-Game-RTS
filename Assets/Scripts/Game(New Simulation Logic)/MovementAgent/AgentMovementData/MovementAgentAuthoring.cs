@@ -18,6 +18,10 @@ public class MovementAgentAuthoring : MonoBehaviour
     
     private void OnValidate()
     {
+        if(radius<0.75)
+        {
+            radius = 0.75f; // Đặt giới hạn tối thiểu để tránh lỗi vật lý và tránh trường hợp overlapped
+        }
         // Công thức tối ưu cho hệ thống Slotting:
         // Stopping Distance nên nhỏ hơn bán kính dãn cách Đội hình (2.2m)
         // để unit có thể thực sự chạm tới điểm slot của mình.
