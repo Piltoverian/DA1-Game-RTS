@@ -4,6 +4,11 @@ public class SelectableObject : MonoBehaviour
 {
     public GameObject visualGameObject;
     public float showScale = 1.5f;
+    protected int playerID;
+    private void OnValidate()
+    { 
+       playerID = gameObject.GetComponent<Unit>().playerID;
+    }
     private void Start()
     {
        if(GetComponent<CommandReceiver>()==null)
