@@ -6,6 +6,8 @@ public class ShootAttackAuthoring : MonoBehaviour
     public float timerMax;
     public float damage;
     public float attackDistance;
+    public GameObject bulletSpawnPos;
+
     public class Baker : Baker<ShootAttackAuthoring>
     {
         
@@ -13,6 +15,7 @@ public class ShootAttackAuthoring : MonoBehaviour
         {
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, new ShootAttack {
+                bulletSpawnPos = GetEntity(authoring.bulletSpawnPos, TransformUsageFlags.Dynamic),
                 timerMax = authoring.timerMax,
                 damage = authoring.damage,
                 attackDistance = authoring.attackDistance
@@ -26,4 +29,5 @@ public struct ShootAttack : IComponentData
     public float timerMax;
     public float damage;
     public float attackDistance;
+    public Entity bulletSpawnPos;
 }
