@@ -9,7 +9,7 @@ public class MovementAgentAuthoring : MonoBehaviour
     public float arrivalRadius = 8.0f;
     public float formationRange = 25.0f; // Mặc định 25m cho dàn quân mượt
     public float stoppingDistance = 1.5f;
-
+    public float rotationSpeed = 8.0f;
     public FormationType formationType = FormationType.Box;
 
     [Header("Testing")]
@@ -58,6 +58,7 @@ public class MovementAgentAuthoring : MonoBehaviour
                 avoidanceForce = float3.zero,
                 lastAvoidDir = float3.zero,
                 separationForce = float3.zero,
+                
                 IsStatic = false,
                 avoidTimer = 0f,
                 closestDistance = 999f,
@@ -71,6 +72,7 @@ public class MovementAgentAuthoring : MonoBehaviour
                 formationRange = authoring.formationRange,
                 stoppingDistance = authoring.stoppingDistance,
                 isSettled = false,
+                rotationSpeed = authoring.rotationSpeed,
                 minDistanceToTarget = float.MaxValue,
                 stuckTime = 0f
             });

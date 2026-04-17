@@ -259,6 +259,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 2302464164124886962, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: m_RenderingLayerMask
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2495065102718132284, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: radius
       value: 1
@@ -322,6 +326,18 @@ PrefabInstance:
     - target: {fileID: 8882249327758270422, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8905869307957326188, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8905869307957326188, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8905869307957326188, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

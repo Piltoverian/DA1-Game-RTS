@@ -113,7 +113,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
             {
                 float3 moveDir = math.normalize(move.velocity);
                 quaternion targetRot = quaternion.LookRotationSafe(moveDir, math.up());
-                transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * 8.0f);
+                transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
             }
         }
     }

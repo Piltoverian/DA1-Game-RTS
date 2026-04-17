@@ -44,7 +44,7 @@ public struct MovementSteeringComponent : IComponentData
     public float formationRange; // Khoảng cách bắt đầu dàn hàng (ví dụ 20m)
     public float stoppingDistance;
     public bool isSettled;
-    
+    public float rotationSpeed;
     // Các trường mới để phát hiện bị kẹt
     public float stuckTime;
     public float3 lastPosition;
