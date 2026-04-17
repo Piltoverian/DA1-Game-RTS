@@ -75,7 +75,9 @@ partial struct ShootAttackSystem : ISystem
                 continue;
             shootAttack.ValueRW.timer = shootAttack.ValueRO.timerMax;
             Entity bulletEntity = state.EntityManager.Instantiate(entitiesReFerences.bulletPrefab);
-            SystemAPI.SetComponent(bulletEntity,LocalTransform.FromPosition(localTransform.ValueRO.Position) );
+
+            float3 bulletSpawnWoldPosition = localTransform.ValueRO.TransformPoint(shootAttack.ValueRO.bulletSpawnPos);
+            SystemAPI.SetComponent(bulletEntity, LocalTransform.FromPosition(bulletSpawnWoldPosition));
 
             RefRW<Bullet> bullet = SystemAPI.GetComponentRW<Bullet>(bulletEntity);
             bullet.ValueRW.damage = shootAttack.ValueRO.damage;

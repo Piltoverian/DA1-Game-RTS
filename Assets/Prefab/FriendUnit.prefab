@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 2495065102718132284}
   - component: {fileID: 8872956124483862666}
   - component: {fileID: 2203044320395782523}
+  - component: {fileID: 8610519990350830627}
   m_Layer: 6
   m_Name: FriendUnit
   m_TagString: Untagged
@@ -111,7 +112,7 @@ MonoBehaviour:
   timerMax: 2
   damage: 5
   attackDistance: 20
-  bulletSpawnPos: {fileID: 3977954335700049857}
+  bulletSpawnPos: {fileID: 6883013690578537400}
 --- !u!114 &-4530266368495814317
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -184,6 +185,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &8610519990350830627
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3382223461976398644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Entities.Hybrid::Unity.Entities.Hybrid.Baking.LinkedEntityGroupAuthoring
 --- !u!1 &3977954335700049857
 GameObject:
   m_ObjectHideFlags: 0
@@ -209,7 +222,7 @@ Transform:
   m_GameObject: {fileID: 3977954335700049857}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.932, z: 1.977}
+  m_LocalPosition: {x: -0.281, y: 1.932, z: 1.977}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

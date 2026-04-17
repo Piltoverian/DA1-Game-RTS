@@ -15,6 +15,10 @@ public class BulletAuthoring : MonoBehaviour
                 speed = authoring.speed,
                 damage = authoring.damage,
             });
+            foreach (Transform child in authoring.transform)
+            {
+                GetEntity(child.gameObject, TransformUsageFlags.Dynamic);
+            }
         }
     }
 }
