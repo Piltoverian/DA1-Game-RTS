@@ -179,6 +179,10 @@ PrefabInstance:
       propertyPath: attackDistance
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 3651251647398371339, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: bulletSpawnPos
+      value: 
+      objectReference: {fileID: 149293194}
     - target: {fileID: 4998375966112270383, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: range
       value: 15
@@ -196,6 +200,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+--- !u!4 &149293194 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6883013690578537400, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+  m_PrefabInstance: {fileID: 127026710}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &886816531
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -206,11 +215,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -4530266368495814317, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: healthAmount
-      value: 1
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 2495065102718132284, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: useTestTarget
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3120659631628476173, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: playerID
@@ -264,6 +273,10 @@ PrefabInstance:
       propertyPath: attackDistance
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 3651251647398371339, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: bulletSpawnPos
+      value: 
+      objectReference: {fileID: 1685861324}
     - target: {fileID: 4998375966112270383, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: range
       value: 15
@@ -405,6 +418,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1685861324 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6883013690578537400, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+  m_PrefabInstance: {fileID: 886816531}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2048600693
 GameObject:
   m_ObjectHideFlags: 0

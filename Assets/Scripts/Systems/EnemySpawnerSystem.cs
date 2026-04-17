@@ -31,8 +31,10 @@ partial struct EnemySpawnerSystem : ISystem
             Entity enemyEntity = state.EntityManager.Instantiate(entitiesReferences.enemyPrefab);
             //Debug.Log("Spawned enemy: " + enemyEntity);
 
-            SystemAPI.SetComponent(enemyEntity,
-                LocalTransform.FromPosition(localTransform.ValueRO.Position));
+            var originTransform = SystemAPI.GetComponent<LocalTransform>(enemyEntity);
+
+            SystemAPI.SetComponent(enemyEntity, originTransform.WithPosition(localTransform.ValueRO.Position));
+
             var grid= SystemAPI.GetSingleton<GridComponent>();
             if (SystemAPI.HasComponent<MovementAgentComponent>(enemyEntity))
             {
