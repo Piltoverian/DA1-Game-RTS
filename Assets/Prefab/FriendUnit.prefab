@@ -10,13 +10,13 @@ GameObject:
   m_Component:
   - component: {fileID: 3510181012055626075}
   - component: {fileID: 3120659631628476173}
-  - component: {fileID: 2430260115171946512}
   - component: {fileID: 8938032757841855522}
   - component: {fileID: 4998375966112270383}
   - component: {fileID: 1886302293370438287}
   - component: {fileID: 3651251647398371339}
   - component: {fileID: -4530266368495814317}
   - component: {fileID: 2495065102718132284}
+  - component: {fileID: 8872956124483862666}
   m_Layer: 6
   m_Name: FriendUnit
   m_TagString: Untagged
@@ -54,20 +54,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
   faction: 0
---- !u!114 &2430260115171946512
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382223461976398644}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce06c9f099a420442a6e9adf02892904, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SelectedAuthoring
-  visualGameObject: {fileID: 8882249327758270422}
-  showScale: 2
 --- !u!114 &8938032757841855522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -149,16 +135,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MovementAgentAuthoring
   speed: 7
-  radius: 1
+  radius: 0.75
   arrivalRadius: 5.6
   formationRange: 25
-  stoppingDistance: 1.5
+  stoppingDistance: 1.125
   formationType: 0
   useTestTarget: 0
   testTarget:
     x: 50
     y: 0
     z: 50
+--- !u!114 &8872956124483862666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3382223461976398644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6b9a1ff7d4ae284aa4348e3156e79eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DragSelectableObject
+  visualGameObject: {fileID: 4184377831044824465}
+  showScale: 1
 --- !u!1 &4184377831044824465
 GameObject:
   m_ObjectHideFlags: 0

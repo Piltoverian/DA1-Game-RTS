@@ -17,9 +17,10 @@ public struct SingleSelectableEntity:IComponentData
 
 }
 
-public struct SelectedTag : IComponentData
+public struct Selected : IComponentData, IEnableableComponent
 {
-    public int playerID;
+    public Entity visualEntity;
+    public float showScale;
 }
 
 public struct SelectableBucketContainer : IComponentData

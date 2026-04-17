@@ -14,6 +14,12 @@ public class SingleSelectable : SelectableObject
                 playerID = 1,
                 GridIndex = -1//new Unit
             });
+            AddComponent(entity, new Selected
+            {
+                visualEntity = GetEntity(authoring.visualGameObject, TransformUsageFlags.Dynamic),
+                showScale = authoring.showScale
+            });
+            SetComponentEnabled<Selected>(entity, false);
         }
     }
 }

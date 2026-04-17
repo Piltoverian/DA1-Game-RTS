@@ -9,10 +9,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
-using Unity.VisualScripting;
-using UnityEditor.Build.Pipeline;
 using UnityEngine;
-using static UnityEngine.EventSystems.EventTrigger;
 
 
 [UpdateAfter(typeof(SelectableSpatialSystem))]
@@ -22,6 +19,7 @@ partial struct SelectSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<SelectableBucketContainer>();
+        state.RequireForUpdate<Selected>();
     }
 
     public void OnUpdate(ref SystemState state)
@@ -62,7 +60,7 @@ partial struct SelectSystem : ISystem
         var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
         var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
-        var selectedLookup = state.GetComponentLookup<SelectedTag>(true);
+        var selectedLookup = state.GetComponentLookup<Selected>(true);
 
         Trapezoid trapezoid = new Trapezoid(
             request.v1,
@@ -133,8 +131,11 @@ partial struct SelectSystem : ISystem
                             if (selectable.playerID != request.playerId)
                                 continue;
 
-                            if (!selectedLookup.HasComponent(unit))
-                                ecb.AddComponent(unit, new SelectedTag { playerID = request.playerId });
+                            if (selectedLookup.HasComponent(unit))
+                                if (state.EntityManager.IsComponentEnabled<Selected>(unit))
+                                    continue;
+                                else
+                                    ecb.SetComponentEnabled<Selected>(unit, true);
                         }
 
                     } while (bucket.TryGetNextValue(out unit, ref it));
@@ -149,16 +150,16 @@ partial struct SelectSystem : ISystem
         ref EntityCommandBuffer ecb)
     {
         foreach (var (_, entity) in
-                 SystemAPI.Query<RefRO<SelectedTag>>().WithEntityAccess())
+                 SystemAPI.Query<RefRO<Selected>>().WithEntityAccess())
         {
-            ecb.RemoveComponent<SelectedTag>(entity);
+            ecb.SetComponentEnabled<Selected>(entity, false);
         }
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var bucketContainer = SystemAPI.GetSingletonRW<SelectableBucketContainer>();
 
         var bucket = bucketContainer.ValueRW.Bucket;
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
-        var selectedLookup = state.GetComponentLookup<SelectedTag>(true);
+        var selectedLookup = state.GetComponentLookup<Selected>(false);
         var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
         var singleselectableLookup = state.GetComponentLookup<SingleSelectableEntity>(true);
         var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
@@ -184,12 +185,15 @@ partial struct SelectSystem : ISystem
                         float3 pos = transformLookup[unit].Position;
                         if(math.distancesq(pos,request.targetpos)<=0.5f)
                         {
-                            if(!selectedLookup.HasComponent(unit))
+                            if(selectedLookup.HasComponent(unit))
                             {
                                 if(selectableLookup[unit].playerID!=request.playerId)
                                     continue;
-                                ecb.AddComponent(unit,new SelectedTag {playerID=request.playerId });
-                                return;
+
+                                if (state.EntityManager.IsComponentEnabled<Selected>(unit))
+                                    continue;
+                                else
+                                    ecb.SetComponentEnabled<Selected>(unit, true);
                             }
                         }
                         

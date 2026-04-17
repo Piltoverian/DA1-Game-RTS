@@ -14,6 +14,7 @@ partial struct EnemySpawnerSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         EntitiesReferences entitiesReferences = SystemAPI.GetSingleton<EntitiesReferences>();
+        EntityCommandBuffer ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
         foreach ((RefRO<LocalTransform> localTransform, RefRW<EnemySpawner> enemySpawner)
             in SystemAPI.Query<RefRO<LocalTransform>, RefRW<EnemySpawner>>())
         {
@@ -30,6 +31,12 @@ partial struct EnemySpawnerSystem : ISystem
 
             SystemAPI.SetComponent(enemyEntity,
                 LocalTransform.FromPosition(localTransform.ValueRO.Position));
+            var grid= SystemAPI.GetSingleton<GridComponent>();
+            if (SystemAPI.HasComponent<MovementAgentComponent>(enemyEntity))
+            {
+                MovementAgentAPI.SetTarget(state.EntityManager,enemyEntity ,enemySpawner.ValueRO.RallyPoint, grid, ecb);
+            }
         }
+        ecb.Playback(state.EntityManager);
     }
 }
