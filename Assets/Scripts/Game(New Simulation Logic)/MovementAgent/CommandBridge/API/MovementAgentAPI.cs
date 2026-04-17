@@ -46,7 +46,7 @@ public static class MovementAgentAPI
         }
         var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
         var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
-        FlowFieldHelper.ReleaseFieldFromMoveComponent(ref agentComponent, ecb, entityManager);
+        FlowFieldHelper.ReleaseFieldFromMoveComponent(ref agentComponent, agentEntity, ecb, entityManager);
         agentComponent.hastarget = false;
         agentComponent.velocity= float3.zero;
         ecb.SetComponent(agentEntity, agentComponent);
