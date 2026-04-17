@@ -10,11 +10,11 @@ public class DragSelectableObject : SelectableObject
         public override void Bake(DragSelectableObject authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-
+            
             AddComponent(entity, new DragSelectableEntity());
             AddComponent(entity, new Selectable
             {
-                playerID = 1,
+                playerID = authoring.playerID,
                 GridIndex = -1//new Unit
             });
             AddComponent(entity,new Selected

@@ -11,7 +11,7 @@ public class SingleSelectable : SelectableObject
             AddComponent(entity, new SingleSelectableEntity());
             AddComponent(entity, new Selectable
             {
-                playerID = 1,
+                playerID = authoring.playerID,
                 GridIndex = -1//new Unit
             });
             AddComponent(entity, new Selected
