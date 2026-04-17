@@ -20,13 +20,14 @@ public partial struct MovementAgentTargetSystem : ISystem
     {
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
-
+        var deltaTime = SystemAPI.Time.DeltaTime;
         var job = new UnitTargetJob
         {
             Grid = grid,
             FieldNodeLookup = SystemAPI.GetBufferLookup<FieldNode>(true),
             IslandSeedLookup = SystemAPI.GetBufferLookup<IslandSeed>(true),
-            GridIslands = SystemAPI.GetBuffer<GridIsland>(gridEntity).AsNativeArray()
+            GridIslands = SystemAPI.GetBuffer<GridIsland>(gridEntity).AsNativeArray(),
+            DeltaTime = deltaTime
         };
 
         state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -39,7 +40,7 @@ public partial struct MovementAgentTargetSystem : ISystem
         [ReadOnly] public BufferLookup<FieldNode> FieldNodeLookup;
         [ReadOnly] public BufferLookup<IslandSeed> IslandSeedLookup;
         [ReadOnly] public NativeArray<GridIsland> GridIslands;
-
+        [ReadOnly] public float DeltaTime;
         public void Execute(Entity entity, [ReadOnly] in LocalTransform transform, 
             ref MovementAgentComponent move, 
             ref MovementSteeringComponent steering)
@@ -129,11 +130,9 @@ public partial struct MovementAgentTargetSystem : ISystem
             }
 
             // --- 6. ANTI-DEADLOCK TRACKING ---
-            // Progress threshold = 0.1 — lọc oscillation nhỏ (0.01/frame) nhưng nhận progress thật
-            // speed=10, dt=0.02 → move 0.2/frame → 0.1 = nửa frame progress = hợp lý
-            // 0.01 cũ quá nhỏ → agent đẩy 0.01/frame qua crowd → reset timer → không bao giờ stuck!
+            //stuckscale theo speed
             if (steering.minDistanceToTarget <= 0) steering.minDistanceToTarget = float.MaxValue;
-            if (distToFinal < steering.minDistanceToTarget - 0.1f)
+            if (distToFinal < steering.minDistanceToTarget - DeltaTime*move.speed*0.6f)
             {
                 steering.minDistanceToTarget = distToFinal;
                 steering.stuckTime = 0; 
