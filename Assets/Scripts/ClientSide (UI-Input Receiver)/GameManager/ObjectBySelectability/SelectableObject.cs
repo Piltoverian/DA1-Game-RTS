@@ -7,7 +7,11 @@ public class SelectableObject : MonoBehaviour
     protected int playerID;
     private void OnValidate()
     { 
-       playerID = gameObject.GetComponent<Unit>().playerID;
+        if(gameObject.GetComponent<UnitAuthoring>()==null)
+        { 
+            return;
+        }
+        playerID = gameObject.GetComponent<UnitAuthoring>().playerID;
     }
     private void Start()
     {
