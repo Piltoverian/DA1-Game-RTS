@@ -12,6 +12,7 @@ partial struct BulletMoverSystem : ISystem
 
         var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
         var healthLookup = SystemAPI.GetComponentLookup<Health>(false);
+        var shootVictimLookup = SystemAPI.GetComponentLookup<ShootVictim>(true);
 
         foreach (var (localTransform, bullet, target, entity) in
             SystemAPI.Query<RefRW<LocalTransform>, RefRO<Bullet>, RefRO<Target>>()
@@ -23,7 +24,20 @@ partial struct BulletMoverSystem : ISystem
                 ecb.DestroyEntity(entity);
                 continue;
             }
-            float3 targetPosition = transformLookup[targetEntity].Position;
+            float3 targetPosition;
+            if (shootVictimLookup.HasComponent(targetEntity))
+            {
+                // Lấy transform của unit và cộng thêm offset đã chuyển sang World Space
+                var victimTransform = transformLookup[targetEntity];
+                targetPosition = victimTransform.TransformPoint(shootVictimLookup[targetEntity].localHitOffset);
+            }
+            else
+            {
+                targetPosition = transformLookup[targetEntity].Position;
+            }
+
+
+
             float3 currentPosition = localTransform.ValueRO.Position;
 
             float distanceBeforeSq = math.distancesq(currentPosition, targetPosition);

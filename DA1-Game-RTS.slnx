@@ -28,10 +28,10 @@
   <Project Path="Unity.Serialization.csproj" />
   <Project Path="Unity.Burst.Editor.csproj" />
   <Project Path="Unity.VisualScripting.State.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.InternalAPIEditorBridge.002.csproj" />
   <Project Path="Unity.Entities.CodeGen.csproj" />
   <Project Path="Unity.Entities.Editor.Properties.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.Physics.Editor.csproj" />
   <Project Path="Unity.Numerics.Linear.Solvers.Lowlevel.csproj" />
   <Project Path="Unity.InputSystem.ForUI.csproj" />
