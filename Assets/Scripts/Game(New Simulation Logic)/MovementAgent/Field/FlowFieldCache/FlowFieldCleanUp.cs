@@ -4,6 +4,7 @@ using Unity.Entities;
 
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
+
 public partial struct FlowFieldCleanupSystem : ISystem
 {
     [BurstCompile]
