@@ -2,6 +2,7 @@ using Mono.Cecil;
 using NUnit.Framework;
 using System.Collections.Generic;
 using Unity.Entities;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class ResourceGroup : MonoBehaviour
@@ -33,11 +34,14 @@ public class ResourceGroup : MonoBehaviour
         {
             resources[i] = new ResourcePair(resources[i].Type,  resources[i].Amount + Time.deltaTime);
         }
-        ResourceChangeChannel channel = Resources.Load<ResourceChangeChannel>("ResourceChangeChannel");
-        if(channel == null)
+        ScriptableObject scriptableObject = EventBus.GetInstance().GetChannel("ResourceChangeChannel");
+        if (scriptableObject == null)
         {
-            Debug.Log("Channel not found");
+            Debug.LogError("ResourceChangeChannel not found in EventBus");
+            return;
         }
-        channel?.RaiseEvent(new ResourceChangeEvent { value = resources });
+        ResourceChangeEvent resourceChangeEvent = new ResourceChangeEvent();
+        resourceChangeEvent.value = resources;
+        (scriptableObject as ResourceChangeChannel).RaiseEvent(resourceChangeEvent);
     }
 }
