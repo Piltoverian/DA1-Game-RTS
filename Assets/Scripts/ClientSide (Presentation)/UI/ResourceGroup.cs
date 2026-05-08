@@ -14,8 +14,8 @@ public class ResourceGroup : MonoBehaviour
         ClearInfo();
         foreach (var resource in eventData.value)
         {
-            var info = Instantiate(resourceInfoPrefab, transform).GetComponent<ResourceInfo>();
-            info.SetInfo(resource.Amount);
+            var info = Instantiate(resourceInfoPrefab, transform).GetComponent<InfoPanel>();
+            info.SetInfoValue(resource.Amount);
         }
     }
 
@@ -23,7 +23,7 @@ public class ResourceGroup : MonoBehaviour
     {
         foreach (Transform child in transform)
         {
-            if (child.GetComponent<ResourceInfo>() != null)
+            if (child.GetComponent<InfoPanel>() != null)
                 Destroy(child.gameObject);
         }
     }

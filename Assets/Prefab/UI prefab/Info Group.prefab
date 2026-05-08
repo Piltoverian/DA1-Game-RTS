@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 1184974338128841736}
   - component: {fileID: 6823150306097677782}
   m_Layer: 5
-  m_Name: ResourceInfo
+  m_Name: Info Group
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -37,7 +37,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 0}
+  m_SizeDelta: {x: 100, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &1184974338128841736
 MonoBehaviour:
@@ -74,10 +74,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1141325338227921684}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a136bc79dd493394190724eaaab1b668, type: 3}
+  m_Script: {fileID: 11500000, guid: 7301910488f7d2649bd27cc2045bbe5b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceInfo
   nameText: {fileID: 8252850998866930728}
+  icon: {fileID: 3097967146771588117}
 --- !u!1 &2510723588137921861
 GameObject:
   m_ObjectHideFlags: 0
@@ -229,7 +230,7 @@ GameObject:
   - component: {fileID: 3894262094695258824}
   - component: {fileID: 3097967146771588117}
   m_Layer: 5
-  m_Name: ResourceImage
+  m_Name: Icon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

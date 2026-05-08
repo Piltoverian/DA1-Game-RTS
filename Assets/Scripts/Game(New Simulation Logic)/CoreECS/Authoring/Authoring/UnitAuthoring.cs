@@ -4,6 +4,7 @@ using UnityEngine;
 class UnitAuthoring : MonoBehaviour
 {
     public int playerID;
+    public int maxHealth;
     public class Baker : Baker<UnitAuthoring>
     {
         
@@ -12,12 +13,14 @@ class UnitAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Unit
             {
-                playerID = authoring.playerID
-            })    ;
+                playerID = authoring.playerID,
+                maxHealth = authoring.maxHealth
+            });
         }
     }
 }
 public struct Unit : IComponentData
 {
     public int playerID;
+    public int maxHealth;
 }
