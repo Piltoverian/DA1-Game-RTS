@@ -573,50 +573,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cfe483d464120494dbe6921971e83cf4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MouseWorldPosition
---- !u!1 &1362396662 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6804000731513499075, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
-  m_PrefabInstance: {fileID: 2800336150237463806}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1362396666
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1362396662}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 23f54729bf52abf43b4f66aebe714fde, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnitInfoPanel
-  InfoPanelPrefab: {fileID: 6823150306097677782, guid: b47b4abc7a7aace418c6b8c85d87d1dc, type: 3}
---- !u!114 &1362396667
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1362396662}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.VerticalLayoutGroup
-  m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 0
-  m_Spacing: 0
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!1 &1379852026
 GameObject:
   m_ObjectHideFlags: 0
@@ -1100,6 +1056,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.x
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4491552574661775196, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+      propertyPath: m_margin.z
+      value: 0.0024414062
+      objectReference: {fileID: 0}
     - target: {fileID: 4499413950908813899, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -1214,10 +1174,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6791698517221933898, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6992054356511293820, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
-      propertyPath: m_ChildControlHeight
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7614685774906641763, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
@@ -1304,18 +1260,31 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 6992054356511293820, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 6804000731513499075, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 5035827388261344721, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1362396666}
-    - targetCorrespondingSourceObject: {fileID: 6804000731513499075, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1362396667}
+      addedObject: {fileID: 2800336150237463808}
   m_SourcePrefab: {fileID: 100100000, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+--- !u!1 &2800336150237463807 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5035827388261344721, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+  m_PrefabInstance: {fileID: 2800336150237463806}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2800336150237463808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2800336150237463807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ad6fd8161941ba4fbeb7719949a69f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MatchTimeTextMesh
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
