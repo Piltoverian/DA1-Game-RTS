@@ -48,6 +48,7 @@ public class UnitSelectionManager : MonoBehaviour
             // 4. Lấy danh sách Unit đang được chọn
             EntityQuery selectedQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<MovementAgentComponent, Selected>()
+                .WithPresent<MoveOverride>()  
                 .Build(entityManager);
 
             if (selectedQuery.IsEmpty) return;
@@ -60,8 +61,13 @@ public class UnitSelectionManager : MonoBehaviour
             for (int i = 0; i < entityArray.Length; i++)
             {
                 Entity entity = entityArray[i];
-                // Gọi API thiết lập mục tiêu
-                MovementAgentAPI.SetTarget(entityManager, entity, mouseWorldPosition, gridComponent, ecb);
+                MoveOverride moveData = entityManager.GetComponentData<MoveOverride>(entity);
+
+                moveData.targetPosition = mouseWorldPosition;
+                moveData.targetApplied = false;
+
+                ecb.SetComponent(entity, moveData); // Ghi đè lại struct đã được cập nhật
+                ecb.SetComponentEnabled<MoveOverride>(entity, true);
             }
 
             ecb.Playback(entityManager);
