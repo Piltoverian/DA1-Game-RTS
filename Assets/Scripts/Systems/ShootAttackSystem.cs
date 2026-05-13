@@ -10,13 +10,11 @@ partial struct ShootAttackSystem : ISystem
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        state.RequireForUpdate<EntitiesReferences>();
         state.RequireForUpdate<GridComponent>();
     }
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        EntitiesReferences entitiesReFerences = SystemAPI.GetSingleton<EntitiesReferences>();
         GridComponent gridComponent = SystemAPI.GetSingleton<GridComponent>();
 
         var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
@@ -32,9 +30,10 @@ partial struct ShootAttackSystem : ISystem
                 RefRW<LocalTransform>,
                 RefRW<ShootAttack>,
                 RefRW<Target>,
-                RefRW<MovementAgentComponent>>().
+                RefRW<MovementAgentComponent>>().WithDisabled<MoveOverride>().
                 WithEntityAccess())
         {
+
 
             Entity targetEntity = target.ValueRO.targetEntity;
 
@@ -74,7 +73,11 @@ partial struct ShootAttackSystem : ISystem
             if (shootAttack.ValueRW.timer > 0f)
                 continue;
             shootAttack.ValueRW.timer = shootAttack.ValueRO.timerMax;
-            Entity bulletEntity = state.EntityManager.Instantiate(entitiesReFerences.bulletPrefab);
+
+            if (shootAttack.ValueRO.bulletPrefab == Entity.Null)
+                continue;
+
+            Entity bulletEntity = state.EntityManager.Instantiate(shootAttack.ValueRO.bulletPrefab);
 
             float3 bulletSpawnWoldPosition = localTransform.ValueRO.TransformPoint(shootAttack.ValueRO.bulletSpawnPos);
 
