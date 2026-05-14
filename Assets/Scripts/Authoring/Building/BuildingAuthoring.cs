@@ -14,6 +14,10 @@ public class BuildingAuthoring : MonoBehaviour
     [Header("Building Info")]
     public BuildingType BuildingType;
 
+    [Header("Cost")]
+    public int GoldCost = 100;
+    public int WoodCost = 50;
+
     [Header("Construction")]
     public float ConstructionTime = 10f;
     public float StartRevealHeight = 0f;
@@ -36,7 +40,9 @@ public class BuildingAuthoring : MonoBehaviour
                 ConstructionTime = src.ConstructionTime,
                 FootprintSizeX = src.FootprintSizeX,
                 FootprintSizeZ = src.FootprintSizeZ,
-                BlockerHeight = src.BlockerHeight
+                BlockerHeight = src.BlockerHeight,
+                GoldCost = src.GoldCost,
+                WoodCost = src.WoodCost,
             });
 
             AddComponent(e, new ConstructionData
@@ -51,7 +57,10 @@ public class BuildingAuthoring : MonoBehaviour
             {
                 Value = src.StartRevealHeight
             });
-
+            if (src.BuildingType == BuildingType.ResourceDepot)
+            {
+                AddComponent<ResourceDepotTag>(e);
+            }
             AddComponent<UnderConstructionTag>(e);
         }
     }
@@ -65,6 +74,9 @@ public struct BuildingData : IComponentData
     public float FootprintSizeX;
     public float FootprintSizeZ;
     public float BlockerHeight;
+
+    public int GoldCost;
+    public int WoodCost;
 }
 
 public struct ConstructionData : IComponentData
@@ -82,5 +94,8 @@ public struct RevealHeightProperty : IComponentData
 }
 
 public struct UnderConstructionTag : IComponentData
+{
+}
+public struct ResourceDepotTag : IComponentData
 {
 }

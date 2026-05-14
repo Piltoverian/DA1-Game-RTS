@@ -14,7 +14,7 @@ public class MoveOverrideAuthoring : MonoBehaviour
 
             AddComponent(entity, new MoveOverride
             {
-                stopDistanceSq = authoring.stopDistance,
+                stopDistanceSq = authoring.stopDistance* authoring.stopDistance,
                 targetApplied = false
             });
         }

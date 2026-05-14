@@ -1,332 +1,332 @@
-using NUnit.Framework;
-using System;
-using UnityEngine;
-using UnityEngine.AI;
+//using NUnit.Framework;
+//using System;
+//using UnityEngine;
+//using UnityEngine.AI;
 
-public class ResourceGatherable : MonoBehaviour, Ability
-{
-    #region ====== State Enum ======
+//public class ResourceGatherable : MonoBehaviour, Ability
+//{
+//    #region ====== State Enum ======
 
-    enum GatheringState
-    {
-        Idle,
-        MovingToNode,
-        Gathering,
-        ReturningToBase
-    }
+//    enum GatheringState
+//    {
+//        Idle,
+//        MovingToNode,
+//        Gathering,
+//        ReturningToBase
+//    }
 
-    #endregion
-
-
-    #region ====== Serialized Fields ======
-
-    [SerializeField] private float carryingCapacity;
-    [SerializeField] private float GatheringSpeed;
-    [SerializeField] private float gatheringRange;
-
-    [SerializeField] private float currentlyCarryingAmount;
-    [SerializeField] private ResourceNode currentResourceNode;
-    [SerializeField] private ResourceType resourceType = ResourceType.None;
-    [SerializeField] private GatheringState gatheringState = GatheringState.Idle;
-    [SerializeField] private Storage targetStorage;
-
-    #endregion
+//    #endregion
 
 
-    #region ====== Public API ======
+//    #region ====== Serialized Fields ======
 
-    public void SetCurrentResourceNode(ResourceNode resourceNode)
-    {
-        currentResourceNode = resourceNode;
-    }
+//    [SerializeField] private float carryingCapacity;
+//    [SerializeField] private float GatheringSpeed;
+//    [SerializeField] private float gatheringRange;
 
-    public ResourceType GetCurrentResource()
-    {
-        return resourceType;
-    }
+//    [SerializeField] private float currentlyCarryingAmount;
+//    [SerializeField] private ResourceNode currentResourceNode;
+//    [SerializeField] private ResourceType resourceType = ResourceType.None;
+//    [SerializeField] private GatheringState gatheringState = GatheringState.Idle;
+//    [SerializeField] private Storage targetStorage;
 
-    public ResourceNode GetCurrentResourceNode()
-    {
-        return currentResourceNode;
-    }
-
-    public void ChangeTargetStorage(Storage newStorage)
-    {
-        targetStorage = newStorage;
-
-        if (gatheringState == GatheringState.ReturningToBase)
-        {
-            ReturnToBase();
-        }
-    }
-
-    #endregion
+//    #endregion
 
 
-    #region ====== Core State Logic ======
+//    #region ====== Public API ======
 
-    public void GatherResource()
-    {
-        if (currentlyCarryingAmount >= carryingCapacity)
-        {
-            currentlyCarryingAmount = carryingCapacity;
-            ReturnToBase();
-            return;
-        }
-        if (currentResourceNode != null && !currentResourceNode.IsDepleted())
-        {
-            gatheringState = GatheringState.Gathering;
+//    public void SetCurrentResourceNode(ResourceNode resourceNode)
+//    {
+//        currentResourceNode = resourceNode;
+//    }
 
-            float expectedGatherAmount =
-                Mathf.Min(carryingCapacity - currentlyCarryingAmount,
-                          GatheringSpeed * Time.fixedDeltaTime);
+//    public ResourceType GetCurrentResource()
+//    {
+//        return resourceType;
+//    }
 
-            float gatheredAmount = currentResourceNode.Extract(expectedGatherAmount);
+//    public ResourceNode GetCurrentResourceNode()
+//    {
+//        return currentResourceNode;
+//    }
 
-            if (gatheredAmount <= 0)
-            {
-                ReturnToBase();
-                return;
-            }
+//    public void ChangeTargetStorage(Storage newStorage)
+//    {
+//        targetStorage = newStorage;
 
-            currentlyCarryingAmount += gatheredAmount;
+//        if (gatheringState == GatheringState.ReturningToBase)
+//        {
+//            ReturnToBase();
+//        }
+//    }
 
-            if (Mathf.Abs(carryingCapacity - currentlyCarryingAmount) < 0.01f)
-            {
-                currentlyCarryingAmount = carryingCapacity;
-            }
-
-            Debug.Log("Gathered " + gatheredAmount + " from " + currentResourceNode.GetNodeType());
-        }
-        else
-        {
-            ReturnToBase();
-        }
-    }
-
-    public void ChangeNode(ResourceNode newNode)
-    {
-        if (currentResourceNode == null)
-        {
-            currentResourceNode = newNode;
-            resourceType = newNode.GetNodeType();
-        }
-        else if (newNode.GetNodeType() != currentResourceNode.GetNodeType())
-        {
-            currentResourceNode = newNode;
-            currentlyCarryingAmount = 0;
-            resourceType = newNode.GetNodeType();
-            targetStorage = null;
-        }
-        else
-        {
-            currentResourceNode = newNode;
-        }
-
-        Debug.Log("NewResourceNodeIs: " + currentResourceNode);
-    }
-
-    public void ReturnToBase()
-    {
-        gatheringState = GatheringState.ReturningToBase;
-
-        if (targetStorage == null)
-        {
-            FindNearestStorage();
-
-            if (targetStorage == null)
-            {
-                ReturnToIdle();
-                return;
-            }
-        }
-
-        var move = GetComponent<MoveAbilityComponent>();
-        if (move != null)
-            move.OnMoveToWorld(targetStorage.transform.position);
-        else
-            Debug.LogError("MoveAbilityComponent is missing from the worker");
-    }
-
-    public void ReturnToIdle()
-    {
-        gatheringState = GatheringState.Idle;
-    }
-
-    #endregion
+//    #endregion
 
 
-    #region ====== Movement ======
+//    #region ====== Core State Logic ======
 
-    public void MovingToNode()
-    {
-        if (currentResourceNode != null)
-        {
-            var move = GetComponent<MoveAbilityComponent>();
-            if (move != null)
-                move.OnMoveToWorld(currentResourceNode.transform.position);
-            else
-                Debug.LogError("MoveAbilityComponent is missing from the worker");
+//    public void GatherResource()
+//    {
+//        if (currentlyCarryingAmount >= carryingCapacity)
+//        {
+//            currentlyCarryingAmount = carryingCapacity;
+//            ReturnToBase();
+//            return;
+//        }
+//        if (currentResourceNode != null && !currentResourceNode.IsDepleted())
+//        {
+//            gatheringState = GatheringState.Gathering;
 
-            gatheringState = GatheringState.MovingToNode;
-        }
-        else
-        {
-            FindNearestSuitableNode();
+//            float expectedGatherAmount =
+//                Mathf.Min(carryingCapacity - currentlyCarryingAmount,
+//                          GatheringSpeed * Time.fixedDeltaTime);
 
-            if (currentResourceNode != null)
-            {
-                MovingToNode();
-                return;
-            }
+//            float gatheredAmount = currentResourceNode.Extract(expectedGatherAmount);
 
-            ReturnToBase();
-        }
-    }
+//            if (gatheredAmount <= 0)
+//            {
+//                ReturnToBase();
+//                return;
+//            }
 
-    #endregion
+//            currentlyCarryingAmount += gatheredAmount;
+
+//            if (Mathf.Abs(carryingCapacity - currentlyCarryingAmount) < 0.01f)
+//            {
+//                currentlyCarryingAmount = carryingCapacity;
+//            }
+
+//            Debug.Log("Gathered " + gatheredAmount + " from " + currentResourceNode.GetNodeType());
+//        }
+//        else
+//        {
+//            ReturnToBase();
+//        }
+//    }
+
+//    public void ChangeNode(ResourceNode newNode)
+//    {
+//        if (currentResourceNode == null)
+//        {
+//            currentResourceNode = newNode;
+//            resourceType = newNode.GetNodeType();
+//        }
+//        else if (newNode.GetNodeType() != currentResourceNode.GetNodeType())
+//        {
+//            currentResourceNode = newNode;
+//            currentlyCarryingAmount = 0;
+//            resourceType = newNode.GetNodeType();
+//            targetStorage = null;
+//        }
+//        else
+//        {
+//            currentResourceNode = newNode;
+//        }
+
+//        Debug.Log("NewResourceNodeIs: " + currentResourceNode);
+//    }
+
+//    public void ReturnToBase()
+//    {
+//        gatheringState = GatheringState.ReturningToBase;
+
+//        if (targetStorage == null)
+//        {
+//            FindNearestStorage();
+
+//            if (targetStorage == null)
+//            {
+//                ReturnToIdle();
+//                return;
+//            }
+//        }
+
+//        var move = GetComponent<MoveAbilityComponent>();
+//        if (move != null)
+//            move.OnMoveToWorld(targetStorage.transform.position);
+//        else
+//            Debug.LogError("MoveAbilityComponent is missing from the worker");
+//    }
+
+//    public void ReturnToIdle()
+//    {
+//        gatheringState = GatheringState.Idle;
+//    }
+
+//    #endregion
 
 
-    #region ====== Searching ======
+//    #region ====== Movement ======
 
-    private void FindNearestStorage()
-    {
-        Storage[] storages = FindObjectsByType<Storage>(FindObjectsSortMode.None);
+//    public void MovingToNode()
+//    {
+//        if (currentResourceNode != null)
+//        {
+//            var move = GetComponent<MoveAbilityComponent>();
+//            if (move != null)
+//                move.OnMoveToWorld(currentResourceNode.transform.position);
+//            else
+//                Debug.LogError("MoveAbilityComponent is missing from the worker");
 
-        float minDistance = Mathf.Infinity;
-        Storage nearestStorage = null;
+//            gatheringState = GatheringState.MovingToNode;
+//        }
+//        else
+//        {
+//            FindNearestSuitableNode();
 
-        foreach (Storage storage in storages)
-        {
-            float distance = Vector3.Distance(transform.position, storage.transform.position);
+//            if (currentResourceNode != null)
+//            {
+//                MovingToNode();
+//                return;
+//            }
 
-            if (distance < minDistance &&
-                storage.GetStorageTypes().Contains(resourceType))
-            {
-                minDistance = distance;
-                nearestStorage = storage;
-            }
-        }
+//            ReturnToBase();
+//        }
+//    }
 
-        targetStorage = nearestStorage;
-    }
-
-    public void FindNearestSuitableNode()
-    {
-        ResourceNode[] nodes = FindObjectsByType<ResourceNode>(FindObjectsSortMode.None);
-
-        float minDistance = Mathf.Infinity;
-        ResourceNode nearestNode = null;
-
-        foreach (ResourceNode node in nodes)
-        {
-            if (node.GetNodeType() == resourceType)
-            {
-                float distance = Vector3.Distance(transform.position, node.transform.position);
-
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    nearestNode = node;
-                }
-            }
-        }
-
-        if (nearestNode != null)
-        {
-            ChangeNode(nearestNode);
-        }
-    }
-
-    #endregion
+//    #endregion
 
 
-    #region ====== Unity Events ======
+//    #region ====== Searching ======
+
+//    private void FindNearestStorage()
+//    {
+//        Storage[] storages = FindObjectsByType<Storage>(FindObjectsSortMode.None);
+
+//        float minDistance = Mathf.Infinity;
+//        Storage nearestStorage = null;
+
+//        foreach (Storage storage in storages)
+//        {
+//            float distance = Vector3.Distance(transform.position, storage.transform.position);
+
+//            if (distance < minDistance &&
+//                storage.GetStorageTypes().Contains(resourceType))
+//            {
+//                minDistance = distance;
+//                nearestStorage = storage;
+//            }
+//        }
+
+//        targetStorage = nearestStorage;
+//    }
+
+//    public void FindNearestSuitableNode()
+//    {
+//        ResourceNode[] nodes = FindObjectsByType<ResourceNode>(FindObjectsSortMode.None);
+
+//        float minDistance = Mathf.Infinity;
+//        ResourceNode nearestNode = null;
+
+//        foreach (ResourceNode node in nodes)
+//        {
+//            if (node.GetNodeType() == resourceType)
+//            {
+//                float distance = Vector3.Distance(transform.position, node.transform.position);
+
+//                if (distance < minDistance)
+//                {
+//                    minDistance = distance;
+//                    nearestNode = node;
+//                }
+//            }
+//        }
+
+//        if (nearestNode != null)
+//        {
+//            ChangeNode(nearestNode);
+//        }
+//    }
+
+//    #endregion
 
 
-    NavMeshAgent agent;
-    MoveAbilityComponent move;
+//    #region ====== Unity Events ======
 
-    void Awake()
-    {
-        agent = GetComponent<NavMeshAgent>();
-        move = GetComponent<MoveAbilityComponent>();
-    }
 
-    private void FixedUpdate()
-    {
-        if (gatheringState == GatheringState.Gathering)
-        {
-            GatherResource();
-        }
-        if (gatheringState == GatheringState.MovingToNode)
-        {
-            if(currentResourceNode==null)
-            {
-                ReturnToBase();
-                return;
-            }
-            Collider nodecollider = currentResourceNode.GetComponent<Collider>();
+//    NavMeshAgent agent;
+//    MoveAbilityComponent move;
 
-            float distance = Vector3.Distance(transform.position, nodecollider.ClosestPoint(transform.position));
+//    void Awake()
+//    {
+//        agent = GetComponent<NavMeshAgent>();
+//        move = GetComponent<MoveAbilityComponent>();
+//    }
 
-            if (!agent.pathPending &&
-                distance <= gatheringRange)
-            {
-                move.Stop();
-                gatheringState = GatheringState.Gathering;
-            }
-        }
+//    private void FixedUpdate()
+//    {
+//        if (gatheringState == GatheringState.Gathering)
+//        {
+//            GatherResource();
+//        }
+//        if (gatheringState == GatheringState.MovingToNode)
+//        {
+//            if(currentResourceNode==null)
+//            {
+//                ReturnToBase();
+//                return;
+//            }
+//            Collider nodecollider = currentResourceNode.GetComponent<Collider>();
 
-        if (gatheringState == GatheringState.ReturningToBase)
-        {
-            if (targetStorage == null)
-            {
-                ReturnToIdle();
-                return;
-            }
-            Collider storageCollider = targetStorage.GetComponent<Collider>();
+//            float distance = Vector3.Distance(transform.position, nodecollider.ClosestPoint(transform.position));
 
-            float distance = Vector3.Distance(transform.position, storageCollider.ClosestPoint(transform.position));
+//            if (!agent.pathPending &&
+//                distance <= gatheringRange)
+//            {
+//                move.Stop();
+//                gatheringState = GatheringState.Gathering;
+//            }
+//        }
+
+//        if (gatheringState == GatheringState.ReturningToBase)
+//        {
+//            if (targetStorage == null)
+//            {
+//                ReturnToIdle();
+//                return;
+//            }
+//            Collider storageCollider = targetStorage.GetComponent<Collider>();
+
+//            float distance = Vector3.Distance(transform.position, storageCollider.ClosestPoint(transform.position));
        
-            if (!agent.pathPending &&
-                distance <= gatheringRange)
-            {
-                Debug.Log("Reached storage, depositing resource");
-                DepositResource();
-            }
-        }
-    }
+//            if (!agent.pathPending &&
+//                distance <= gatheringRange)
+//            {
+//                Debug.Log("Reached storage, depositing resource");
+//                DepositResource();
+//            }
+//        }
+//    }
 
-    private void DepositResource()
-    {
-        if (targetStorage == null) return;
-        if (resourceType == ResourceType.None)
-        {
-            ReturnToIdle();
-            return;
-        }
-        targetStorage.ReceiveResource(currentlyCarryingAmount, resourceType);
+//    private void DepositResource()
+//    {
+//        if (targetStorage == null) return;
+//        if (resourceType == ResourceType.None)
+//        {
+//            ReturnToIdle();
+//            return;
+//        }
+//        targetStorage.ReceiveResource(currentlyCarryingAmount, resourceType);
 
-        currentlyCarryingAmount = 0;
-        if (move != null)
-            move.Stop();
-        if (currentResourceNode != null)
-            MovingToNode();
-        else
-            ReturnToIdle();
-    }
-    public void OnCollisionStay(Collision other)
-    {
-        if (gatheringState == GatheringState.MovingToNode &&
-                 other.gameObject.GetComponent<ResourceNode>() == currentResourceNode)
-        {
-            gatheringState = GatheringState.Gathering;
+//        currentlyCarryingAmount = 0;
+//        if (move != null)
+//            move.Stop();
+//        if (currentResourceNode != null)
+//            MovingToNode();
+//        else
+//            ReturnToIdle();
+//    }
+//    public void OnCollisionStay(Collision other)
+//    {
+//        if (gatheringState == GatheringState.MovingToNode &&
+//                 other.gameObject.GetComponent<ResourceNode>() == currentResourceNode)
+//        {
+//            gatheringState = GatheringState.Gathering;
 
-            var move = GetComponent<MoveAbilityComponent>();
-            if (move != null)
-                move.Stop();
-        }
-    }
-    #endregion
-}
+//            var move = GetComponent<MoveAbilityComponent>();
+//            if (move != null)
+//                move.Stop();
+//        }
+//    }
+//    #endregion
+//}

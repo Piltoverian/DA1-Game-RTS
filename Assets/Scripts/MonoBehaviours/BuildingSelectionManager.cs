@@ -83,7 +83,25 @@ public class BuildingSelectionManager : MonoBehaviour
             Debug.Log("Production queue full.");
             return;
         }
+        EntityQuery query =
+    entityManager.CreateEntityQuery(typeof(PlayerResourceData));
 
+        Entity resEntity = query.GetSingletonEntity();
+
+        PlayerResourceData res =
+            entityManager.GetComponentData<PlayerResourceData>(resEntity);
+
+        if (res.Gold < prod.UnitGoldCost ||
+            res.Food < prod.UnitFoodCost)
+        {
+            Debug.Log("Not enough resources to train.");
+            return;
+        }
+
+        res.Gold -= prod.UnitGoldCost;
+        res.Food -= prod.UnitFoodCost;
+
+        entityManager.SetComponentData(resEntity, res);
         prod.QueueCount++;
 
         if (prod.TimeRemaining <= 0f)

@@ -64,6 +64,13 @@ public class BuildingPlacer : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0) && currentCanPlace)
         {
+            if (!CanAffordBuilding(selectedBuildingPrefab))
+            {
+                Debug.Log("Not enough resources to build.");
+                return;
+            }
+
+            PayBuildingCost(selectedBuildingPrefab);
             PlaceBuilding(currentSnappedPosition);
         }
 
@@ -71,6 +78,39 @@ public class BuildingPlacer : MonoBehaviour
         {
             CancelPlacement();
         }
+    }
+    bool CanAffordBuilding(Entity prefab)
+    {
+        BuildingData building =
+            entityManager.GetComponentData<BuildingData>(prefab);
+
+        EntityQuery query =
+            entityManager.CreateEntityQuery(typeof(PlayerResourceData));
+
+        PlayerResourceData res =
+            query.GetSingleton<PlayerResourceData>();
+
+        return res.Gold >= building.GoldCost &&
+               res.Wood >= building.WoodCost;
+    }
+
+    void PayBuildingCost(Entity prefab)
+    {
+        BuildingData building =
+            entityManager.GetComponentData<BuildingData>(prefab);
+
+        EntityQuery query =
+            entityManager.CreateEntityQuery(typeof(PlayerResourceData));
+
+        Entity resEntity = query.GetSingletonEntity();
+
+        PlayerResourceData res =
+            entityManager.GetComponentData<PlayerResourceData>(resEntity);
+
+        res.Gold -= building.GoldCost;
+        res.Wood -= building.WoodCost;
+
+        entityManager.SetComponentData(resEntity, res);
     }
     public void SelectBuilding(BuildingType type)
     {

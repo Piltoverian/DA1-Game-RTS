@@ -12,6 +12,10 @@ public class ProductionAuthoring : MonoBehaviour
     public Transform SpawnOffset;
     public Transform RallyOffset;
 
+    [Header("Unit Cost")]
+    public int UnitGoldCost = 50;
+    public int UnitFoodCost = 0;
+
     class Baker : Baker<ProductionAuthoring>
     {
         public override void Bake(ProductionAuthoring src)
@@ -26,7 +30,9 @@ public class ProductionAuthoring : MonoBehaviour
                 QueueCount = 0,
                 MaxQueue = src.MaxQueue,
                 SpawnOffset = src.SpawnOffset.position,
-                RallyOffset = src.RallyOffset.position
+                RallyOffset = src.RallyOffset.position,
+                UnitGoldCost = src.UnitGoldCost,
+                                UnitFoodCost = src.UnitFoodCost
             });
         }
     }
@@ -44,6 +50,9 @@ public struct ProductionData : IComponentData
 
     public float3 SpawnOffset;
     public float3 RallyOffset;
+
+    public int UnitGoldCost;
+    public int UnitFoodCost;
 }
 
 public struct UnitTag : IComponentData
