@@ -180,19 +180,27 @@ public class BuildingPlacer : MonoBehaviour
         );
 
         Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
-        CreateBuildingBlocker(pos, halfExtents);
+
+        CreateBuildingBlocker(pos, halfExtents, building);
     }
 
-    void CreateBuildingBlocker(Vector3 pos, Vector3 halfExtents)
+    void CreateBuildingBlocker(Vector3 pos, Vector3 halfExtents, Entity buildingEntity)
     {
         GameObject blocker = new GameObject("BuildingBlocker");
 
         blocker.layer = LayerMask.NameToLayer("Building");
-        blocker.transform.position = pos + Vector3.up * halfExtents.y;
+
+        blocker.transform.position =
+            pos + Vector3.up * halfExtents.y;
 
         BoxCollider col = blocker.AddComponent<BoxCollider>();
         col.size = halfExtents * 2f;
-        col.isTrigger = true;
+        col.isTrigger = false;
+
+        BuildingBlocker buildingBlocker =
+            blocker.AddComponent<BuildingBlocker>();
+
+        buildingBlocker.BuildingEntity = buildingEntity;
     }
 
     void CancelPlacement()

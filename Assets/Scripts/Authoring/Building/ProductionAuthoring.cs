@@ -1,13 +1,16 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.Transforms; 
 public class ProductionAuthoring : MonoBehaviour
 {
     public GameObject UnitPrefab;
 
     public float ProductionTime = 5f;
+    public int MaxQueue = 5;
 
-    public Vector3 SpawnOffset = new Vector3(0, 0, 8);
+    public Transform SpawnOffset;
+    public Transform RallyOffset;
 
     class Baker : Baker<ProductionAuthoring>
     {
@@ -17,21 +20,17 @@ public class ProductionAuthoring : MonoBehaviour
 
             AddComponent(e, new ProductionData
             {
-                UnitPrefab =
-                    GetEntity(src.UnitPrefab, TransformUsageFlags.Dynamic),
-
+                UnitPrefab = GetEntity(src.UnitPrefab, TransformUsageFlags.Dynamic),
                 ProductionTime = src.ProductionTime,
-
                 TimeRemaining = 0f,
-
                 QueueCount = 0,
-
-                SpawnOffset = src.SpawnOffset
+                MaxQueue = src.MaxQueue,
+                SpawnOffset = src.SpawnOffset.position,
+                RallyOffset = src.RallyOffset.position
             });
         }
     }
 }
-
 
 public struct ProductionData : IComponentData
 {
@@ -41,6 +40,12 @@ public struct ProductionData : IComponentData
     public float TimeRemaining;
 
     public int QueueCount;
+    public int MaxQueue;
 
     public float3 SpawnOffset;
+    public float3 RallyOffset;
+}
+
+public struct UnitTag : IComponentData
+{
 }

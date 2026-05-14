@@ -1,23 +1,31 @@
-using Unity.Collections;
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 
-public partial class ConstructionSystem : SystemBase
+[BurstCompile]
+public partial struct ConstructionSystem : ISystem
 {
-    protected override void OnUpdate()
+    [BurstCompile]
+    public void OnUpdate(ref SystemState state)
     {
         float dt = SystemAPI.Time.DeltaTime;
 
-        EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+        var ecb = SystemAPI
+            .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+            .CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (con, revealHeight, entity) in
-                 SystemAPI.Query<RefRW<ConstructionData>, RefRW<RevealHeightProperty>>()
+                 SystemAPI.Query<
+                         RefRW<ConstructionData>,
+                         RefRW<RevealHeightProperty>>()
                      .WithAll<UnderConstructionTag>()
                      .WithEntityAccess())
         {
             con.ValueRW.Elapsed += dt;
 
-            float progress = math.saturate(con.ValueRO.Elapsed / con.ValueRO.TotalTime);
+            float progress = math.saturate(
+                con.ValueRO.Elapsed / con.ValueRO.TotalTime
+            );
 
             revealHeight.ValueRW.Value = math.lerp(
                 con.ValueRO.StartRevealHeight,
@@ -31,8 +39,5 @@ public partial class ConstructionSystem : SystemBase
                 ecb.RemoveComponent<ConstructionData>(entity);
             }
         }
-
-        ecb.Playback(EntityManager);
-        ecb.Dispose();
     }
 }
