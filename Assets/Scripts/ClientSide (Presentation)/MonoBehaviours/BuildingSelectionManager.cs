@@ -1,5 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class BuildingSelectionManager : MonoBehaviour
 {
@@ -24,22 +25,67 @@ public class BuildingSelectionManager : MonoBehaviour
         if (!Input.GetMouseButtonDown(0))
             return;
 
+        Debug.Log("BuildingSelectionManager received left click");
+
+        // Nếu click lên UI thì không select / deselect building
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("Click blocked by UI");
+            return;
+        }
+
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
-        if (!Physics.Raycast(ray, out RaycastHit hit, 500f))
+        int buildingMask = LayerMask.GetMask("Building");
+
+        // Chỉ raycast vào BuildingBlocker, không raycast lung tung vào Ground
+        if (!Physics.Raycast(ray, out RaycastHit hit, 500f, buildingMask))
+        {
+            Debug.Log("No building hit, clear selection");
+            ClearSelection();
             return;
+        }
+
+        Debug.Log("Hit object: " + hit.collider.name);
 
         BuildingBlocker blocker =
             hit.collider.GetComponent<BuildingBlocker>();
 
         if (blocker == null)
+        {
+            Debug.Log("Hit Building layer but no BuildingBlocker component");
+            ClearSelection();
             return;
+        }
+
+        if (blocker.BuildingEntity == Entity.Null)
+        {
+            Debug.Log("BuildingBlocker has Entity.Null");
+            ClearSelection();
+            return;
+        }
+
+        if (!entityManager.Exists(blocker.BuildingEntity))
+        {
+            Debug.Log("Building entity does not exist anymore");
+            ClearSelection();
+            return;
+        }
 
         SelectedBuilding = blocker.BuildingEntity;
 
         Debug.Log("Selected building: " + SelectedBuilding);
 
-        BuildingUI.Instance.Refresh();
+        if (BuildingUI.Instance != null)
+            BuildingUI.Instance.Refresh();
+    }
+
+    public void ClearSelection()
+    {
+        SelectedBuilding = Entity.Null;
+
+        if (BuildingUI.Instance != null)
+            BuildingUI.Instance.Refresh();
     }
 
     public bool HasSelectedProductionBuilding()
@@ -83,8 +129,15 @@ public class BuildingSelectionManager : MonoBehaviour
             Debug.Log("Production queue full.");
             return;
         }
+
         EntityQuery query =
-    entityManager.CreateEntityQuery(typeof(PlayerResourceData));
+            entityManager.CreateEntityQuery(typeof(PlayerResourceData));
+
+        if (query.IsEmpty)
+        {
+            Debug.LogWarning("PlayerResourceData not found.");
+            return;
+        }
 
         Entity resEntity = query.GetSingletonEntity();
 
@@ -102,6 +155,7 @@ public class BuildingSelectionManager : MonoBehaviour
         res.Food -= prod.UnitFoodCost;
 
         entityManager.SetComponentData(resEntity, res);
+
         prod.QueueCount++;
 
         if (prod.TimeRemaining <= 0f)
@@ -113,6 +167,7 @@ public class BuildingSelectionManager : MonoBehaviour
 
         Debug.Log("Queued unit. Queue = " + prod.QueueCount);
 
-        BuildingUI.Instance.Refresh();
+        if (BuildingUI.Instance != null)
+            BuildingUI.Instance.Refresh();
     }
 }
