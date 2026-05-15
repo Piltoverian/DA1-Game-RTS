@@ -16,7 +16,7 @@ public partial struct WorkerGatherSystem : ISystem
 
         if (!SystemAPI.TryGetSingletonEntity<PlayerResourceData>(out Entity resourceEntity))
         {
-            Debug.LogError("[WorkerGather] Kh├┤ng t├¼m thß║Ñy PlayerResourceData singleton");
+            Debug.LogError("[WorkerGather] Không tìm thấy PlayerResourceData singleton");
             return;
         }
 
@@ -38,14 +38,6 @@ public partial struct WorkerGatherSystem : ISystem
 
             float3 workerPos = workerTransform.ValueRO.Position;
 
-            //Debug.Log(
-            //    $"[WorkerGather] Worker={workerEntity} State={gather.ValueRO.State} Pos={workerPos} " +
-            //    $"TargetNode={gather.ValueRO.TargetNode} TargetDepot={gather.ValueRO.TargetDepot}"
-            //);
-
-            // =========================
-            // FIND RESOURCE NODE
-            // =========================
             bool needFindNode =
                 gather.ValueRO.TargetNode == Entity.Null ||
                 !nodeLookup.HasComponent(gather.ValueRO.TargetNode) ||
@@ -55,46 +47,50 @@ public partial struct WorkerGatherSystem : ISystem
             {
                 if (gather.ValueRO.TargetNode == Entity.Null)
                 {
-                    Debug.LogWarning("[WorkerGather] Worker ch╞░a ─æ╞░ß╗úc g├ín mß╗Å. H├úy select worker rß╗ôi right click v├áo ResourceNode.");
+                    Debug.LogWarning(
+                        "[WorkerGather] Worker chưa được gán mỏ. Hãy select worker rồi right click vào ResourceNode."
+                    );
                     continue;
                 }
 
                 if (!nodeLookup.HasComponent(gather.ValueRO.TargetNode))
                 {
-                    Debug.LogWarning($"[WorkerGather] TargetNode {gather.ValueRO.TargetNode} kh├┤ng c├│ ResourceNodeData");
+                    Debug.LogWarning(
+                        $"[WorkerGather] TargetNode {gather.ValueRO.TargetNode} không có ResourceNodeData"
+                    );
+
                     gather.ValueRW.TargetNode = Entity.Null;
                     continue;
                 }
 
                 if (nodeLookup[gather.ValueRO.TargetNode].Amount <= 0)
                 {
-                    Debug.LogWarning("[WorkerGather] Mß╗Å ─æ├ú hß║┐t t├ái nguy├¬n.");
+                    Debug.LogWarning("[WorkerGather] Mỏ đã hết tài nguyên.");
                     gather.ValueRW.TargetNode = Entity.Null;
                     continue;
                 }
             }
 
-            // =========================
-            // FIND DEPOT
-            // =========================
             bool needFindDepot =
                 gather.ValueRO.TargetDepot == Entity.Null ||
                 !transformLookup.HasComponent(gather.ValueRO.TargetDepot);
 
             if (needFindDepot)
             {
-                Debug.Log("[WorkerGather] Cß║ºn t├¼m ResourceDepot...");
+                Debug.Log("[WorkerGather] Cần tìm ResourceDepot...");
 
                 gather.ValueRW.TargetDepot =
                     FindNearestDepot(workerPos, ref state);
 
                 if (gather.ValueRW.TargetDepot == Entity.Null)
                 {
-                    Debug.LogWarning("[WorkerGather] KH├öNG t├¼m thß║Ñy ResourceDepot n├áo");
+                    Debug.LogWarning("[WorkerGather] KHÔNG tìm thấy ResourceDepot nào");
                     continue;
                 }
 
-                Debug.Log($"[WorkerGather] T├¼m thß║Ñy ResourceDepot: {gather.ValueRW.TargetDepot}");
+                Debug.Log(
+                    $"[WorkerGather] Tìm thấy ResourceDepot: {gather.ValueRW.TargetDepot}"
+                );
             }
 
             Entity nodeEntity = gather.ValueRO.TargetNode;
@@ -102,13 +98,17 @@ public partial struct WorkerGatherSystem : ISystem
 
             if (!transformLookup.HasComponent(nodeEntity))
             {
-                Debug.LogError($"[WorkerGather] ResourceNode {nodeEntity} kh├┤ng c├│ LocalTransform");
+                Debug.LogError(
+                    $"[WorkerGather] ResourceNode {nodeEntity} không có LocalTransform"
+                );
                 continue;
             }
 
             if (!transformLookup.HasComponent(depotEntity))
             {
-                Debug.LogError($"[WorkerGather] Depot {depotEntity} kh├┤ng c├│ LocalTransform");
+                Debug.LogError(
+                    $"[WorkerGather] Depot {depotEntity} không có LocalTransform"
+                );
                 continue;
             }
 
@@ -126,15 +126,24 @@ public partial struct WorkerGatherSystem : ISystem
                         bool moveEnabled =
                             SystemAPI.IsComponentEnabled<MoveOverride>(workerEntity);
 
-                        Debug.Log($"[WorkerGather] MoveOverride enabled = {moveEnabled}");
+                        Debug.Log(
+                            $"[WorkerGather] MoveOverride enabled = {moveEnabled}"
+                        );
 
                         if (!moveEnabled)
                         {
                             Debug.Log($"[WorkerGather] MoveTo Node {nodePos}");
-                            MoveTo(ecb, workerEntity, nodePos, gather.ValueRO.StopDistanceSq);
+
+                            MoveTo(
+                                ecb,
+                                workerEntity,
+                                nodePos,
+                                gather.ValueRO.StopDistanceSq
+                            );
                         }
 
-                        float distSq = math.distancesq(workerPos, nodePos);
+                        float distSq =
+                            math.distancesq(workerPos, nodePos);
 
                         Debug.Log(
                             $"[WorkerGather] DistanceSq to node = {distSq}, StopDistanceSq = {gather.ValueRO.StopDistanceSq}"
@@ -142,11 +151,20 @@ public partial struct WorkerGatherSystem : ISystem
 
                         if (distSq <= gather.ValueRO.StopDistanceSq)
                         {
-                            Debug.Log("[WorkerGather] ─É├ú tß╗¢i mß╗Å ΓåÆ chuyß╗ân sang Gathering");
+                            Debug.Log(
+                                "[WorkerGather] Đã tới mỏ → chuyển sang Gathering"
+                            );
 
-                            ecb.SetComponentEnabled<MoveOverride>(workerEntity, false);
-                            gather.ValueRW.State = WorkerGatherState.Gathering;
-                            gather.ValueRW.GatherTimer = gather.ValueRO.GatherTime;
+                            ecb.SetComponentEnabled<MoveOverride>(
+                                workerEntity,
+                                false
+                            );
+
+                            gather.ValueRW.State =
+                                WorkerGatherState.Gathering;
+
+                            gather.ValueRW.GatherTimer =
+                                gather.ValueRO.GatherTime;
                         }
 
                         break;
@@ -154,16 +172,23 @@ public partial struct WorkerGatherSystem : ISystem
 
                 case WorkerGatherState.Gathering:
                     {
-                        Debug.Log($"[WorkerGather] State = Gathering Timer={gather.ValueRO.GatherTimer}");
+                        Debug.Log(
+                            $"[WorkerGather] State = Gathering Timer={gather.ValueRO.GatherTimer}"
+                        );
 
                         gather.ValueRW.GatherTimer -= dt;
 
                         if (gather.ValueRO.GatherTimer > 0f)
                             break;
 
-                        ResourceNodeData node = nodeLookup[nodeEntity];
+                        ResourceNodeData node =
+                            nodeLookup[nodeEntity];
 
-                        int amount = math.min(gather.ValueRO.Capacity, node.Amount);
+                        int amount =
+                            math.min(
+                                gather.ValueRO.Capacity,
+                                node.Amount
+                            );
 
                         Debug.Log(
                             $"[WorkerGather] Gather done. Type={node.Type}, AmountTaken={amount}, NodeRemainBefore={node.Amount}"
@@ -174,9 +199,14 @@ public partial struct WorkerGatherSystem : ISystem
 
                         gather.ValueRW.CarryAmount = amount;
                         gather.ValueRW.CurrentResourceType = node.Type;
-                        gather.ValueRW.State = WorkerGatherState.ReturningDepot;
 
-                        ecb.SetComponentEnabled<MoveOverride>(workerEntity, false);
+                        gather.ValueRW.State =
+                            WorkerGatherState.ReturningDepot;
+
+                        ecb.SetComponentEnabled<MoveOverride>(
+                            workerEntity,
+                            false
+                        );
 
                         break;
                     }
@@ -188,15 +218,24 @@ public partial struct WorkerGatherSystem : ISystem
                         bool moveEnabled =
                             SystemAPI.IsComponentEnabled<MoveOverride>(workerEntity);
 
-                        Debug.Log($"[WorkerGather] MoveOverride enabled = {moveEnabled}");
+                        Debug.Log(
+                            $"[WorkerGather] MoveOverride enabled = {moveEnabled}"
+                        );
 
                         if (!moveEnabled)
                         {
                             Debug.Log($"[WorkerGather] MoveTo Depot {depotPos}");
-                            MoveTo(ecb, workerEntity, depotPos, gather.ValueRO.StopDistanceSq);
+
+                            MoveTo(
+                                ecb,
+                                workerEntity,
+                                depotPos,
+                                gather.ValueRO.StopDistanceSq
+                            );
                         }
 
-                        float distSq = math.distancesq(workerPos, depotPos);
+                        float distSq =
+                            math.distancesq(workerPos, depotPos);
 
                         Debug.Log(
                             $"[WorkerGather] DistanceSq to depot = {distSq}, StopDistanceSq = {gather.ValueRO.StopDistanceSq}"
@@ -205,10 +244,13 @@ public partial struct WorkerGatherSystem : ISystem
                         if (distSq <= gather.ValueRO.StopDistanceSq)
                         {
                             Debug.Log(
-                                $"[WorkerGather] ─É├ú vß╗ü depot ΓåÆ cß╗Öng {gather.ValueRO.CarryAmount} {gather.ValueRO.CurrentResourceType}"
+                                $"[WorkerGather] Đã về depot → cộng {gather.ValueRO.CarryAmount} {gather.ValueRO.CurrentResourceType}"
                             );
 
-                            ecb.SetComponentEnabled<MoveOverride>(workerEntity, false);
+                            ecb.SetComponentEnabled<MoveOverride>(
+                                workerEntity,
+                                false
+                            );
 
                             AddResource(
                                 ref playerResource.ValueRW,
@@ -217,7 +259,9 @@ public partial struct WorkerGatherSystem : ISystem
                             );
 
                             gather.ValueRW.CarryAmount = 0;
-                            gather.ValueRW.State = WorkerGatherState.GoingToNode;
+
+                            gather.ValueRW.State =
+                                WorkerGatherState.GoingToNode;
                         }
 
                         break;
@@ -227,7 +271,9 @@ public partial struct WorkerGatherSystem : ISystem
 
         if (workerCount == 0)
         {
-            Debug.LogWarning("[WorkerGather] Kh├┤ng c├│ worker n├áo match query WorkerTag + WorkerGatherData");
+            Debug.LogWarning(
+                "[WorkerGather] Không có worker nào match query WorkerTag + WorkerGatherData"
+            );
         }
     }
 
@@ -237,7 +283,9 @@ public partial struct WorkerGatherSystem : ISystem
         float3 target,
         float stopDistanceSq)
     {
-        Debug.Log($"[WorkerGather] Set MoveOverride target={target}");
+        Debug.Log(
+            $"[WorkerGather] Set MoveOverride target={target}"
+        );
 
         ecb.SetComponent(entity, new MoveOverride
         {
@@ -269,14 +317,15 @@ public partial struct WorkerGatherSystem : ISystem
                 break;
         }
 
-        Debug.Log($"[WorkerGather] PlayerResource = Gold:{res.Gold}, Wood:{res.Wood}, Food:{res.Food}");
+        Debug.Log(
+            $"[WorkerGather] PlayerResource = Gold:{res.Gold}, Wood:{res.Wood}, Food:{res.Food}"
+        );
     }
 
     private Entity FindNearestResourceNode(
-    float3 workerPos,
-    ref SystemState state)
+        float3 workerPos,
+        ref SystemState state)
     {
-
         Debug.Log("[WorkerGather] FindNearestResourceNode START");
 
         Entity nearest = Entity.Null;
@@ -284,7 +333,9 @@ public partial struct WorkerGatherSystem : ISystem
         int count = 0;
 
         foreach (var (node, transform, entity) in
-                 SystemAPI.Query<RefRO<ResourceNodeData>, RefRO<LocalTransform>>()
+                 SystemAPI.Query<
+                         RefRO<ResourceNodeData>,
+                         RefRO<LocalTransform>>()
                      .WithEntityAccess())
         {
             count++;
@@ -295,14 +346,22 @@ public partial struct WorkerGatherSystem : ISystem
 
             if (node.ValueRO.Amount <= 0)
             {
-                Debug.Log("[WorkerGather] Skip node v├¼ Amount <= 0");
+                Debug.Log(
+                    "[WorkerGather] Skip node vì Amount <= 0"
+                );
+
                 continue;
             }
 
             float distSq =
-                math.distancesq(workerPos, transform.ValueRO.Position);
+                math.distancesq(
+                    workerPos,
+                    transform.ValueRO.Position
+                );
 
-            Debug.Log($"[WorkerGather] Node distSq = {distSq}");
+            Debug.Log(
+                $"[WorkerGather] Node distSq = {distSq}"
+            );
 
             if (distSq < bestDistSq)
             {
@@ -319,8 +378,8 @@ public partial struct WorkerGatherSystem : ISystem
     }
 
     private Entity FindNearestDepot(
-    float3 workerPos,
-    ref SystemState state)
+        float3 workerPos,
+        ref SystemState state)
     {
         Debug.Log("[WorkerGather] FindNearestDepot START");
 
@@ -341,9 +400,14 @@ public partial struct WorkerGatherSystem : ISystem
             );
 
             float distSq =
-                math.distancesq(workerPos, transform.ValueRO.Position);
+                math.distancesq(
+                    workerPos,
+                    transform.ValueRO.Position
+                );
 
-            Debug.Log($"[WorkerGather] Depot distSq = {distSq}");
+            Debug.Log(
+                $"[WorkerGather] Depot distSq = {distSq}"
+            );
 
             if (distSq < bestDistSq)
             {

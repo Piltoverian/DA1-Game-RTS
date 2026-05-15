@@ -130,7 +130,7 @@ MonoBehaviour:
   WoodCost: 50
   ConstructionTime: 1
   StartRevealHeight: 0
-  EndRevealHeight: 15
+  EndRevealHeight: 20
   FootprintSizeX: 24.73
   FootprintSizeZ: 11.37
   BlockerHeight: 14.51
