@@ -14,7 +14,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3120659631628476173, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: playerID
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_Name
@@ -75,21 +75,22 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 3651251647398371339, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
     - {fileID: 8938032757841855522, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
-    - {fileID: 8872956124483862666, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
     - {fileID: 4998375966112270383, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+    - {fileID: 1886302293370438287, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+    - {fileID: 7877267614454000441, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 3429979855340597389}
+      addedObject: {fileID: -4636542291449033065}
   m_SourcePrefab: {fileID: 100100000, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
 --- !u!1 &5992325127040136266 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
   m_PrefabInstance: {fileID: 9068298729043767166}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &3429979855340597389
+--- !u!114 &-4636542291449033065
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -98,6 +99,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 5992325127040136266}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8cf1896f791f974468614a404e9b3802, type: 3}
+  m_Script: {fileID: 11500000, guid: bd29dcd7addeddc4597d2b09fdf64054, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAuthoring
+  m_EditorClassIdentifier: Assembly-CSharp::WorkerAuthoring
+  Capacity: 10
+  GatherTime: 1
+  StopDistance: 2

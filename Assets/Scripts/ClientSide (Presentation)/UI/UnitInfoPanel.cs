@@ -22,7 +22,7 @@ public class UnitInfoPanel : MonoBehaviour
         InfoPanel healthpanel = Instantiate(InfoPanelPrefab, transform);
         InfoIconMapping infoIconMapping = Resources.Load<InfoIconMapping>("InfoIconMapping");
         healthpanel.SetInfoIcon(infoIconMapping.GetIconForStat(StatInfo.MaxHealth));
-        healthpanel.SetInfoValue(entityManager.GetComponentData<Unit>(firstUnit).maxHealth);
+        healthpanel.SetInfoValue(entityManager.GetComponentData<Health>(firstUnit).maxHealthAmount);
     }
 
     public void ClearInfo()

@@ -8,6 +8,7 @@ public class ShootAttackAuthoring : MonoBehaviour
     public float damage;
     public float attackDistance;
     public Transform bulletSpawnPos;
+    public GameObject bulletPrefab;
 
     public class Baker : Baker<ShootAttackAuthoring>
     {
@@ -19,7 +20,8 @@ public class ShootAttackAuthoring : MonoBehaviour
                 bulletSpawnPos = authoring.bulletSpawnPos.localPosition,
                 timerMax = authoring.timerMax,
                 damage = authoring.damage,
-                attackDistance = authoring.attackDistance
+                attackDistance = authoring.attackDistance,
+                bulletPrefab = GetEntity(authoring.bulletPrefab, TransformUsageFlags.Dynamic)
             });
         }
     }
@@ -31,4 +33,5 @@ public struct ShootAttack : IComponentData
     public float damage;
     public float attackDistance;
     public float3 bulletSpawnPos;
+    public Entity bulletPrefab;
 }
