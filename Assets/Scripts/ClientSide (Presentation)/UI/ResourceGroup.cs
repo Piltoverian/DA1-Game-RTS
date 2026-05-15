@@ -34,14 +34,19 @@ public class ResourceGroup : MonoBehaviour
         {
             resources[i] = new ResourcePair(resources[i].Type,  resources[i].Amount + Time.deltaTime);
         }
-        ScriptableObject scriptableObject = EventBus.GetInstance().GetChannel("ResourceChangeChannel");
-        if (scriptableObject == null)
+        EventBus eventBus = Resources.Load<EventBus>("EventBus");
+
+        if (eventBus == null)
         {
-            Debug.LogError("ResourceChangeChannel not found in EventBus");
+            Debug.LogError("EventBus not found");
             return;
         }
-        ResourceChangeEvent resourceChangeEvent = new ResourceChangeEvent();
-        resourceChangeEvent.value = resources;
-        (scriptableObject as ResourceChangeChannel).RaiseEvent(resourceChangeEvent);
+        ResourceChangeChannel channel = eventBus.GetChannel("ResourceChangeChannel") as ResourceChangeChannel;
+        if (channel == null)
+        {
+            Debug.LogError("ResourceChangeChannel not found");
+            return;
+        }
+        channel.RaiseEvent(new ResourceChangeEvent { value = resources });
     }
 }
