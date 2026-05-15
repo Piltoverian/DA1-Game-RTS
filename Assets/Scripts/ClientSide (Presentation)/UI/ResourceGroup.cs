@@ -1,14 +1,15 @@
-using Mono.Cecil;
-using NUnit.Framework;
 using System.Collections.Generic;
-using Unity.Entities;
-using Unity.VisualScripting;
 using UnityEngine;
 
+/// <summary>
+/// UI component nhận ResourceChangeEvent từ EventBus.
+/// Không truy cập ECS trực tiếp — event được phát từ PlayerContextSyncSystem (ECS side).
+/// Kết nối qua ResourceChangeListener component trên cùng GameObject.
+/// </summary>
 public class ResourceGroup : MonoBehaviour
 {
     public GameObject resourceInfoPrefab;
-    public List<ResourcePair> resources;
+
     public void OnResourceChange(ResourceChangeEvent eventData)
     {
         ClearInfo();
@@ -27,26 +28,5 @@ public class ResourceGroup : MonoBehaviour
                 Destroy(child.gameObject);
         }
     }
-
-    private void FixedUpdate()
-    {
-        for(int i = 0; i < resources.Count; i++)
-        {
-            resources[i] = new ResourcePair(resources[i].Type,  resources[i].Amount + Time.deltaTime);
-        }
-        EventBus eventBus = Resources.Load<EventBus>("EventBus");
-
-        if (eventBus == null)
-        {
-            Debug.LogError("EventBus not found");
-            return;
-        }
-        ResourceChangeChannel channel = eventBus.GetChannel("ResourceChangeChannel") as ResourceChangeChannel;
-        if (channel == null)
-        {
-            Debug.LogError("ResourceChangeChannel not found");
-            return;
-        }
-        channel.RaiseEvent(new ResourceChangeEvent { value = resources });
-    }
 }
+
