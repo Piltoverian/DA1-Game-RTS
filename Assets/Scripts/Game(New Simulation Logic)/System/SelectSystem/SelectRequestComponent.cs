@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 
 public enum SelectionMode
 {
@@ -20,4 +21,6 @@ public struct SelectionRequest : IComponentData
     public float3 v2;
     public float3 v3;
     public float3 v4;
+
+    public Unity.Physics.RaycastInput rayInput;
 }

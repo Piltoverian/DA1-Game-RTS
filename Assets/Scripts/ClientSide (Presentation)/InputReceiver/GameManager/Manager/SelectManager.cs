@@ -7,6 +7,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 public class SelectManager : MonoBehaviour, IFixedUpdateModule
 {
@@ -35,6 +36,11 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         Vector2 MousePos = Mouse.current.position.ReadValue();
         if (GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.leftButton))
         {
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            {
+                Debug.Log("Click blocked by UI");
+                return;
+            }
             SingleSelecting(MousePos, em);
             return;
         }
@@ -81,7 +87,8 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
                 v1 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MinPoint,cam),
                 v2 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MaxPoint, cam),
                 v3 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MinPoint.x, selectingRect.MaxPoint.y), cam),
-                v4 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MaxPoint.x, selectingRect.MinPoint.y), cam)
+                v4 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MaxPoint.x, selectingRect.MinPoint.y), cam),
+                rayInput = PhysicConvertHelper.GetRayCastInput(currentMousePos, cam, uint.MaxValue)//uint.MaxValue
             });
         }
 
@@ -175,7 +182,7 @@ public struct StartEndRect
 }
 public static class PhysicConvertHelper
 {
-    public static RaycastInput GetRayCastInput(Vector2 screenPos,Camera cam)
+    public static RaycastInput GetRayCastInput(Vector2 screenPos,Camera cam, uint layerMaskFilter)
     {
         UnityEngine.Ray ray = cam.ScreenPointToRay(screenPos);
         float3 start = ray.origin;
@@ -187,7 +194,7 @@ public static class PhysicConvertHelper
             Filter = new CollisionFilter
             {
                 BelongsTo = uint.MaxValue,
-                CollidesWith = PhysicsLayersDefine.Ground
+                CollidesWith = layerMaskFilter
             }
         };
 
@@ -196,7 +203,7 @@ public static class PhysicConvertHelper
 
     public static float3 ConvertScreenToWorldPos(Vector2 screenPos,Camera cam)
     {
-        RaycastInput input = GetRayCastInput(screenPos,cam);
+        RaycastInput input = GetRayCastInput(screenPos,cam,PhysicsLayersDefine.Ground);
         var world = World.DefaultGameObjectInjectionWorld;
         var entityManager = world.EntityManager;
 
@@ -207,5 +214,20 @@ public static class PhysicConvertHelper
             return hit.Position;
         }
         return default;
+    }
+}
+
+public static class SelectHelper
+{
+    public static Entity GetFirstSelectedEntity()
+    {
+        var world = World.DefaultGameObjectInjectionWorld;
+        var entityManager = world.EntityManager;
+        var query = entityManager.CreateEntityQuery(typeof(Selected)).ToEntityArray(Unity.Collections.Allocator.Temp);
+        if (query.Length > 0)
+        {
+            return query[0];
+        }
+        return Entity.Null;
     }
 }

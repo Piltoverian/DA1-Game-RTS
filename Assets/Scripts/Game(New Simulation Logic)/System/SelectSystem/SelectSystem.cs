@@ -5,6 +5,7 @@ using Unity;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
@@ -154,53 +155,24 @@ partial struct SelectSystem : ISystem
         {
             ecb.SetComponentEnabled<Selected>(entity, false);
         }
-        var grid = SystemAPI.GetSingleton<GridComponent>();
-        var bucketContainer = SystemAPI.GetSingletonRW<SelectableBucketContainer>();
+        var rayInput = request.rayInput;
+        Unity.Physics.RaycastHit raycastResults = new Unity.Physics.RaycastHit();
 
-        var bucket = bucketContainer.ValueRW.Bucket;
-        var selectableLookup = state.GetComponentLookup<Selectable>(true);
-        var selectedLookup = state.GetComponentLookup<Selected>(false);
-        var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
-        var singleselectableLookup = state.GetComponentLookup<SingleSelectableEntity>(true);
-        var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
-        int2 targetToGrid = GridHelper.WorldToGrid(request.targetpos, grid);
-        int maxRow = targetToGrid.y + 1;
-        int minRow = targetToGrid.y - 1;
-        int maxcolumn= targetToGrid.x + 1;
-        int mincolumn = targetToGrid.x - 1;
-        for (int i=minRow; i<=maxRow; i++)
+        var physicsWorld = state.EntityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton))
+                                         .GetSingleton<PhysicsWorldSingleton>();
+
+        physicsWorld.CastRay(rayInput, out raycastResults);
+        if (raycastResults.Entity != Entity.Null)
         {
-            for(int j=mincolumn;j<=maxcolumn;j++)
+            if (state.EntityManager.HasComponent<Selectable>(raycastResults.Entity))
             {
-                int cellindex = GridHelper.GetNodeIndex(new int2(j, i), grid);
-                if (bucket.TryGetFirstValue(cellindex, out Entity unit, out var it))
+                var selectable = state.EntityManager.GetComponentData<Selectable>(raycastResults.Entity);
+                if (selectable.playerID == request.playerId)
                 {
-                    do
-                    {
-                        if ((!dragSelectableLookup.HasComponent(unit))&&(!singleselectableLookup.HasComponent(unit)))
-                            continue;
-
-                        if (!selectableLookup.HasComponent(unit))
-                            continue;
-                        float3 pos = transformLookup[unit].Position;
-                        if(math.distancesq(pos,request.targetpos)<=0.5f)
-                        {
-                            if(selectedLookup.HasComponent(unit))
-                            {
-                                if(selectableLookup[unit].playerID!=request.playerId)
-                                    continue;
-
-                                if (state.EntityManager.IsComponentEnabled<Selected>(unit))
-                                    continue;
-                                else
-                                    ecb.SetComponentEnabled<Selected>(unit, true);
-                            }
-                        }
-                        
-
-                    } while (bucket.TryGetNextValue(out unit, ref it));
+                    ecb.SetComponentEnabled<Selected>(raycastResults.Entity, true);
                 }
             }
+
         }
     }
 

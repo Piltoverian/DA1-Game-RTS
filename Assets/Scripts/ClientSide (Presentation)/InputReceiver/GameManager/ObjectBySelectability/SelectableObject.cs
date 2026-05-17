@@ -4,7 +4,7 @@ public class SelectableObject : MonoBehaviour
 {
     public GameObject visualGameObject;
     public float showScale = 1.5f;
-    protected int playerID;
+    [SerializeField] protected int playerID;
     private void OnValidate()
     { 
         if(gameObject.GetComponent<UnitAuthoring>()==null)
