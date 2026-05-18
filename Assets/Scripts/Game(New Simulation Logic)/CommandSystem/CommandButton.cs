@@ -10,13 +10,12 @@ public class CommandButton : MonoBehaviour
         switch (commandData.Type)
         {
             case CommandType.Move:
-                // Handle move command
                 break;
             case CommandType.Progression:
                 // Handle progression command
                 var world = World.DefaultGameObjectInjectionWorld;
                 var entityManager = world.EntityManager;
-                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, targetEntity: SelectHelper.GetFirstSelectedEntity(), commandData: commandData);
+                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, sourceEntity: SelectHelper.GetFirstSelectedEntity(), commandData: commandData);
                 break;
             case CommandType.Build:
                 // Handle build command
