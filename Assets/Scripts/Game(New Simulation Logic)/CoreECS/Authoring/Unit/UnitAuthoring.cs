@@ -13,7 +13,7 @@ class UnitAuthoring : MonoBehaviour
             AddComponent(entity, new Unit
             {
                 playerID = authoring.playerID
-            })    ;
+            });
         }
     }
 }

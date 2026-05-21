@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using static ProductionAuthoring;
 
 [BurstCompile]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -16,11 +17,12 @@ public partial struct ProductionSystem : ISystem
             .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
             .CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (prod, buildingTransform) in
+        foreach (var (prod, buildingTransform,entity) in
                  SystemAPI.Query<RefRW<ProductionData>, RefRO<LocalTransform>>()
-                     .WithNone<UnderConstructionTag>())
+                     .WithNone<UnderConstructionTag>().WithEntityAccess())
         {
-            if (prod.ValueRO.QueueCount <= 0)
+            var queuebuffer= state.EntityManager.GetBuffer<ProductionQueueElement>(entity);
+            if (queuebuffer.IsEmpty)
                 continue;
 
             if (prod.ValueRO.TimeRemaining <= 0f)
@@ -33,7 +35,12 @@ public partial struct ProductionSystem : ISystem
             if (prod.ValueRO.TimeRemaining > 0f)
                 continue;
 
-            Entity unit = ecb.Instantiate(prod.ValueRO.UnitPrefab);
+            if (queuebuffer[0].UnitPrefab == Entity.Null)
+            {
+                UnityEngine.Debug.LogError("UnitPrefab is NULL");
+                continue;
+            }
+            Entity unit = ecb.Instantiate(queuebuffer[0].UnitPrefab);
 
             float3 buildingPos = buildingTransform.ValueRO.Position;
 
@@ -61,10 +68,10 @@ public partial struct ProductionSystem : ISystem
 
             ecb.SetComponentEnabled<MoveOverride>(unit, true);
 
-            prod.ValueRW.QueueCount--;
+            queuebuffer.RemoveAt(0);
 
             prod.ValueRW.TimeRemaining =
-                prod.ValueRO.QueueCount > 0
+               queuebuffer.IsEmpty
                     ? prod.ValueRO.ProductionTime
                     : 0f;
         }

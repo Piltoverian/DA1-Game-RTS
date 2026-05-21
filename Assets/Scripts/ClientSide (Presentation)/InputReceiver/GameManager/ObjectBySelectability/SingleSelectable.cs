@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 public class SingleSelectable : SelectableObject
-{
+{ 
     public class Baker : Baker<SingleSelectable>
     {
         public override void Bake(SingleSelectable authoring)

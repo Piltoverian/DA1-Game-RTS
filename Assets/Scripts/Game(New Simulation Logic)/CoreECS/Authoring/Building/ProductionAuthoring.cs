@@ -1,10 +1,11 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
-using Unity.Transforms; 
+using Unity.Transforms;
+using NUnit.Framework;
+using System.Collections.Generic;
 public class ProductionAuthoring : MonoBehaviour
 {
-    public GameObject UnitPrefab;
 
     public float ProductionTime = 5f;
     public int MaxQueue = 5;
@@ -16,6 +17,8 @@ public class ProductionAuthoring : MonoBehaviour
     public int UnitGoldCost = 50;
     public int UnitFoodCost = 0;
 
+    [Header("Production")]
+    public List<GameObject> UnitPrefabs;
     class Baker : Baker<ProductionAuthoring>
     {
         public override void Bake(ProductionAuthoring src)
@@ -24,28 +27,30 @@ public class ProductionAuthoring : MonoBehaviour
 
             AddComponent(e, new ProductionData
             {
-                UnitPrefab = GetEntity(src.UnitPrefab, TransformUsageFlags.Dynamic),
                 ProductionTime = src.ProductionTime,
                 TimeRemaining = 0f,
-                QueueCount = 0,
                 MaxQueue = src.MaxQueue,
                 SpawnOffset = src.SpawnOffset.position,
                 RallyOffset = src.RallyOffset.position,
                 UnitGoldCost = src.UnitGoldCost,
-                                UnitFoodCost = src.UnitFoodCost
+                UnitFoodCost = src.UnitFoodCost
             });
+
+            DynamicBuffer<ProductionElement> productionBuffer = AddBuffer<ProductionElement>(e);
+            foreach (GameObject prefab in src.UnitPrefabs)
+            {
+                productionBuffer.Add(new ProductionElement { UnitPrefab = GetEntity(prefab, TransformUsageFlags.Dynamic) });
+            }
+
+            DynamicBuffer<ProductionQueueElement> productionQueueBuffer = AddBuffer<ProductionQueueElement>(e);
         }
     }
 }
 
 public struct ProductionData : IComponentData
 {
-    public Entity UnitPrefab;
-
     public float ProductionTime;
     public float TimeRemaining;
-
-    public int QueueCount;
     public int MaxQueue;
 
     public float3 SpawnOffset;
@@ -57,4 +62,14 @@ public struct ProductionData : IComponentData
 
 public struct UnitTag : IComponentData
 {
+}
+
+public struct ProductionElement : IBufferElementData
+{
+    public Entity UnitPrefab;
+}
+
+public struct ProductionQueueElement : IBufferElementData
+{
+    public Entity UnitPrefab;
 }
