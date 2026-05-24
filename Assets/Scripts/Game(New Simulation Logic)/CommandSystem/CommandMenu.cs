@@ -10,7 +10,10 @@ public class CommandMenu : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        var selectedEntity = SelectHelper.GetFirstSelectedEntity();
+        var selectedEntity = SelectHelper.GetFirstSelectedEntityByplayerID(GameManager.Instance.GetModule<SelectManager>().currentContext.playerId);
+        Debug.Log($"GM instance id = {GameManager.Instance.GetInstanceID()}");
+        Debug.Log($"SelectManager = {GameManager.Instance.GetModule<SelectManager>()}");
+        Debug.Log(GameManager.Instance.GetModule<SelectManager>().currentContext.playerId);
         if (selectedEntity != lastSelected)
         {
             lastSelected = selectedEntity;

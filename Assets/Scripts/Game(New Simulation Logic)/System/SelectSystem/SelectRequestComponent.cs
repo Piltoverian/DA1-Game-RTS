@@ -11,7 +11,7 @@ public enum SelectionMode
     Clear
 }
 
-public struct SelectionRequest : IComponentData
+public struct SelectionRequest : IBufferElementData
 {
     public SelectionMode mode;
     public int playerId;

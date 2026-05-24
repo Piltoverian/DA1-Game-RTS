@@ -39,6 +39,7 @@ public struct CommandData
 {
     public CommandType Type;
     public int indexInUnitCommandList;
+    
 }
 
 public struct CommandElement:IBufferElementData
@@ -73,7 +74,7 @@ public static class CommandDataHelper
             sourceEntity = sourceEntity,
             targetEntity = targetEntity,
             position = position,
-            gridRect = gridRect
+            gridRect = gridRect,
         });
     }
 

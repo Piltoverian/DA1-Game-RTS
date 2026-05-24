@@ -13,6 +13,7 @@ partial struct DOTSSelectManagerSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         Entity et= state.EntityManager.CreateSingleton<DOTSSelectManagerComponent>();
+        state.EntityManager.AddBuffer<SelectionRequest>(et);
     }
 
     [BurstCompile]

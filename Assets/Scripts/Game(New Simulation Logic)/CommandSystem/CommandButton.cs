@@ -15,10 +15,14 @@ public class CommandButton : MonoBehaviour
                 // Handle progression command
                 var world = World.DefaultGameObjectInjectionWorld;
                 var entityManager = world.EntityManager;
-                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, sourceEntity: SelectHelper.GetFirstSelectedEntity(), commandData: commandData);
+                var CurrentPlayerContext=GameManager.Instance.GetModule<SelectManager>().currentContext;
+                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, sourceEntity: SelectHelper.GetFirstSelectedEntityByplayerID(CurrentPlayerContext.playerId), commandData: commandData);
                 break;
             case CommandType.Build:
                 // Handle build command
+                break;
+            case CommandType.TargetTo:
+                // Handle target to command
                 break;
             default:
                 Debug.LogWarning("Unknown command type!");
