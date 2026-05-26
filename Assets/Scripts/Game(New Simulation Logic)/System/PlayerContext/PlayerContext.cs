@@ -34,6 +34,8 @@ public enum PlayerContextDataType
    CivilizationId,
    Resources,
    Age,
+   currentPopulation,
+   maxPopulation,
    All
 }
 
@@ -43,12 +45,15 @@ public struct PlayerContext:IComponentData
    public int PlayerId;
    public int CIVILIZATION_ID;
    public Age age;
-
+   public int currentPopulation;
+   public int maxPopulation;   
    public PlayerContext(int playerId, int civilizationId, Age age)
    {
       PlayerId = playerId;
       CIVILIZATION_ID = civilizationId;
       this.age = age;
+      currentPopulation = 0;
+      maxPopulation = 8;
    }
 }
 
@@ -110,19 +115,68 @@ public static class PlayerContextHelper
         switch (dataType)
         {
             case PlayerContextDataType.PlayerId:
-                playerContext.PlayerId = (int)value;
+                if (value is int newPlayerId)
+                {
+                    playerContext.PlayerId = (int)value;
+                }
+                else
+                {
+                    return FunctionResult.Failure; // Return false if value type is incorrect
+                }
                 break;
             case PlayerContextDataType.CivilizationId:
-                playerContext.CIVILIZATION_ID = (int)value;
+                if (value is int newCivilizationId)
+                {
+                    playerContext.CIVILIZATION_ID = (int)value;
+                }
+                else
+                {
+                    return FunctionResult.Failure; // Return false if value type is incorrect
+                }
                 break;
             case PlayerContextDataType.Age:
-                playerContext.age = (Age)value;
+                if (value is Age newAge)
+                {
+                    playerContext.age = (Age)value;
+                }
+                else
+                {
+                    return FunctionResult.Failure; // Return false if value type is incorrect
+                }
+                break;
+            case PlayerContextDataType.currentPopulation:
+                if (value is int currentPopulation)
+                {
+                    playerContext.currentPopulation = (int)value;
+                }
+                else
+                {
+                    return FunctionResult.Failure; // Return false if value type is incorrect
+                }
+                break;
+            case PlayerContextDataType.maxPopulation:
+                if (value is int maxPopulation)
+                {
+                    playerContext.maxPopulation = (int)value;
+                }
+                else
+                {
+                    return FunctionResult.Failure; // Return false if value type is incorrect
+                }   
                 break;
             case PlayerContextDataType.All:
-                PlayerContext newContext = (PlayerContext)value;
-                playerContext.PlayerId = newContext.PlayerId;
-                playerContext.CIVILIZATION_ID = newContext.CIVILIZATION_ID;
-                playerContext.age = newContext.age;
+                if (value is PlayerContext newContext)
+                {
+                    playerContext.PlayerId = newContext.PlayerId;
+                    playerContext.CIVILIZATION_ID = newContext.CIVILIZATION_ID;
+                    playerContext.age = newContext.age;
+                    playerContext.currentPopulation = newContext.currentPopulation;
+                    playerContext.maxPopulation = newContext.maxPopulation;
+                }
+                else
+                {
+                    return FunctionResult.Failure; // Return false if value type is incorrect
+                }
                 break;
             default:
                 return FunctionResult.Failure; // Return false for unsupported data types

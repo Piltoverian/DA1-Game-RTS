@@ -50,7 +50,7 @@ public class GameManager : MonoBehaviour
                 return (T)module;
             }
         }
-        Debug.Log($"Module of type {typeof(T)} not found.");
+        Debug.LogError($"Module of type {typeof(T)} not found.");
         return default;
     }
     private bool IsValidModuleList()

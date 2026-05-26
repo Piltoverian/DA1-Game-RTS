@@ -26,24 +26,29 @@ partial struct SelectSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         var ecb = new EntityCommandBuffer(Allocator.Temp);
-
-        foreach (var (request, entity) in
-                 SystemAPI.Query<RefRO<SelectionRequest>>().WithEntityAccess())
+        var selectManager = SystemAPI.GetSingletonBuffer<SelectionRequest>();
+        foreach (var request in selectManager)
         {
-            switch (request.ValueRO.mode)
+            switch (request.mode)
             {
                 case SelectionMode.Click:
-                    HandleClick(request.ValueRO, ref state, ref ecb);
+                    HandleClick(request, ref state, ref ecb);
                     break;
-
                 case SelectionMode.Drag:
-                    HandleDrag(request.ValueRO, ref state, ref ecb);
+                    HandleDrag(request, ref state, ref ecb);
+                    break;
+                case SelectionMode.Add:
+                    // TODO
+                    break;
+                case SelectionMode.Remove:
+                    // TODO
+                    break;
+                case SelectionMode.Clear:
+                    // TODO
                     break;
             }
-
-            ecb.RemoveComponent<SelectionRequest>(entity);
         }
-
+        selectManager.Clear();
         ecb.Playback(state.EntityManager);
         ecb.Dispose();
     }

@@ -44,7 +44,12 @@ public class CommandButton : MonoBehaviour
 
                     break;
                 }
-
+                // Handle progression command
+                var world = World.DefaultGameObjectInjectionWorld;
+                var entityManager = world.EntityManager;
+                var CurrentPlayerContext=GameManager.Instance.GetModule<SelectManager>().currentContext;
+                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, sourceEntity: SelectHelper.GetFirstSelectedEntityByplayerID(CurrentPlayerContext.playerId), commandData: commandData);
+                break;
             case CommandType.Build:
                 {
                     if (sourceEntity == Entity.Null)
@@ -64,8 +69,8 @@ public class CommandButton : MonoBehaviour
                 }
 
             case CommandType.TargetTo:
+                // Handle target to command
                 break;
-
             default:
                 Debug.LogWarning("Unknown command type.");
                 break;

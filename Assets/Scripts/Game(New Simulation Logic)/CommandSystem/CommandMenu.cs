@@ -14,23 +14,21 @@ public class CommandMenu : MonoBehaviour
 
     private void Update()
     {
-        Entity selectedEntity = SelectHelper.GetFirstSelectedEntity();
-
-        if (selectedEntity == lastSelected)
-            return;
-
-        lastSelected = selectedEntity;
 
         ClearButtons();
 
-        if (selectedEntity == Entity.Null)
-            return;
 
         var world = World.DefaultGameObjectInjectionWorld;
 
         if (world == null)
         {
-            Debug.LogError("DefaultGameObjectInjectionWorld is null.");
+            var selectedEntity = SelectHelper.GetFirstSelectedEntityByplayerID(GameManager.Instance.GetModule<SelectManager>().currentContext.playerId);
+            Debug.Log($"GM instance id = {GameManager.Instance.GetInstanceID()}");
+            Debug.Log($"SelectManager = {GameManager.Instance.GetModule<SelectManager>()}");
+            Debug.Log(GameManager.Instance.GetModule<SelectManager>().currentContext.playerId);
+            if (selectedEntity != lastSelected)
+            {
+                Debug.LogError("DefaultGameObjectInjectionWorld is null.");
             return;
         }
 

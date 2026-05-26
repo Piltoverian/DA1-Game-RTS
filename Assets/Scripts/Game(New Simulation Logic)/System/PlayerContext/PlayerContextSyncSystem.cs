@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using Unity.Entities;
 using UnityEngine;
 
@@ -25,20 +26,20 @@ public partial struct PlayerContextSyncSystem : ISystem
         Entity contextEntity = SystemAPI.GetSingletonEntity<PlayerContext>();
         var buffer = SystemAPI.GetBuffer<ResourcePair>(contextEntity);
 
-        bool changed = false;
-
-        changed |= SyncResource(ref buffer, ResourceType.Gold, res.Gold);
-        changed |= SyncResource(ref buffer, ResourceType.Wood, res.Wood);
-        changed |= SyncResource(ref buffer, ResourceType.Food, res.Food);
-
-        if (!changed) return;
-
         EventBus eventBus = Resources.Load<EventBus>("EventBus");
         if (eventBus == null) return;
+        bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
+        if (IsResourceChanged(buffer, res)) flowcontrol=RaiseResourceChangeEvent(buffer, eventBus);
+        if (!flowcontrol) return;
 
+        
+    }
+
+    private static bool RaiseResourceChangeEvent(DynamicBuffer<ResourcePair> buffer, EventBus eventBus)
+    {
         ResourceChangeChannel channel =
             eventBus.GetChannel("ResourceChangeChannel") as ResourceChangeChannel;
-        if (channel == null) return;
+        if (channel == null) return false;
 
         var resources = new List<ResourcePair>();
         for (int i = 0; i < buffer.Length; i++)
@@ -47,13 +48,9 @@ public partial struct PlayerContextSyncSystem : ISystem
         }
 
         channel.RaiseEvent(new ResourceChangeEvent { value = resources });
+        return true;
     }
 
-    /// <summary>
-    /// So sánh giá trị resource trong PlayerContext buffer với giá trị mới từ PlayerResourceData.
-    /// Nếu khác → cập nhật buffer và return true.
-    /// Nếu chưa có entry cho type → thêm mới.
-    /// </summary>
     private static bool SyncResource(
         ref DynamicBuffer<ResourcePair> buffer,
         ResourceType type,
@@ -73,5 +70,17 @@ public partial struct PlayerContextSyncSystem : ISystem
 
         buffer.Add(new ResourcePair(type, newAmount));
         return true;
+    }
+    
+
+    private static bool IsResourceChanged(
+        DynamicBuffer<ResourcePair> buffer,
+        PlayerResourceData res)
+    {
+        bool changed = false;
+        changed |= SyncResource(ref buffer, ResourceType.Gold, res.Gold);
+        changed |= SyncResource(ref buffer, ResourceType.Wood, res.Wood);
+        changed |= SyncResource(ref buffer, ResourceType.Food, res.Food);
+        return changed;
     }
 }
