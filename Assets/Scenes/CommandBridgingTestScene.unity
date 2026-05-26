@@ -454,6 +454,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CommandMenu
   ButtonPrefab: {fileID: 8661876455923768033, guid: 828cfd3e76b7f1c4ab277adf5058491a, type: 3}
+  buildingPlacementDatabase: {fileID: 11400000, guid: 5a98b62091ad4cf43a50ed388a1f428b, type: 2}
 --- !u!1 &780222346
 GameObject:
   m_ObjectHideFlags: 0
@@ -901,11 +902,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0762a5eabb40ba34b923508e2c6ede4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacer
-  barracksGhost: {fileID: 7625297489629590005, guid: fcbe1b23fa1709041a1fd0a767e044ed, type: 3}
-  towerGhost: {fileID: 7625297489629590005, guid: fcbe1b23fa1709041a1fd0a767e044ed, type: 3}
-  resourceDepotGhost: {fileID: 7625297489629590005, guid: fcbe1b23fa1709041a1fd0a767e044ed, type: 3}
+  placementDatabase: {fileID: 11400000, guid: 5a98b62091ad4cf43a50ed388a1f428b, type: 2}
+  validGhostMaterial: {fileID: 2100000, guid: b4768b00b7fc05e4f90c0703efa494e2, type: 2}
+  invalidGhostMaterial: {fileID: 2100000, guid: 633ef79ccc92a8b43af6bf3ccbf12f1d, type: 2}
   gridSize: 1
   defaultHalfExtents: {x: 3, y: 2, z: 3}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  placementBlockMask:
+    serializedVersion: 2
+    m_Bits: 1280
+  placementCheckPadding: 0.05
+  logPlacementBlocking: 0
 --- !u!4 &2129248350
 Transform:
   m_ObjectHideFlags: 0

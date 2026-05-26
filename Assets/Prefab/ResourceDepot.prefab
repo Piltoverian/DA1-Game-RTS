@@ -10,9 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 5004000457613146172}
   - component: {fileID: 8478659271043453840}
-  - component: {fileID: 1149001008076323305}
-  m_Layer: 9
-  m_Name: TowerGhost 2
+  - component: {fileID: 1382016280144667554}
+  m_Layer: 8
+  m_Name: ResourceDepot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -31,7 +31,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
-  - {fileID: 3404749229754925176}
+  - {fileID: 1481970735052683083}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &8478659271043453840
@@ -53,9 +53,9 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1149001008076323305
+  m_Size: {x: 26.01741, y: 14.491978, z: 12.650681}
+  m_Center: {x: 2.2812252, y: 6.745988, z: -0.05116272}
+--- !u!114 &1382016280144667554
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -64,11 +64,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 7625297489629590005}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2105a2ecbd9b5814589e2426dca1da6e, type: 3}
+  m_Script: {fileID: 11500000, guid: ee27e6338f587b141a7ff150ce88707e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ApplyGhostMaterial
-  ghostMaterial: {fileID: 2100000, guid: b4768b00b7fc05e4f90c0703efa494e2, type: 2}
---- !u!1001 &2939337765481785235
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
+  BuildingType: 2
+  GoldCost: 100
+  WoodCost: 50
+  ConstructionTime: 1
+  StartRevealHeight: 0
+  EndRevealHeight: 20
+  FootprintSizeX: 24.73
+  FootprintSizeZ: 11.37
+  BlockerHeight: 14.51
+--- !u!1001 &1376902972682506400
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -78,15 +86,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 110cd8b382147b04ea6f66a63bfda102, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.024320602
+      value: 1.4622097
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 110cd8b382147b04ea6f66a63bfda102, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.0404799
+      value: 7.0051994
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 110cd8b382147b04ea6f66a63bfda102, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.5
+      value: -0.05115509
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 110cd8b382147b04ea6f66a63bfda102, type: 3}
       propertyPath: m_LocalRotation.w
@@ -125,8 +133,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 110cd8b382147b04ea6f66a63bfda102, type: 3}
---- !u!4 &3404749229754925176 stripped
+--- !u!4 &1481970735052683083 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 110cd8b382147b04ea6f66a63bfda102, type: 3}
-  m_PrefabInstance: {fileID: 2939337765481785235}
+  m_PrefabInstance: {fileID: 1376902972682506400}
   m_PrefabAsset: {fileID: 0}

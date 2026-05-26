@@ -1,14 +1,20 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class BuildingPlacer : MonoBehaviour
 {
-    [Header("Ghost Prefabs")]
-    public GameObject barracksGhost;
-    public GameObject towerGhost;
-    public GameObject resourceDepotGhost;
+    public static BuildingPlacer Instance;
+
+    [Header("Placement Database")]
+    public BuildingPlacementDatabase placementDatabase;
+
+    [Header("Ghost Material")]
+    public Material validGhostMaterial;
+    public Material invalidGhostMaterial;
 
     [Header("Grid")]
     public float gridSize = 1f;
@@ -16,51 +22,79 @@ public class BuildingPlacer : MonoBehaviour
     [Header("Fallback Footprint")]
     public Vector3 defaultHalfExtents = new Vector3(3f, 2f, 3f);
 
+    [Header("Raycast")]
+    public LayerMask groundMask;
+
+    [Header("Placement Collision")]
+    public LayerMask placementBlockMask;
+    public float placementCheckPadding = 0.05f;
+    public bool logPlacementBlocking = false;
+
     private GameObject currentGhost;
+    private Renderer[] currentGhostRenderers;
+
     private bool isPlacing;
+    private bool isEntityManagerReady;
 
     private EntityManager entityManager;
 
+    private int selectedCommandIndex;
     private BuildingType selectedBuildingType;
     private Entity selectedBuildingPrefab;
-    private GameObject selectedGhostPrefab;
+    private GameObject selectedPreviewPrefab;
 
     private Vector3 currentSnappedPosition;
     private bool currentCanPlace;
 
-    void Start()
+    private bool hasAppliedGhostMaterial;
+    private bool lastGhostCanPlace;
+
+    private void Awake()
     {
-        entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        Instance = this;
+    }
 
-        EntityQuery query =
-            entityManager.CreateEntityQuery(typeof(BuildingPrefabData));
+    private void Start()
+    {
+        World world = World.DefaultGameObjectInjectionWorld;
 
-        if (query.IsEmpty)
+        if (world == null)
         {
-            Debug.LogError("Kh├┤ng t├¼m thß║Ñy BuildingPrefabData. Kiß╗âm tra Bootstrap trong SubScene.");
+            Debug.LogError("DefaultGameObjectInjectionWorld is null.");
             return;
         }
 
-        BuildingPrefabData prefabData =
-            query.GetSingleton<BuildingPrefabData>();
+        entityManager = world.EntityManager;
+        isEntityManagerReady = true;
 
-        // default building
-        selectedBuildingType = BuildingType.Barracks;
-        selectedBuildingPrefab = prefabData.BarracksPrefab;
-        selectedGhostPrefab = barracksGhost;
-    }
+        EntityQuery query = entityManager.CreateEntityQuery(typeof(BuildingPrefabData));
 
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+        if (query.IsEmpty)
         {
-            StartPlacing();
+            Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
+            return;
         }
 
+        if (groundMask.value == 0)
+        {
+            groundMask = LayerMask.GetMask("Ground");
+        }
+
+        if (placementBlockMask.value == 0)
+        {
+            placementBlockMask = LayerMask.GetMask("Building", "Obstacle");
+        }
+    }
+
+    private void Update()
+    {
         if (!isPlacing || currentGhost == null)
             return;
 
         UpdatePlacementPreview();
+
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
 
         if (Input.GetMouseButtonDown(0) && currentCanPlace)
         {
@@ -79,97 +113,235 @@ public class BuildingPlacer : MonoBehaviour
             CancelPlacement();
         }
     }
-    bool CanAffordBuilding(Entity prefab)
+
+    public void StartPlacementFromCommand(CommandData commandData, Entity sourceEntity)
     {
-        BuildingData building =
-            entityManager.GetComponentData<BuildingData>(prefab);
-
-        EntityQuery query =
-            entityManager.CreateEntityQuery(typeof(PlayerResourceData));
-
-        PlayerResourceData res =
-            query.GetSingleton<PlayerResourceData>();
-
-        return res.Gold >= building.GoldCost &&
-               res.Wood >= building.WoodCost;
-    }
-
-    void PayBuildingCost(Entity prefab)
-    {
-        BuildingData building =
-            entityManager.GetComponentData<BuildingData>(prefab);
-
-        EntityQuery query =
-            entityManager.CreateEntityQuery(typeof(PlayerResourceData));
-
-        Entity resEntity = query.GetSingletonEntity();
-
-        PlayerResourceData res =
-            entityManager.GetComponentData<PlayerResourceData>(resEntity);
-
-        res.Gold -= building.GoldCost;
-        res.Wood -= building.WoodCost;
-
-        entityManager.SetComponentData(resEntity, res);
-    }
-    public void SelectBuilding(BuildingType type)
-    {
-        selectedBuildingType = type;
-
-        BuildingPrefabData prefabData =
-            entityManager.CreateEntityQuery(typeof(BuildingPrefabData))
-                .GetSingleton<BuildingPrefabData>();
-
-        switch (type)
+        if (commandData.Type != CommandType.Build)
         {
-            case BuildingType.Barracks:
-                selectedBuildingPrefab = prefabData.BarracksPrefab;
-                selectedGhostPrefab = barracksGhost;
-                break;
+            Debug.LogWarning("Command is not Build.");
+            return;
+        }
 
-            case BuildingType.Tower:
-                selectedBuildingPrefab = prefabData.TowerPrefab;
-                selectedGhostPrefab = towerGhost;
-                break;
+        if (sourceEntity == Entity.Null)
+        {
+            Debug.LogWarning("Build command has null source entity.");
+            return;
+        }
 
-            case BuildingType.ResourceDepot:
-                selectedBuildingPrefab = prefabData.ResourceDepotPrefab;
-                selectedGhostPrefab = resourceDepotGhost;
-                break;
+        if (placementDatabase == null)
+        {
+            Debug.LogError("BuildingPlacementDatabase is null on BuildingPlacer.");
+            return;
+        }
+
+        BuildingPlacementDefinition definition =
+            placementDatabase.GetByCommandIndex(commandData.indexInUnitCommandList);
+
+        if (definition == null)
+        {
+            Debug.LogError("No BuildingPlacementDefinition for command index: " + commandData.indexInUnitCommandList);
+            return;
+        }
+
+        SelectBuilding(definition);
+    }
+
+    public void SelectBuilding(BuildingPlacementDefinition definition)
+    {
+        if (!isEntityManagerReady)
+        {
+            Debug.LogError("BuildingPlacer EntityManager is not ready.");
+            return;
+        }
+
+        if (definition == null)
+        {
+            Debug.LogError("BuildingPlacementDefinition is null.");
+            return;
+        }
+
+        if (definition.PreviewPrefab == null)
+        {
+            Debug.LogError("PreviewPrefab is null on " + definition.name);
+            return;
+        }
+
+        selectedCommandIndex = definition.CommandIndex;
+        selectedBuildingType = definition.BuildingType;
+        selectedBuildingPrefab = GetBuildingPrefabEntityByCommandIndex(selectedCommandIndex);
+        selectedPreviewPrefab = definition.PreviewPrefab;
+
+        if (selectedBuildingPrefab == Entity.Null)
+        {
+            Debug.LogError("Selected building ECS prefab is null. CommandIndex = " + selectedCommandIndex);
+            return;
         }
 
         StartPlacing();
     }
-    void UpdatePlacementPreview()
-    {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
-        if (!Physics.Raycast(ray, out RaycastHit hit, 500f, LayerMask.GetMask("Ground")))
+    public void SelectBuildingByType(BuildingType type)
+    {
+        if (placementDatabase == null)
+        {
+            Debug.LogError("BuildingPlacementDatabase is null.");
+            return;
+        }
+
+        BuildingPlacementDefinition definition = placementDatabase.GetByType(type);
+
+        if (definition == null)
+        {
+            Debug.LogError("No BuildingPlacementDefinition for type: " + type);
+            return;
+        }
+
+        SelectBuilding(definition);
+    }
+
+    public void SelectBarracks()
+    {
+        SelectBuildingByType(BuildingType.Barracks);
+    }
+
+    public void SelectTower()
+    {
+        SelectBuildingByType(BuildingType.Tower);
+    }
+
+    public void SelectResourceDepot()
+    {
+        SelectBuildingByType(BuildingType.ResourceDepot);
+    }
+
+    //private Entity GetBuildingPrefabEntity(BuildingType type)
+    //{
+    //    EntityQuery query = entityManager.CreateEntityQuery(typeof(BuildingPrefabData));
+
+    //    if (query.IsEmpty)
+    //        return Entity.Null;
+
+    //    BuildingPrefabData prefabData = query.GetSingleton<BuildingPrefabData>();
+
+    //    switch (type)
+    //    {
+    //        case BuildingType.Barracks:
+    //            return prefabData.BarracksPrefab;
+
+    //        case BuildingType.Tower:
+    //            return prefabData.TowerPrefab;
+
+    //        case BuildingType.ResourceDepot:
+    //            return prefabData.ResourceDepotPrefab;
+
+    //        default:
+    //            return Entity.Null;
+    //    }
+    //}
+    private Entity GetBuildingPrefabEntityByCommandIndex(int commandIndex)
+    {
+        EntityQuery query = entityManager.CreateEntityQuery(
+            typeof(BuildingPrefabCatalogTag),
+            typeof(BuildingPrefabCatalogElement)
+        );
+
+        if (query.IsEmpty)
+        {
+            Debug.LogError("BuildingPrefabCatalog not found. Add BuildingPrefabCatalogAuthoring to a SubScene.");
+            return Entity.Null;
+        }
+
+        Entity catalogEntity = query.GetSingletonEntity();
+
+        DynamicBuffer<BuildingPrefabCatalogElement> buffer =
+            entityManager.GetBuffer<BuildingPrefabCatalogElement>(catalogEntity);
+
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            if (buffer[i].CommandIndex == commandIndex)
+                return buffer[i].Prefab;
+        }
+
+        Debug.LogError("No ECS building prefab found for CommandIndex = " + commandIndex);
+        return Entity.Null;
+    }
+    private void StartPlacing()
+    {
+        if (selectedPreviewPrefab == null)
+        {
+            Debug.LogError("Selected preview prefab is null.");
+            return;
+        }
+
+        if (currentGhost != null)
+            Destroy(currentGhost);
+
+        currentGhost = Instantiate(selectedPreviewPrefab);
+        PrepareGhostObject(currentGhost);
+
+        hasAppliedGhostMaterial = false;
+        isPlacing = true;
+    }
+
+    private void PrepareGhostObject(GameObject ghost)
+    {
+        int ghostLayer = LayerMask.NameToLayer("Ghost");
+
+        if (ghostLayer >= 0)
+        {
+            SetLayerRecursively(ghost, ghostLayer);
+        }
+
+        Collider[] colliders = ghost.GetComponentsInChildren<Collider>(true);
+
+        foreach (Collider col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        currentGhostRenderers = ghost.GetComponentsInChildren<Renderer>(true);
+
+        Debug.Log("Ghost renderer count: " + currentGhostRenderers.Length);
+
+        foreach (Renderer renderer in currentGhostRenderers)
+        {
+            Debug.Log(
+                "Ghost renderer: " + renderer.name +
+                " | material count: " + renderer.sharedMaterials.Length
+            );
+        }
+
+        SetGhostMaterial(true, true);
+    }
+
+    private void UpdatePlacementPreview()
+    {
+        Camera cam = Camera.main;
+
+        if (cam == null)
+            return;
+
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+
+        if (!Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
             return;
 
         currentSnappedPosition = SnapToGrid(hit.point, gridSize);
+
         currentGhost.transform.position = currentSnappedPosition;
 
         Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
 
         currentCanPlace = CanPlace(currentSnappedPosition, halfExtents);
 
-        SetGhostColor(currentCanPlace ? Color.green : Color.red);
+        SetGhostMaterial(currentCanPlace);
     }
 
-    public void StartPlacing()
+    private Vector3 SnapToGrid(Vector3 pos, float grid)
     {
-        if (currentGhost != null)
-            Destroy(currentGhost);
+        if (grid <= 0f)
+            grid = 1f;
 
-        currentGhost = Instantiate(selectedGhostPrefab);
-        SetLayerRecursively(currentGhost, LayerMask.NameToLayer("Ghost"));
-
-        isPlacing = true;
-    }
-
-    Vector3 SnapToGrid(Vector3 pos, float grid)
-    {
         return new Vector3(
             Mathf.Round(pos.x / grid) * grid,
             0f,
@@ -177,8 +349,14 @@ public class BuildingPlacer : MonoBehaviour
         );
     }
 
-    Vector3 GetBuildingHalfExtents(Entity prefab)
+    private Vector3 GetBuildingHalfExtents(Entity prefab)
     {
+        if (!isEntityManagerReady)
+            return defaultHalfExtents;
+
+        if (prefab == Entity.Null)
+            return defaultHalfExtents;
+
         if (!entityManager.HasComponent<BuildingData>(prefab))
             return defaultHalfExtents;
 
@@ -191,78 +369,233 @@ public class BuildingPlacer : MonoBehaviour
         );
     }
 
-    bool CanPlace(Vector3 pos, Vector3 halfExtents)
+    private bool CanPlace(Vector3 pos, Vector3 halfExtents)
     {
-        Vector3 center = pos + Vector3.up * halfExtents.y;
+        if (HasPlacementCollision(pos, halfExtents))
+            return false;
+
+        EntityQuery gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
+
+        if (gridQuery.IsEmpty)
+            return false;
+
+        GridComponent grid = gridQuery.GetSingleton<GridComponent>();
+
+        float minX = pos.x - halfExtents.x + 0.01f;
+        float minZ = pos.z - halfExtents.z + 0.01f;
+        float maxX = pos.x + halfExtents.x - 0.01f;
+        float maxZ = pos.z + halfExtents.z - 0.01f;
+
+        int2 minGrid = GridHelper.WorldToGrid(new float3(minX, 0, minZ), grid);
+        int2 maxGrid = GridHelper.WorldToGrid(new float3(maxX, 0, maxZ), grid);
+
+        EntityQuery bucketQuery = entityManager.CreateEntityQuery(typeof(MovementAgentBucket));
+        bool hasUnitBucket = !bucketQuery.IsEmpty;
+        NativeParallelMultiHashMap<int, Entity> unitBucket = default;
+
+        if (hasUnitBucket)
+        {
+            unitBucket = bucketQuery.GetSingleton<MovementAgentBucket>().Bucket;
+        }
+
+        for (int x = minGrid.x; x <= maxGrid.x; x++)
+        {
+            for (int y = minGrid.y; y <= maxGrid.y; y++)
+            {
+                if (x < 0 || x >= grid.width || y < 0 || y >= grid.height)
+                    return false;
+
+                int gridIndex = GridHelper.GetNodeIndex(new int2(x, y), grid);
+
+                if (hasUnitBucket && unitBucket.ContainsKey(gridIndex))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool HasPlacementCollision(Vector3 pos, Vector3 halfExtents)
+    {
+        Vector3 boxCenter = pos + Vector3.up * halfExtents.y;
+
+        Vector3 checkHalfExtents = new Vector3(
+            Mathf.Max(0.01f, halfExtents.x - placementCheckPadding),
+            Mathf.Max(0.01f, halfExtents.y - placementCheckPadding),
+            Mathf.Max(0.01f, halfExtents.z - placementCheckPadding)
+        );
 
         Collider[] hits = Physics.OverlapBox(
-            center,
-            halfExtents,
+            boxCenter,
+            checkHalfExtents,
             Quaternion.identity,
-            LayerMask.GetMask("Building", "Unit"),
+            placementBlockMask,
             QueryTriggerInteraction.Collide
         );
 
-        return hits.Length == 0;
+        if (hits.Length > 0)
+        {
+            if (logPlacementBlocking)
+            {
+                Debug.Log("Cannot place. Blocked by: " + hits[0].name);
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
-    void PlaceBuilding(Vector3 pos)
+    private bool CanAffordBuilding(Entity prefab)
     {
-        Destroy(currentGhost);
-        currentGhost = null;
-        isPlacing = false;
+        if (prefab == Entity.Null)
+            return false;
 
-        Entity building = entityManager.Instantiate(selectedBuildingPrefab);
+        if (!entityManager.HasComponent<BuildingData>(prefab))
+            return false;
 
-        entityManager.SetComponentData(
-            building,
-            LocalTransform.FromPosition(new float3(pos.x, pos.y, pos.z))
-        );
+        EntityQuery query = entityManager.CreateEntityQuery(typeof(PlayerResourceData));
 
-        Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
+        if (query.IsEmpty)
+        {
+            Debug.LogWarning("PlayerResourceData not found.");
+            return false;
+        }
 
-        CreateBuildingBlocker(pos, halfExtents, building);
+        BuildingData building = entityManager.GetComponentData<BuildingData>(prefab);
+        PlayerResourceData res = query.GetSingleton<PlayerResourceData>();
+
+        return res.Gold >= building.GoldCost &&
+               res.Wood >= building.WoodCost;
     }
 
-    void CreateBuildingBlocker(Vector3 pos, Vector3 halfExtents, Entity buildingEntity)
+    private void PayBuildingCost(Entity prefab)
     {
-        GameObject blocker = new GameObject("BuildingBlocker");
+        BuildingData building = entityManager.GetComponentData<BuildingData>(prefab);
 
-        blocker.layer = LayerMask.NameToLayer("Building");
+        EntityQuery query = entityManager.CreateEntityQuery(typeof(PlayerResourceData));
 
-        blocker.transform.position =
-            pos + Vector3.up * halfExtents.y;
+        if (query.IsEmpty)
+            return;
 
-        BoxCollider col = blocker.AddComponent<BoxCollider>();
-        col.size = halfExtents * 2f;
-        col.isTrigger = false;
+        Entity resEntity = query.GetSingletonEntity();
 
-        BuildingBlocker buildingBlocker =
-            blocker.AddComponent<BuildingBlocker>();
+        PlayerResourceData res = entityManager.GetComponentData<PlayerResourceData>(resEntity);
 
-        buildingBlocker.BuildingEntity = buildingEntity;
+        res.Gold -= building.GoldCost;
+        res.Wood -= building.WoodCost;
+
+        entityManager.SetComponentData(resEntity, res);
     }
 
-    void CancelPlacement()
+    private void PlaceBuilding(Vector3 pos)
     {
         if (currentGhost != null)
             Destroy(currentGhost);
 
         currentGhost = null;
         isPlacing = false;
-    }
 
-    void SetGhostColor(Color color)
-    {
-        Renderer[] renderers = currentGhost.GetComponentsInChildren<Renderer>();
+        Entity building = entityManager.Instantiate(selectedBuildingPrefab);
 
-        foreach (Renderer r in renderers)
+        if (entityManager.HasComponent<LocalTransform>(building))
         {
-            r.material.color = color;
+            LocalTransform transform = entityManager.GetComponentData<LocalTransform>(building);
+            transform.Position = new float3(pos.x, pos.y, pos.z);
+            entityManager.SetComponentData(building, transform);
         }
+        else
+        {
+            entityManager.AddComponentData(
+                building,
+                LocalTransform.FromPosition(new float3(pos.x, pos.y, pos.z))
+            );
+        }
+
+        Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
+
+        CreateBuildingBlocker(pos, halfExtents, building);
     }
 
-    void SetLayerRecursively(GameObject obj, int layer)
+    private void CreateBuildingBlocker(Vector3 pos, Vector3 halfExtents, Entity buildingEntity)
+    {
+        GameObject blocker = new GameObject("BuildingBlocker");
+
+        int buildingLayer = LayerMask.NameToLayer("Building");
+
+        if (buildingLayer >= 0)
+        {
+            blocker.layer = buildingLayer;
+        }
+        else
+        {
+            Debug.LogWarning("Layer 'Building' does not exist.");
+        }
+
+        blocker.transform.position = pos + Vector3.up * halfExtents.y;
+
+        BoxCollider col = blocker.AddComponent<BoxCollider>();
+        col.size = halfExtents * 2f;
+        col.center = Vector3.zero;
+        col.isTrigger = false;
+
+        BuildingBlocker buildingBlocker = blocker.AddComponent<BuildingBlocker>();
+        buildingBlocker.BuildingEntity = buildingEntity;
+    }
+
+    private void CancelPlacement()
+    {
+        if (currentGhost != null)
+            Destroy(currentGhost);
+
+        currentGhost = null;
+        currentGhostRenderers = null;
+
+        isPlacing = false;
+        selectedBuildingPrefab = Entity.Null;
+        selectedPreviewPrefab = null;
+
+        hasAppliedGhostMaterial = false;
+    }
+
+    private void SetGhostMaterial(bool canPlace, bool force = false)
+    {
+        if (currentGhostRenderers == null)
+            return;
+
+        if (!force && hasAppliedGhostMaterial && lastGhostCanPlace == canPlace)
+            return;
+
+        Material targetMaterial = canPlace ? validGhostMaterial : invalidGhostMaterial;
+
+        if (targetMaterial == null)
+        {
+            Debug.LogWarning("Ghost material is null.");
+            return;
+        }
+
+        foreach (Renderer renderer in currentGhostRenderers)
+        {
+            if (renderer == null)
+                continue;
+
+            int materialCount = renderer.sharedMaterials.Length;
+
+            Material[] newMaterials = new Material[materialCount];
+
+            for (int i = 0; i < materialCount; i++)
+            {
+                newMaterials[i] = targetMaterial;
+            }
+
+            renderer.materials = newMaterials;
+        }
+
+        hasAppliedGhostMaterial = true;
+        lastGhostCanPlace = canPlace;
+    }
+
+    private void SetLayerRecursively(GameObject obj, int layer)
     {
         obj.layer = layer;
 
@@ -272,14 +605,17 @@ public class BuildingPlacer : MonoBehaviour
         }
     }
 
-    void OnDrawGizmos()
+    private void OnDrawGizmos()
     {
+        if (!Application.isPlaying)
+            return;
+
         if (!isPlacing || currentGhost == null)
             return;
 
         Vector3 halfExtents = defaultHalfExtents;
 
-        if (entityManager != default &&
+        if (isEntityManagerReady &&
             selectedBuildingPrefab != Entity.Null &&
             entityManager.HasComponent<BuildingData>(selectedBuildingPrefab))
         {
@@ -301,19 +637,5 @@ public class BuildingPlacer : MonoBehaviour
             currentSnappedPosition + Vector3.up * halfExtents.y,
             halfExtents * 2f
         );
-    }
-    public void SelectBarracks()
-    {
-        SelectBuilding(BuildingType.Barracks);
-    }
-
-    public void SelectTower()
-    {
-        SelectBuilding(BuildingType.Tower);
-    }
-
-    public void SelectResourceDepot()
-    {
-        SelectBuilding(BuildingType.ResourceDepot);
     }
 }

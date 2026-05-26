@@ -1,27 +1,73 @@
-using UnityEngine;
 using Unity.Entities;
+using UnityEngine;
 
 public class CommandButton : MonoBehaviour
 {
-    [SerializeField]private CommandData commandData;
+    [SerializeField] private CommandData commandData;
+
     public void OnClick()
     {
-        Debug.Log($"Command Button Clicked! Command Type: {commandData.Type}, Index in Unit Command List: {commandData.indexInUnitCommandList}");
+        Debug.Log(
+            $"Command Button Clicked! Type: {commandData.Type}, Index: {commandData.indexInUnitCommandList}"
+        );
+
+        Entity sourceEntity = SelectHelper.GetFirstSelectedEntity();
+
         switch (commandData.Type)
         {
             case CommandType.Move:
                 break;
+
             case CommandType.Progression:
-                // Handle progression command
-                var world = World.DefaultGameObjectInjectionWorld;
-                var entityManager = world.EntityManager;
-                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, sourceEntity: SelectHelper.GetFirstSelectedEntity(), commandData: commandData);
-                break;
+                {
+                    if (sourceEntity == Entity.Null)
+                    {
+                        Debug.LogWarning("No selected entity for Progression command.");
+                        return;
+                    }
+
+                    var world = World.DefaultGameObjectInjectionWorld;
+
+                    if (world == null)
+                    {
+                        Debug.LogError("DefaultGameObjectInjectionWorld is null.");
+                        return;
+                    }
+
+                    EntityManager entityManager = world.EntityManager;
+
+                    CommandDataHelper.AddCommandToQueue(
+                        entityManager: entityManager,
+                        sourceEntity: sourceEntity,
+                        commandData: commandData
+                    );
+
+                    break;
+                }
+
             case CommandType.Build:
-                // Handle build command
+                {
+                    if (sourceEntity == Entity.Null)
+                    {
+                        Debug.LogWarning("No selected entity for Build command.");
+                        return;
+                    }
+
+                    if (BuildingPlacer.Instance == null)
+                    {
+                        Debug.LogError("BuildingPlacer.Instance is null.");
+                        return;
+                    }
+
+                    BuildingPlacer.Instance.StartPlacementFromCommand(commandData, sourceEntity);
+                    break;
+                }
+
+            case CommandType.TargetTo:
                 break;
+
             default:
-                Debug.LogWarning("Unknown command type!");
+                Debug.LogWarning("Unknown command type.");
                 break;
         }
     }
