@@ -258,7 +258,7 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: 8de3ca81766892c47a372f888dd13d23, type: 3}
 --- !u!1 &745024908 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 7625297489629590005, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
+  m_CorrespondingSourceObject: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
   m_PrefabInstance: {fileID: 1836267482}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &745024909
@@ -801,6 +801,54 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -54.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 99.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7139992875957162329, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: playerID
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: m_Name
+      value: Barracks
+      objectReference: {fileID: 0}
     - target: {fileID: 2831147463277539539, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -817,62 +865,18 @@ PrefabInstance:
       propertyPath: 'UnitPrefabs.Array.data[1]'
       value: 
       objectReference: {fileID: 3382223461976398644, guid: d8f38416d36ac3345a6c7d5f1ca7f04b, type: 3}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -54.3
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 99.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5004000457613146172, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 7139992875957162329, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
       propertyPath: playerID
       value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7625297489629590005, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: m_Name
-      value: Barracks
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7625297489629590005, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
       insertIndex: -1
       addedObject: {fileID: 745024909}
-  m_SourcePrefab: {fileID: 100100000, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
 --- !u!1 &1940381674 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5992325127040136266, guid: 8de3ca81766892c47a372f888dd13d23, type: 3}

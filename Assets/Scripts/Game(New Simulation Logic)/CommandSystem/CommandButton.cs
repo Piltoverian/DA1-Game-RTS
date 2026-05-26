@@ -11,7 +11,8 @@ public class CommandButton : MonoBehaviour
             $"Command Button Clicked! Type: {commandData.Type}, Index: {commandData.indexInUnitCommandList}"
         );
 
-        Entity sourceEntity = SelectHelper.GetFirstSelectedEntity();
+        int playerId = GameManager.Instance.GetModule<SelectManager>().currentContext.playerId;
+        Entity sourceEntity = SelectHelper.GetFirstSelectedEntityByplayerID(playerId);
 
         switch (commandData.Type)
         {
@@ -27,15 +28,13 @@ public class CommandButton : MonoBehaviour
                     }
 
                     var world = World.DefaultGameObjectInjectionWorld;
-
                     if (world == null)
                     {
                         Debug.LogError("DefaultGameObjectInjectionWorld is null.");
                         return;
                     }
 
-                    EntityManager entityManager = world.EntityManager;
-
+                    var entityManager = world.EntityManager;
                     CommandDataHelper.AddCommandToQueue(
                         entityManager: entityManager,
                         sourceEntity: sourceEntity,
@@ -44,12 +43,6 @@ public class CommandButton : MonoBehaviour
 
                     break;
                 }
-                // Handle progression command
-                var world = World.DefaultGameObjectInjectionWorld;
-                var entityManager = world.EntityManager;
-                var CurrentPlayerContext=GameManager.Instance.GetModule<SelectManager>().currentContext;
-                CommandDataHelper.AddCommandToQueue(entityManager: entityManager, sourceEntity: SelectHelper.GetFirstSelectedEntityByplayerID(CurrentPlayerContext.playerId), commandData: commandData);
-                break;
             case CommandType.Build:
                 {
                     if (sourceEntity == Entity.Null)
