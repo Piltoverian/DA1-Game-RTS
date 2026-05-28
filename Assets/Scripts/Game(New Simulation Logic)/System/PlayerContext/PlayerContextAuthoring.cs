@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -37,12 +38,7 @@ public class PlayerContextAuthoring : MonoBehaviour
             {
                 buffer[i] = new ResourcePair(types[i], 0);
             }
-
-            var world = World.DefaultGameObjectInjectionWorld;
-            var entityManager = world.EntityManager;
-            var cachequery = entityManager.CreateEntityQuery(typeof(DynamicBuffer<PlayerContextCache>));
-            var cacheEntities = cachequery.GetSingletonBuffer<PlayerContextCache>();
-            cacheEntities.Add(new PlayerContextCache(playerContext));
+            AddComponent(entity, new PlayerContextCachePendingTag());
         }
     }
 }

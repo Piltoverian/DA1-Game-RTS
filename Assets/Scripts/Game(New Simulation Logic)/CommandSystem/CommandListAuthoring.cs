@@ -50,6 +50,7 @@ public struct CommandElement:IBufferElementData
 
 public struct CommandQueueElement : IBufferElementData
 {
+    public int PlayerId;
     public CommandData Command;
     public Entity sourceEntity;
     public Entity targetEntity;
@@ -63,13 +64,14 @@ public struct CommandQueueComponent : IComponentData
 
 public static class CommandDataHelper
 {
-    public static void AddCommandToQueue(EntityManager entityManager,Entity sourceEntity ,CommandData commandData, Entity targetEntity = default, Vector3 position = default, GridRect gridRect = default)
+    public static void AddCommandToQueue(EntityManager entityManager,int playerId,Entity sourceEntity ,CommandData commandData, Entity targetEntity = default, Vector3 position = default, GridRect gridRect = default)
     {
         var query=entityManager.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>());
         var commandQueueEntity = query.GetSingletonEntity();
         var commandBuffer = entityManager.GetBuffer<CommandQueueElement>(commandQueueEntity);
         commandBuffer.Add(new CommandQueueElement
         {
+            PlayerId = playerId,
             Command = commandData,
             sourceEntity = sourceEntity,
             targetEntity = targetEntity,

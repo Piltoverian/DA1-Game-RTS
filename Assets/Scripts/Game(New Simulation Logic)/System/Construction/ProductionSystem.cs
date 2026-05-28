@@ -41,6 +41,16 @@ public partial struct ProductionSystem : ISystem
                 continue;
             }
             Entity unit = ecb.Instantiate(queuebuffer[0].UnitPrefab);
+            if (state.EntityManager.HasComponent<Unit>(unit) == false)
+            {
+                UnityEngine.Debug.LogError("UnitPrefab does not have Unit component");
+                continue;
+            }
+
+            var unitComponent= state.EntityManager.GetComponentData<Unit>(unit);
+            PlayerContext playerContextEntity = new PlayerContext();
+            PlayerContextHelper.GetContextData(state.EntityManager, unitComponent.playerID, out playerContextEntity);
+            PlayerContextHelper.UpdatePlayerContext(state.EntityManager, playerContextEntity.PlayerId, PlayerContextDataType.currentPopulation, playerContextEntity.currentPopulation + 1);
 
             float3 buildingPos = buildingTransform.ValueRO.Position;
 

@@ -10,6 +10,9 @@ public enum PlayerContextUpdateType
    All
 }
 
+public struct PlayerContextCachePendingTag: IComponentData
+{}
+
 public struct PlayerContextCache : IBufferElementData
 {
     public int PlayerId;

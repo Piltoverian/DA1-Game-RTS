@@ -63,7 +63,9 @@ public class UnitController : MonoBehaviour
             }
 
             CommandDataHelper.AddCommandToQueue(
+
                 entityManager,
+                playerId,
                 worker,
                 new CommandData
                 {
@@ -149,6 +151,7 @@ public class UnitController : MonoBehaviour
 
             CommandDataHelper.AddCommandToQueue(
                 entityManager,
+                playerId,
                 entity,
                 new CommandData
                 {
