@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -40,18 +41,23 @@ public partial struct ProductionSystem : ISystem
                 UnityEngine.Debug.LogError("UnitPrefab is NULL");
                 continue;
             }
-            Entity unit = ecb.Instantiate(queuebuffer[0].UnitPrefab);
-            if (state.EntityManager.HasComponent<Unit>(unit) == false)
+
+            if (!state.EntityManager.HasComponent<Unit>(entity))
             {
-                UnityEngine.Debug.LogError("UnitPrefab does not have Unit component");
+                Debug.WriteLine("Building need to be a unit for know who is it owner");
+            }
+            var untiComponent = state.EntityManager.GetComponentData<Unit>(entity);
+            PlayerContext playerContextEntity = new PlayerContext();
+            PlayerContextHelper.GetContextData(state.EntityManager, untiComponent.playerID, out playerContextEntity);
+
+            if(playerContextEntity.currentPopulation >= playerContextEntity.maxPopulation)
+            {
+                UnityEngine.Debug.Log("Max population reached");
                 continue;
             }
-
-            var unitComponent= state.EntityManager.GetComponentData<Unit>(unit);
-            PlayerContext playerContextEntity = new PlayerContext();
-            PlayerContextHelper.GetContextData(state.EntityManager, unitComponent.playerID, out playerContextEntity);
+            Entity unit = ecb.Instantiate(queuebuffer[0].UnitPrefab);
             PlayerContextHelper.UpdatePlayerContext(state.EntityManager, playerContextEntity.PlayerId, PlayerContextDataType.currentPopulation, playerContextEntity.currentPopulation + 1);
-
+              
             float3 buildingPos = buildingTransform.ValueRO.Position;
 
             float3 spawnPos =
