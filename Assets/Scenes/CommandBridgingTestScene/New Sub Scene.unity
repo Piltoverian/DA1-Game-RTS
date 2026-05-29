@@ -296,7 +296,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
-  playerID: 1
+  playerID: 0
   unitName: 
 --- !u!114 &745024916
 MonoBehaviour:
@@ -778,7 +778,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d26d958b1fd706449b9cee43c64d187, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerContextAuthoring
-  playerId: 1
+  playerId: 0
   civilizationId: 0
   age: 0
 --- !u!4 &1559832646
@@ -883,7 +883,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7139992875957162329, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
       propertyPath: playerID
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
       propertyPath: m_Name

@@ -46,9 +46,9 @@ public partial struct ProductionSystem : ISystem
             {
                 Debug.WriteLine("Building need to be a unit for know who is it owner");
             }
-            var untiComponent = state.EntityManager.GetComponentData<Unit>(entity);
+            var untiComponentOfBuilding = state.EntityManager.GetComponentData<Unit>(entity);
             PlayerContext playerContextEntity = new PlayerContext();
-            PlayerContextHelper.GetContextData(state.EntityManager, untiComponent.playerID, out playerContextEntity);
+            PlayerContextHelper.GetContextData(state.EntityManager, untiComponentOfBuilding.playerID, out playerContextEntity);
 
             if(playerContextEntity.currentPopulation >= playerContextEntity.maxPopulation)
             {
@@ -65,6 +65,16 @@ public partial struct ProductionSystem : ISystem
 
             float3 rallyPos =
                 buildingPos + prod.ValueRO.RallyOffset;
+
+            var unitcomponent = state.EntityManager.GetComponentData<Unit>(queuebuffer[0].UnitPrefab);
+
+            ecb.SetComponent(unit, new Unit
+            {
+                playerID = untiComponentOfBuilding.playerID,
+                unitName = unitcomponent.unitName
+            });
+
+            ecb.SetComponent(unit,new Selectable { playerID = untiComponentOfBuilding.playerID });
 
             ecb.SetComponent(
                 unit,
