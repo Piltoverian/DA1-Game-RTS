@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -19,12 +20,12 @@ public class PlayerContextAuthoring : MonoBehaviour
         public override void Bake(PlayerContextAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.None);
-
-            AddComponent(entity, new PlayerContext(
+            var playerContext = new PlayerContext(
                 authoring.playerId,
                 authoring.civilizationId,
                 authoring.age
-            ));
+            );
+            AddComponent(entity, playerContext);
 
             // Tạo buffer ResourcePair với size = số lượng ResourceType
             var buffer = AddBuffer<ResourcePair>(entity);
@@ -37,6 +38,7 @@ public class PlayerContextAuthoring : MonoBehaviour
             {
                 buffer[i] = new ResourcePair(types[i], 0);
             }
+            AddComponent(entity, new PlayerContextCachePendingTag());
         }
     }
 }

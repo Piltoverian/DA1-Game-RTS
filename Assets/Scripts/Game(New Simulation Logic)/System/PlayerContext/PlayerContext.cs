@@ -10,6 +10,36 @@ public enum PlayerContextUpdateType
    All
 }
 
+public struct PlayerContextCachePendingTag: IComponentData
+{}
+
+public struct PlayerContextCache : IBufferElementData
+{
+    public int PlayerId;
+    public int CIVILIZATION_ID;
+    public Age age;
+    public int currentPopulation;
+    public int maxPopulation;
+
+    public PlayerContextCache(PlayerContext context)
+    {
+        PlayerId = context.PlayerId;
+        CIVILIZATION_ID = context.CIVILIZATION_ID;
+        this.age = context.age;
+        currentPopulation = context.currentPopulation;
+        maxPopulation = context.maxPopulation;
+    }
+
+    public void UpdateFromContext(PlayerContext context)
+    {
+        PlayerId = context.PlayerId;
+        CIVILIZATION_ID = context.CIVILIZATION_ID;
+        age = context.age;
+        currentPopulation = context.currentPopulation;
+        maxPopulation = context.maxPopulation;
+    }
+}
+
 public enum Age
 {
     Industrial,
@@ -46,7 +76,7 @@ public struct PlayerContext:IComponentData
    public int CIVILIZATION_ID;
    public Age age;
    public int currentPopulation;
-   public int maxPopulation;   
+   public int maxPopulation;
    public PlayerContext(int playerId, int civilizationId, Age age)
    {
       PlayerId = playerId;

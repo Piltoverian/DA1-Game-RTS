@@ -925,7 +925,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d26d958b1fd706449b9cee43c64d187, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerContextAuthoring
-  playerId: 1
+  playerId: 0
   civilizationId: 0
   age: 0
 --- !u!4 &1559832646

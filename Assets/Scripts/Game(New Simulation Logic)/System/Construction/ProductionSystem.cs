@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -55,12 +56,39 @@ public partial struct ProductionSystem : ISystem
             }
 
             Entity unit = ecb.Instantiate(unitPrefab);
+            if (!state.EntityManager.HasComponent<Unit>(entity))
+            {
+                Debug.WriteLine("Building need to be a unit for know who is it owner");
+            }
+            var untiComponentOfBuilding = state.EntityManager.GetComponentData<Unit>(entity);
+            PlayerContext playerContextEntity = new PlayerContext();
+            PlayerContextHelper.GetContextData(state.EntityManager, untiComponentOfBuilding.playerID, out playerContextEntity);
+
+            if(playerContextEntity.currentPopulation >= playerContextEntity.maxPopulation)
+            {
+                UnityEngine.Debug.Log("Max population reached");
+                continue;
+            }
+            Entity unit = ecb.Instantiate(queuebuffer[0].UnitPrefab);
+            PlayerContextHelper.UpdatePlayerContext(state.EntityManager, playerContextEntity.PlayerId, PlayerContextDataType.currentPopulation, playerContextEntity.currentPopulation + 1);
+              
+            float3 buildingPos = buildingTransform.ValueRO.Position;
 
             float3 spawnPos =
                 buildingTransform.ValueRO.TransformPoint(prod.ValueRO.SpawnOffset);
 
             float3 rallyPos =
                 buildingTransform.ValueRO.TransformPoint(prod.ValueRO.RallyOffset);
+
+            var unitcomponent = state.EntityManager.GetComponentData<Unit>(queuebuffer[0].UnitPrefab);
+
+            ecb.SetComponent(unit, new Unit
+            {
+                playerID = untiComponentOfBuilding.playerID,
+                unitName = unitcomponent.unitName
+            });
+
+            ecb.SetComponent(unit,new Selectable { playerID = untiComponentOfBuilding.playerID });
 
             ecb.SetComponent(
                 unit,

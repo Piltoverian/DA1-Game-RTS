@@ -1,9 +1,12 @@
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using static UnityEngine.Rendering.DebugUI;
 
 class UnitAuthoring : MonoBehaviour
 {
     public int playerID;
+    public string unitName;
     public class Baker : Baker<UnitAuthoring>
     {
         
@@ -13,6 +16,8 @@ class UnitAuthoring : MonoBehaviour
             AddComponent(entity, new Unit
             {
                 playerID = authoring.playerID
+                ,
+                unitName = new FixedString64Bytes(authoring.unitName)
             });
         }
     }
@@ -20,4 +25,7 @@ class UnitAuthoring : MonoBehaviour
 public struct Unit : IComponentData
 {
     public int playerID;
+    public FixedString64Bytes unitName;
+
+    public string GetValueNormalizedString() { return unitName.ToString().Normalize(); }
 }

@@ -70,6 +70,14 @@ public class BuildingPlacer : MonoBehaviour
         entityManager = world.EntityManager;
         isEntityManagerReady = true;
 
+        EntityQuery query = entityManager.CreateEntityQuery(typeof(BuildingPrefabData));
+
+        if (query.IsEmpty)
+        {
+            //Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
+            return;
+        }
+
         if (groundMask.value == 0)
             groundMask = LayerMask.GetMask("Ground");
 

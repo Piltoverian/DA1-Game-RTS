@@ -38,9 +38,6 @@ partial struct CommandQueue : ISystem
             case CommandType.Progression:
                 HandleProgression(ref state, command);
                 break;
-            case CommandType.Build:
-                HandleBuild(ref state, command);
-                break;
             case CommandType.TargetTo:
                 HandleTargetTo(ref state, command);
                 break;
@@ -124,16 +121,17 @@ partial struct CommandQueue : ISystem
             return;
         }
 
+        PlayerContext playerContext = new PlayerContext();
+        PlayerContextHelper.GetContextData(state.EntityManager, command.PlayerId, out playerContext);
+        if (playerContext.currentPopulation >= playerContext.maxPopulation)
+        {
+            return;
+        }
         TrainUnitHelper.TrainUnit(
             entityManager: state.EntityManager,
             buildingEntity: command.sourceEntity,
             indexInPrefabList: command.Command.indexInUnitCommandList
         );
-    }
-
-    private static void HandleBuild(ref SystemState state, CommandQueueElement command)
-    {
-        //Handle After building refactor
     }
 
     private static void HandleTargetTo(ref SystemState state, CommandQueueElement command)

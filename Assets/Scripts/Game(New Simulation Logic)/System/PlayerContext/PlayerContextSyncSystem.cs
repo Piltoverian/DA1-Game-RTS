@@ -10,29 +10,74 @@ using UnityEngine;
 /// PlayerContext đóng vai trò cache/bridge DTO giữa Simulation và Presentation.
 /// KHÔNG dùng BurstCompile vì cần truy cập managed object (EventBus, ScriptableObject).
 /// </summary>
+/// 
+[UpdateAfter(typeof(PlayerContextCacheInitSystem))]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 public partial struct PlayerContextSyncSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
     {
+        
         state.RequireForUpdate<PlayerResourceData>();
         state.RequireForUpdate<PlayerContext>();
     }
 
     public void OnUpdate(ref SystemState state)
     {
-        PlayerResourceData res = SystemAPI.GetSingleton<PlayerResourceData>();
+        foreach (var playerContextEntity in SystemAPI.Query<PlayerContext>())
+        {
 
-        Entity contextEntity = SystemAPI.GetSingletonEntity<PlayerContext>();
-        var buffer = SystemAPI.GetBuffer<ResourcePair>(contextEntity);
+            PlayerResourceData res = SystemAPI.GetSingleton<PlayerResourceData>();
 
-        EventBus eventBus = Resources.Load<EventBus>("EventBus");
-        if (eventBus == null) return;
-        bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
-        if (IsResourceChanged(buffer, res)) flowcontrol=RaiseResourceChangeEvent(buffer, eventBus);
-        if (!flowcontrol) return;
+            Entity contextEntity = SystemAPI.GetSingletonEntity<PlayerContext>();
+            var buffer = SystemAPI.GetBuffer<ResourcePair>(contextEntity);
 
-        
+            EventBus eventBus = Resources.Load<EventBus>("EventBus");
+            if (eventBus == null) return;
+            bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
+            if (IsResourceChanged(buffer, res)) flowcontrol = RaiseResourceChangeEvent(buffer, eventBus);
+            if (!flowcontrol) {
+                Debug.Log("Something went wrong.");
+                return;
+            }
+            var contextcache = SystemAPI.GetSingletonBuffer<PlayerContextCache>();
+            PlayerContextCache cache = default(PlayerContextCache);
+            bool found = false;
+            for (int i = 0; i < contextcache.Length; i++)
+            {
+                if (contextcache[i].PlayerId == playerContextEntity.PlayerId)
+                {
+                    cache = contextcache[i];
+                    found = true;
+                    break;
+
+                }
+            }
+            if (!found) { Debug.LogWarning("PlayerContextCache not found for player: " + playerContextEntity.PlayerId); }
+
+           
+
+            if (cache.age != playerContextEntity.age)
+            {
+                // Handle age change logic here
+
+            }
+
+            PopulationUpdatedEvent popevent=new PopulationUpdatedEvent();
+            bool changed = false;
+            if (cache.currentPopulation != playerContextEntity.currentPopulation|| cache.maxPopulation != playerContextEntity.maxPopulation)
+            {
+                popevent.CurrentPopulation = playerContextEntity.currentPopulation;
+                popevent.MaxPopulation = playerContextEntity.maxPopulation;
+                changed = true;
+            }
+
+            if (changed) {
+                var populationChangeChannel = eventBus.GetChannel("PopulationUpdatedEventChannel") as PopulationUpdatedEventChannel;
+                populationChangeChannel.RaiseEvent(popevent);
+            }
+            cache.UpdateFromContext(playerContextEntity);
+        }
     }
 
     private static bool RaiseResourceChangeEvent(DynamicBuffer<ResourcePair> buffer, EventBus eventBus)

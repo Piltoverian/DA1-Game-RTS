@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EventBus
   channels:
   - {fileID: 11400000, guid: 0669a6fd8bd33804182c058ff19cc96a, type: 2}
-  - {fileID: 11400000, guid: 34904171692e757468698a53c7df1693, type: 2}
+  - {fileID: 11400000, guid: db4086b6e25572446a095a6b87e2092d, type: 2}

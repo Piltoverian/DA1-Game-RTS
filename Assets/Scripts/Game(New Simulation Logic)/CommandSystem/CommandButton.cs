@@ -37,6 +37,7 @@ public class CommandButton : MonoBehaviour
                     var entityManager = world.EntityManager;
                     CommandDataHelper.AddCommandToQueue(
                         entityManager: entityManager,
+                        playerId: playerId,
                         sourceEntity: sourceEntity,
                         commandData: commandData
                     );

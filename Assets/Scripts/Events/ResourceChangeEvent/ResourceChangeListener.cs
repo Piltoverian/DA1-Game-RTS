@@ -8,5 +8,5 @@ public class ResourceChangeListener : EventListener<ResourceChangeChannel,Resour
 
 public class ResourceChangeEvent :IEvent
 {
-    public List<ResourcePair> value;
+    public List<ResourcePair> value=new List<ResourcePair>();
 }

@@ -95,6 +95,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
   playerID: 1
+  unitName: Soldier
 --- !u!114 &8938032757841855522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147,11 +148,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45ac3d5d547ca7649a60ae51e0ca56a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShootAttackAuthoring
-  timerMax: 2
-  damage: 20
   attackDistance: 15
-  bulletSpawnPos: {fileID: 6883013690578537400}
-  bulletPrefab: {fileID: 6642296049775915417, guid: 8fc10f27c78a1e34e94da99dbbd2de49, type: 3}
+  weapons: []
 --- !u!114 &-4530266368495814317
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -224,8 +222,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 1, y: 2.8904352, z: 1}
+  m_Center: {x: 0, y: 1.3773685, z: 0}
 --- !u!114 &-6723377787021495494
 MonoBehaviour:
   m_ObjectHideFlags: 0
