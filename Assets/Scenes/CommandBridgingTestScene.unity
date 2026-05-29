@@ -592,6 +592,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cfe483d464120494dbe6921971e83cf4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MouseWorldPosition
+--- !u!1 &1025397886 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1778458161332517092, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+  m_PrefabInstance: {fileID: 2800336150237463806}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1025397890
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025397886}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5fa4f152e42f284c902544186a939cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitImage
 --- !u!1 &1379852026
 GameObject:
   m_ObjectHideFlags: 0
@@ -1334,6 +1351,9 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1778458161332517092, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1025397890}
     - targetCorrespondingSourceObject: {fileID: 4744744510703532935, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
       insertIndex: -1
       addedObject: {fileID: 623103416}
