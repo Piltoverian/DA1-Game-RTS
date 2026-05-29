@@ -11,6 +11,9 @@ public enum BuildingType
 
 public class BuildingAuthoring : MonoBehaviour
 {
+    [Header("Owner")]
+    public int PlayerID = 1;
+
     [Header("Building Info")]
     public BuildingType BuildingType;
 
@@ -36,6 +39,7 @@ public class BuildingAuthoring : MonoBehaviour
 
             AddComponent(e, new BuildingData
             {
+                PlayerID = src.PlayerID,
                 Type = src.BuildingType,
                 ConstructionTime = src.ConstructionTime,
                 FootprintSizeX = src.FootprintSizeX,
@@ -57,10 +61,12 @@ public class BuildingAuthoring : MonoBehaviour
             {
                 Value = src.StartRevealHeight
             });
+
             if (src.BuildingType == BuildingType.ResourceDepot)
             {
                 AddComponent<ResourceDepotTag>(e);
             }
+
             AddComponent<UnderConstructionTag>(e);
         }
     }
@@ -68,6 +74,8 @@ public class BuildingAuthoring : MonoBehaviour
 
 public struct BuildingData : IComponentData
 {
+    public int PlayerID;
+
     public BuildingType Type;
     public float ConstructionTime;
 
@@ -96,6 +104,7 @@ public struct RevealHeightProperty : IComponentData
 public struct UnderConstructionTag : IComponentData
 {
 }
+
 public struct ResourceDepotTag : IComponentData
 {
 }

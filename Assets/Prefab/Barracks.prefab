@@ -116,7 +116,7 @@ Transform:
   m_GameObject: {fileID: 3957583091194783738}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 19.05, y: 0, z: -0}
+  m_LocalPosition: {x: 34.3, y: 0, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -237,7 +237,7 @@ Transform:
   m_GameObject: {fileID: 7396106610390501506}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 13.52, y: 0, z: -0}
+  m_LocalPosition: {x: 19.2, y: 0, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -256,6 +256,7 @@ GameObject:
   - component: {fileID: 1382016280144667554}
   - component: {fileID: 4195059132925248615}
   - component: {fileID: 7139992875957162329}
+  - component: {fileID: 1873594476172332808}
   m_Layer: 8
   m_Name: Barracks
   m_TagString: Untagged
@@ -315,6 +316,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee27e6338f587b141a7ff150ce88707e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
+  PlayerID: 1
   BuildingType: 0
   GoldCost: 100
   WoodCost: 50
@@ -358,3 +360,18 @@ MonoBehaviour:
   visualGameObject: {fileID: 1006565745583947050}
   showScale: 1.5
   playerID: 0
+--- !u!114 &1873594476172332808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97244c9565e59494db83018977959239, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CommandListAuthoring
+  CommandList:
+  - Type: 3
+    indexInUnitCommandList: 0

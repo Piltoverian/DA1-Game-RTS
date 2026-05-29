@@ -152,7 +152,7 @@ MonoBehaviour:
     bulletSpawnPos: {fileID: 6883013690578537400}
     timerMax: 2
     damage: 10
-    bulletSpeed: 10
+    bulletSpeed: 5
 --- !u!114 &-4530266368495814317
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -205,6 +205,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DragSelectableObject
   visualGameObject: {fileID: 8882249327758270422}
   showScale: 1
+  playerID: 1
 --- !u!65 &2203044320395782523
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -263,7 +264,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b0b6deb153286348a7154a362a0dc44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveOverrideAuthoring
-  stopDistance: 5
 --- !u!114 &4590490605873051776
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -7,56 +7,100 @@ using Unity.Transforms;
 [BurstCompile]
 public partial struct MoveOverrideSystem : ISystem
 {
+    [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
+        state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        var grid = SystemAPI.GetSingleton<GridComponent>();
+        GridComponent grid = SystemAPI.GetSingleton<GridComponent>();
 
-        var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-        var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer ecb = SystemAPI
+            .GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+            .CreateCommandBuffer(state.WorldUnmanaged);
 
-        var entityManager = state.EntityManager;
+        EntityManager entityManager = state.EntityManager;
 
-        foreach (var (localTransform, moveOverride, moveOverrideEnabled, entity)
-            in SystemAPI.Query<
-                RefRO<LocalTransform>,
-                RefRW<MoveOverride>,
-                EnabledRefRW<MoveOverride>
-            >()
-            .WithEntityAccess())
+        foreach (var (
+                     localTransform,
+                     moveOverride,
+                     moveOverrideEnabled,
+                     moveAgent,
+                     steering,
+                     entity)
+                 in SystemAPI.Query<
+                         RefRO<LocalTransform>,
+                         RefRW<MoveOverride>,
+                         EnabledRefRW<MoveOverride>,
+                         RefRO<MovementAgentComponent>,
+                         RefRO<MovementSteeringComponent>>()
+                     .WithEntityAccess())
         {
-            float distanceSq = math.distancesq(
-                localTransform.ValueRO.Position,
-                moveOverride.ValueRO.targetPosition);
+            float3 currentPos = localTransform.ValueRO.Position;
+            float3 targetPos = moveOverride.ValueRO.targetPosition;
 
-            if (distanceSq >  moveOverride.ValueRO.stopDistanceSq)
-            {
- 
-                if (!moveOverride.ValueRO.targetApplied)
-                {
-                    MovementAgentAPI.SetTarget(
-                        entityManager,
-                        entity,
-                        moveOverride.ValueRO.targetPosition,
-                        grid,
-                        ecb);
+            currentPos.y = 0f;
+            targetPos.y = 0f;
 
-                    moveOverride.ValueRW.targetApplied = true;
-                }
-            }
-            else
+            float distanceSq = math.distancesq(currentPos, targetPos);
+
+            float stopDistance = math.max(0.01f, steering.ValueRO.stoppingDistance);
+            float stopDistanceSq = stopDistance * stopDistance;
+
+            bool reachedByDistance =
+                distanceSq <= stopDistanceSq;
+
+            bool movementAlreadyStopped =
+                moveOverride.ValueRO.targetApplied &&
+                !moveAgent.ValueRO.hastarget;
+
+            bool movementSettled =
+                moveOverride.ValueRO.targetApplied &&
+                steering.ValueRO.isSettled;
+
+            if (reachedByDistance || movementAlreadyStopped || movementSettled)
             {
+                moveOverride.ValueRW.targetApplied = false;
                 moveOverrideEnabled.ValueRW = false;
 
                 MovementAgentAPI.StopAgent(
                     entityManager,
                     entity,
-                    ecb);
+                    ecb
+                );
+
+                continue;
+            }
+
+            if (!moveOverride.ValueRO.targetApplied)
+            {
+                TargetChangeResult result = MovementAgentAPI.SetTarget(
+                    entityManager,
+                    entity,
+                    moveOverride.ValueRO.targetPosition,
+                    grid,
+                    ecb
+                );
+
+                if (result == TargetChangeResult.Success)
+                {
+                    moveOverride.ValueRW.targetApplied = true;
+                }
+                else
+                {
+                    moveOverride.ValueRW.targetApplied = false;
+                    moveOverrideEnabled.ValueRW = false;
+
+                    MovementAgentAPI.StopAgent(
+                        entityManager,
+                        entity,
+                        ecb
+                    );
+                }
             }
         }
     }

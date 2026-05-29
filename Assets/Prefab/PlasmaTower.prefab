@@ -48,6 +48,7 @@ GameObject:
   - component: {fileID: 391625279319461587}
   - component: {fileID: 5544288066034339426}
   - component: {fileID: 8849858697887019221}
+  - component: {fileID: 5597510360651243268}
   m_Layer: 0
   m_Name: PlasmaTower
   m_TagString: Untagged
@@ -92,8 +93,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 8.953379, y: 6.5526085, z: 8.740326}
-  m_Center: {x: 0.25779438, y: 2.7763042, z: -0.42022705}
+  m_Size: {x: 7.96618, y: 6.373118, z: 8.949738}
+  m_Center: {x: -0.026399136, y: 2.686559, z: 0.52210236}
 --- !u!114 &2152310284447787829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -163,9 +164,9 @@ MonoBehaviour:
   BuildingType: 1
   GoldCost: 100
   WoodCost: 50
-  ConstructionTime: 10
+  ConstructionTime: 5
   StartRevealHeight: 0
-  EndRevealHeight: 15
+  EndRevealHeight: 8
   FootprintSizeX: 6
   FootprintSizeZ: 6
   BlockerHeight: 4
@@ -206,6 +207,31 @@ MonoBehaviour:
     cooldown: 2
     damage: 10
     bulletSpeed: 5
+--- !u!114 &5597510360651243268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331245334246899429}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5268aa9f54884534bb5c556a49919d39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RevealMaterialAutoSetup
+  revealShader: {fileID: -6465566751694194690, guid: e3687cbc568a6ca4db2583cdac5c39f3, type: 3}
+  outputFolder: Assets/GeneratedRevealMaterials
+  includeInactive: 1
+  replaceExistingRevealMaterials: 0
+  targetBaseMapProperty: _BaseMap
+  targetBaseColorProperty: _BaseColor
+  targetNormalMapProperty: _BumpMap
+  targetMetallicProperty: _Metallic
+  targetSmoothnessProperty: _Smoothness
+  targetEmissionMapProperty: _EmissionMap
+  targetEmissionColorProperty: _EmissionColor
+  revealHeightProperty: _RevealHeight
+  defaultRevealHeight: -10
 --- !u!1 &8393382258540961797
 GameObject:
   m_ObjectHideFlags: 0
@@ -301,6 +327,10 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: cfbbf6c3fe44d0a42b056bacfec107e2, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 765bb0e70c4640d4ca1f657dc208f512, type: 2}
     - target: {fileID: 919132149155446097, guid: cfbbf6c3fe44d0a42b056bacfec107e2, type: 3}
       propertyPath: m_Name
       value: sci fi weapon

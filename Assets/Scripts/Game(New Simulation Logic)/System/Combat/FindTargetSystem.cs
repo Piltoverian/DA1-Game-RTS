@@ -1,66 +1,128 @@
 using Unity.Burst;
-using Unity.Entities;
 using Unity.Collections;
-using Unity.Transforms;
+using Unity.Entities;
 using Unity.Physics;
-using UnityEngine;
-using System.Threading;
-partial struct FindTargetSystem : ISystem
+using Unity.Transforms;
+
+[BurstCompile]
+public partial struct FindTargetSystem : ISystem
 {
-    // Khai báo Lookup để kiểm tra Component an toàn và nhanh hơn
     private ComponentLookup<Unit> unitLookup;
+    private ComponentLookup<BuildingData> buildingLookup;
+    private ComponentLookup<Health> healthLookup;
 
     public void OnCreate(ref SystemState state)
     {
-        unitLookup = state.GetComponentLookup<Unit>(true); // true = ReadOnly
+        unitLookup = state.GetComponentLookup<Unit>(true);
+        buildingLookup = state.GetComponentLookup<BuildingData>(true);
+        healthLookup = state.GetComponentLookup<Health>(true);
+
+        state.RequireForUpdate<PhysicsWorldSingleton>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        PhysicsWorldSingleton physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
-        CollisionWorld collisionWorld = physicsWorld.CollisionWorld;
-        NativeList<DistanceHit> distancesHitList = new NativeList<DistanceHit>(Allocator.Temp);
+        PhysicsWorldSingleton physicsWorld =
+            SystemAPI.GetSingleton<PhysicsWorldSingleton>();
+
+        CollisionWorld collisionWorld =
+            physicsWorld.CollisionWorld;
 
         unitLookup.Update(ref state);
+        buildingLookup.Update(ref state);
+        healthLookup.Update(ref state);
 
-        foreach ((
-            RefRO<LocalTransform> localTransform,
-            RefRW<FindTarget> findTarget,
-            RefRW<Target> target)
-            in SystemAPI.Query<
-                RefRO<LocalTransform>,
-                RefRW<FindTarget>,
-                RefRW<Target>>())
+        NativeList<DistanceHit> distanceHitList =
+            new NativeList<DistanceHit>(Allocator.Temp);
+
+        foreach (var (
+                     localTransform,
+                     findTarget,
+                     target)
+                 in SystemAPI.Query<
+                     RefRO<LocalTransform>,
+                     RefRW<FindTarget>,
+                     RefRW<Target>>())
         {
             findTarget.ValueRW.timer -= SystemAPI.Time.DeltaTime;
-            if (findTarget.ValueRO.timer > 0.0f) continue;
+
+            if (findTarget.ValueRO.timer > 0f)
+                continue;
 
             findTarget.ValueRW.timer = findTarget.ValueRO.timerMax;
-            distancesHitList.Clear();
+
+            distanceHitList.Clear();
 
             CollisionFilter collisionFilter = new CollisionFilter
             {
-                BelongsTo = ~0u,
-                CollidesWith = 1u << GameAssets.UNITS_LAYER,
+                BelongsTo = PhysicsLayersDefine.Everything,
+
+                // Tìm cả Unit và Building
+                CollidesWith =
+                    PhysicsLayersDefine.Units |
+                    PhysicsLayersDefine.Building,
+
                 GroupIndex = 0
             };
-            if (collisionWorld.OverlapSphere(localTransform.ValueRO.Position, findTarget.ValueRO.range, ref distancesHitList, collisionFilter))
-            {
-                foreach (DistanceHit distanceHit in distancesHitList)
-                {
-                    if (unitLookup.HasComponent(distanceHit.Entity))
-                    {
-                        Unit targetUnit = unitLookup[distanceHit.Entity];
 
-                        if (targetUnit.playerID == findTarget.ValueRO.playerID)
-                        {
-                            target.ValueRW.targetEntity = distanceHit.Entity;
-                            break;
-                        }
-                    }
+            bool hasHit = collisionWorld.OverlapSphere(
+                localTransform.ValueRO.Position,
+                findTarget.ValueRO.range,
+                ref distanceHitList,
+                collisionFilter
+            );
+
+            if (!hasHit)
+            {
+                target.ValueRW.targetEntity = Entity.Null;
+                continue;
+            }
+
+            Entity bestTarget = Entity.Null;
+            float bestDistanceSq = float.MaxValue;
+
+            for (int i = 0; i < distanceHitList.Length; i++)
+            {
+                Entity hitEntity = distanceHitList[i].Entity;
+
+                if (!healthLookup.HasComponent(hitEntity))
+                    continue;
+
+                if (!IsWantedTarget(hitEntity, findTarget.ValueRO.playerID))
+                    continue;
+
+                float distanceSq = distanceHitList[i].Distance * distanceHitList[i].Distance;
+
+                if (distanceSq < bestDistanceSq)
+                {
+                    bestDistanceSq = distanceSq;
+                    bestTarget = hitEntity;
                 }
             }
+
+            target.ValueRW.targetEntity = bestTarget;
         }
+
+        distanceHitList.Dispose();
+    }
+
+    private bool IsWantedTarget(Entity entity, int wantedPlayerID)
+    {
+        if (unitLookup.HasComponent(entity))
+        {
+            Unit unit = unitLookup[entity];
+
+            return unit.playerID == wantedPlayerID;
+        }
+
+        if (buildingLookup.HasComponent(entity))
+        {
+            BuildingData building = buildingLookup[entity];
+
+            return building.PlayerID == wantedPlayerID;
+        }
+
+        return false;
     }
 }

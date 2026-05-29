@@ -71,7 +71,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 8905869307957326188}
@@ -118,7 +118,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 249bc7e24c4c0054ebba311cc38d233c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FindTargetAuthoring
-  range: 20
+  range: 30
   playerID: 2
   timerMax: 2
 --- !u!114 &1886302293370438287
@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45ac3d5d547ca7649a60ae51e0ca56a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShootAttackAuthoring
-  attackDistance: 15
+  attackDistance: 25
   weapons:
   - bulletPrefab: {fileID: 6642296049775915417, guid: fc5bb8d063ce42b47b5279efde1f5676, type: 3}
     bulletSpawnPos: {fileID: 6883013690578537400}
@@ -179,12 +179,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cc573c70762e0b46a0f63831bf06847, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MovementAgentAuthoring
-  speed: 10
+  speed: 7
   radius: 3
   arrivalRadius: 12
   formationRange: 25
   stoppingDistance: 4.5
-  rotationSpeed: 15
+  rotationSpeed: 3
   formationType: 0
   useTestTarget: 0
   testTarget:
@@ -225,8 +225,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 7.898579, y: 4.2162304, z: 12.746228}
-  m_Center: {x: 2.004317, y: 2.1674585, z: 1.8178687}
+  m_Size: {x: 4.2499013, y: 4.2162304, z: 7.075982}
+  m_Center: {x: 1.2154138, y: 2.1674585, z: 0.9057002}
 --- !u!114 &-6723377787021495494
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -264,7 +264,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b0b6deb153286348a7154a362a0dc44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveOverrideAuthoring
-  stopDistance: 5
 --- !u!114 &4590490605873051776
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -302,7 +301,7 @@ Transform:
   m_GameObject: {fileID: 3977954335700049857}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.12, y: 3.47, z: 7.86}
+  m_LocalPosition: {x: 1.09, y: 1.74, z: 4.21}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -333,7 +332,7 @@ Transform:
   m_GameObject: {fileID: 4448590164930503763}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.21, y: 2.55, z: 3.25}
+  m_LocalPosition: {x: 1.17, y: 2.55, z: 3.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -593,8 +592,8 @@ Transform:
   m_GameObject: {fileID: 8882249327758270422}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 2.15, y: 0.19, z: 1.51}
-  m_LocalScale: {x: 10, y: 10, z: 10}
+  m_LocalPosition: {x: 1.07, y: 0.19, z: 0.97}
+  m_LocalScale: {x: 4, y: 4, z: 4}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 3510181012055626075}

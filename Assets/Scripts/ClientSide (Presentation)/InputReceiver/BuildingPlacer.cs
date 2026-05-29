@@ -30,6 +30,9 @@ public class BuildingPlacer : MonoBehaviour
     public float placementCheckPadding = 0.05f;
     public bool logPlacementBlocking = false;
 
+    [Header("Debug")]
+    public bool logConstructionDebug = true;
+
     private GameObject currentGhost;
     private Renderer[] currentGhostRenderers;
 
@@ -38,8 +41,6 @@ public class BuildingPlacer : MonoBehaviour
 
     private EntityManager entityManager;
 
-    private int selectedCommandIndex;
-    private BuildingType selectedBuildingType;
     private Entity selectedBuildingPrefab;
     private GameObject selectedPreviewPrefab;
 
@@ -48,6 +49,8 @@ public class BuildingPlacer : MonoBehaviour
 
     private bool hasAppliedGhostMaterial;
     private bool lastGhostCanPlace;
+
+    private int selectedCommandIndex = -1;
 
     private void Awake()
     {
@@ -67,23 +70,11 @@ public class BuildingPlacer : MonoBehaviour
         entityManager = world.EntityManager;
         isEntityManagerReady = true;
 
-        EntityQuery query = entityManager.CreateEntityQuery(typeof(BuildingPrefabData));
-
-        if (query.IsEmpty)
-        {
-            Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
-            return;
-        }
-
         if (groundMask.value == 0)
-        {
             groundMask = LayerMask.GetMask("Ground");
-        }
 
         if (placementBlockMask.value == 0)
-        {
             placementBlockMask = LayerMask.GetMask("Building", "Obstacle");
-        }
     }
 
     private void Update()
@@ -94,7 +85,10 @@ public class BuildingPlacer : MonoBehaviour
         UpdatePlacementPreview();
 
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("Click blocked by UI");
             return;
+        }
 
         if (Input.GetMouseButtonDown(0) && currentCanPlace)
         {
@@ -167,7 +161,6 @@ public class BuildingPlacer : MonoBehaviour
         }
 
         selectedCommandIndex = definition.CommandIndex;
-        selectedBuildingType = definition.BuildingType;
         selectedBuildingPrefab = GetBuildingPrefabEntityByCommandIndex(selectedCommandIndex);
         selectedPreviewPrefab = definition.PreviewPrefab;
 
@@ -180,64 +173,6 @@ public class BuildingPlacer : MonoBehaviour
         StartPlacing();
     }
 
-    public void SelectBuildingByType(BuildingType type)
-    {
-        if (placementDatabase == null)
-        {
-            Debug.LogError("BuildingPlacementDatabase is null.");
-            return;
-        }
-
-        BuildingPlacementDefinition definition = placementDatabase.GetByType(type);
-
-        if (definition == null)
-        {
-            Debug.LogError("No BuildingPlacementDefinition for type: " + type);
-            return;
-        }
-
-        SelectBuilding(definition);
-    }
-
-    public void SelectBarracks()
-    {
-        SelectBuildingByType(BuildingType.Barracks);
-    }
-
-    public void SelectTower()
-    {
-        SelectBuildingByType(BuildingType.Tower);
-    }
-
-    public void SelectResourceDepot()
-    {
-        SelectBuildingByType(BuildingType.ResourceDepot);
-    }
-
-    //private Entity GetBuildingPrefabEntity(BuildingType type)
-    //{
-    //    EntityQuery query = entityManager.CreateEntityQuery(typeof(BuildingPrefabData));
-
-    //    if (query.IsEmpty)
-    //        return Entity.Null;
-
-    //    BuildingPrefabData prefabData = query.GetSingleton<BuildingPrefabData>();
-
-    //    switch (type)
-    //    {
-    //        case BuildingType.Barracks:
-    //            return prefabData.BarracksPrefab;
-
-    //        case BuildingType.Tower:
-    //            return prefabData.TowerPrefab;
-
-    //        case BuildingType.ResourceDepot:
-    //            return prefabData.ResourceDepotPrefab;
-
-    //        default:
-    //            return Entity.Null;
-    //    }
-    //}
     private Entity GetBuildingPrefabEntityByCommandIndex(int commandIndex)
     {
         EntityQuery query = entityManager.CreateEntityQuery(
@@ -265,6 +200,7 @@ public class BuildingPlacer : MonoBehaviour
         Debug.LogError("No ECS building prefab found for CommandIndex = " + commandIndex);
         return Entity.Null;
     }
+
     private void StartPlacing()
     {
         if (selectedPreviewPrefab == null)
@@ -277,6 +213,7 @@ public class BuildingPlacer : MonoBehaviour
             Destroy(currentGhost);
 
         currentGhost = Instantiate(selectedPreviewPrefab);
+
         PrepareGhostObject(currentGhost);
 
         hasAppliedGhostMaterial = false;
@@ -285,19 +222,19 @@ public class BuildingPlacer : MonoBehaviour
 
     private void PrepareGhostObject(GameObject ghost)
     {
+        DisableGhostHelperObjects(ghost);
+
         int ghostLayer = LayerMask.NameToLayer("Ghost");
 
         if (ghostLayer >= 0)
-        {
             SetLayerRecursively(ghost, ghostLayer);
-        }
+        else
+            Debug.LogWarning("Layer 'Ghost' does not exist.");
 
         Collider[] colliders = ghost.GetComponentsInChildren<Collider>(true);
 
         foreach (Collider col in colliders)
-        {
             col.enabled = false;
-        }
 
         currentGhostRenderers = ghost.GetComponentsInChildren<Renderer>(true);
 
@@ -312,6 +249,24 @@ public class BuildingPlacer : MonoBehaviour
         }
 
         SetGhostMaterial(true, true);
+    }
+
+    private void DisableGhostHelperObjects(GameObject ghost)
+    {
+        Transform[] children = ghost.GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in children)
+        {
+            string objectName = child.name.ToLower();
+
+            if (objectName.Contains("selected") ||
+                objectName.Contains("selection") ||
+                objectName.Contains("outline") ||
+                objectName.Contains("highlight"))
+            {
+                child.gameObject.SetActive(false);
+            }
+        }
     }
 
     private void UpdatePlacementPreview()
@@ -394,9 +349,7 @@ public class BuildingPlacer : MonoBehaviour
         NativeParallelMultiHashMap<int, Entity> unitBucket = default;
 
         if (hasUnitBucket)
-        {
             unitBucket = bucketQuery.GetSingleton<MovementAgentBucket>().Bucket;
-        }
 
         for (int x = minGrid.x; x <= maxGrid.x; x++)
         {
@@ -436,9 +389,7 @@ public class BuildingPlacer : MonoBehaviour
         if (hits.Length > 0)
         {
             if (logPlacementBlocking)
-            {
                 Debug.Log("Cannot place. Blocked by: " + hits[0].name);
-            }
 
             return true;
         }
@@ -471,6 +422,12 @@ public class BuildingPlacer : MonoBehaviour
 
     private void PayBuildingCost(Entity prefab)
     {
+        if (prefab == Entity.Null)
+            return;
+
+        if (!entityManager.HasComponent<BuildingData>(prefab))
+            return;
+
         BuildingData building = entityManager.GetComponentData<BuildingData>(prefab);
 
         EntityQuery query = entityManager.CreateEntityQuery(typeof(PlayerResourceData));
@@ -494,14 +451,18 @@ public class BuildingPlacer : MonoBehaviour
             Destroy(currentGhost);
 
         currentGhost = null;
+        currentGhostRenderers = null;
         isPlacing = false;
 
         Entity building = entityManager.Instantiate(selectedBuildingPrefab);
 
         if (entityManager.HasComponent<LocalTransform>(building))
         {
-            LocalTransform transform = entityManager.GetComponentData<LocalTransform>(building);
+            LocalTransform transform =
+                entityManager.GetComponentData<LocalTransform>(building);
+
             transform.Position = new float3(pos.x, pos.y, pos.z);
+
             entityManager.SetComponentData(building, transform);
         }
         else
@@ -512,9 +473,96 @@ public class BuildingPlacer : MonoBehaviour
             );
         }
 
+        ResetConstructionState(building);
+
+        if (logConstructionDebug)
+            DebugConstructionState(building, "After PlaceBuilding");
+
         Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
 
         CreateBuildingBlocker(pos, halfExtents, building);
+    }
+
+    private void ResetConstructionState(Entity building)
+    {
+        if (!entityManager.HasComponent<BuildingData>(building))
+        {
+            Debug.LogWarning("Placed building has no BuildingData.");
+            return;
+        }
+
+        BuildingData data = entityManager.GetComponentData<BuildingData>(building);
+
+        ConstructionData con;
+
+        if (entityManager.HasComponent<ConstructionData>(building))
+        {
+            con = entityManager.GetComponentData<ConstructionData>(building);
+
+            con.Elapsed = 0f;
+
+            if (con.TotalTime <= 0f)
+                con.TotalTime = Mathf.Max(0.1f, data.ConstructionTime);
+
+            entityManager.SetComponentData(building, con);
+        }
+        else
+        {
+            con = new ConstructionData
+            {
+                TotalTime = Mathf.Max(0.1f, data.ConstructionTime),
+                Elapsed = 0f,
+                StartRevealHeight = 0f,
+                EndRevealHeight = data.BlockerHeight + 2f
+            };
+
+            entityManager.AddComponentData(building, con);
+        }
+
+        if (!entityManager.HasComponent<UnderConstructionTag>(building))
+            entityManager.AddComponent<UnderConstructionTag>(building);
+
+        RevealHeightProperty reveal = new RevealHeightProperty
+        {
+            Value = con.StartRevealHeight
+        };
+
+        if (entityManager.HasComponent<RevealHeightProperty>(building))
+            entityManager.SetComponentData(building, reveal);
+        else
+            entityManager.AddComponentData(building, reveal);
+    }
+
+    private void DebugConstructionState(Entity building, string label)
+    {
+        Debug.Log(
+            $"[{label}] Entity = {building}\n" +
+            $"Has BuildingData = {entityManager.HasComponent<BuildingData>(building)}\n" +
+            $"Has ConstructionData = {entityManager.HasComponent<ConstructionData>(building)}\n" +
+            $"Has RevealHeightProperty = {entityManager.HasComponent<RevealHeightProperty>(building)}\n" +
+            $"Has UnderConstructionTag = {entityManager.HasComponent<UnderConstructionTag>(building)}"
+        );
+
+        if (entityManager.HasComponent<ConstructionData>(building))
+        {
+            ConstructionData con = entityManager.GetComponentData<ConstructionData>(building);
+
+            Debug.Log(
+                $"ConstructionData: " +
+                $"TotalTime={con.TotalTime}, " +
+                $"Elapsed={con.Elapsed}, " +
+                $"StartReveal={con.StartRevealHeight}, " +
+                $"EndReveal={con.EndRevealHeight}"
+            );
+        }
+
+        if (entityManager.HasComponent<RevealHeightProperty>(building))
+        {
+            RevealHeightProperty reveal =
+                entityManager.GetComponentData<RevealHeightProperty>(building);
+
+            Debug.Log("RevealHeightProperty Value = " + reveal.Value);
+        }
     }
 
     private void CreateBuildingBlocker(Vector3 pos, Vector3 halfExtents, Entity buildingEntity)
@@ -524,13 +572,9 @@ public class BuildingPlacer : MonoBehaviour
         int buildingLayer = LayerMask.NameToLayer("Building");
 
         if (buildingLayer >= 0)
-        {
             blocker.layer = buildingLayer;
-        }
         else
-        {
             Debug.LogWarning("Layer 'Building' does not exist.");
-        }
 
         blocker.transform.position = pos + Vector3.up * halfExtents.y;
 
@@ -554,6 +598,7 @@ public class BuildingPlacer : MonoBehaviour
         isPlacing = false;
         selectedBuildingPrefab = Entity.Null;
         selectedPreviewPrefab = null;
+        selectedCommandIndex = -1;
 
         hasAppliedGhostMaterial = false;
     }
@@ -579,14 +624,10 @@ public class BuildingPlacer : MonoBehaviour
             if (renderer == null)
                 continue;
 
-            int materialCount = renderer.sharedMaterials.Length;
+            Material[] newMaterials = new Material[renderer.sharedMaterials.Length];
 
-            Material[] newMaterials = new Material[materialCount];
-
-            for (int i = 0; i < materialCount; i++)
-            {
+            for (int i = 0; i < newMaterials.Length; i++)
                 newMaterials[i] = targetMaterial;
-            }
 
             renderer.materials = newMaterials;
         }
@@ -600,9 +641,7 @@ public class BuildingPlacer : MonoBehaviour
         obj.layer = layer;
 
         foreach (Transform child in obj.transform)
-        {
             SetLayerRecursively(child.gameObject, layer);
-        }
     }
 
     private void OnDrawGizmos()

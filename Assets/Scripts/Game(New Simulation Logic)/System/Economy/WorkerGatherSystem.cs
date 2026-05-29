@@ -290,7 +290,6 @@ public partial struct WorkerGatherSystem : ISystem
         ecb.SetComponent(entity, new MoveOverride
         {
             targetPosition = target,
-            stopDistanceSq = stopDistanceSq,
             targetApplied = false
         });
 
