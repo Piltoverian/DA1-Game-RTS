@@ -82,7 +82,7 @@ public struct PlayerContext:IComponentData
       PlayerId = playerId;
       CIVILIZATION_ID = civilizationId;
       this.age = age;
-      currentPopulation = 0;
+      currentPopulation = 3;
       maxPopulation = 8;
    }
 }

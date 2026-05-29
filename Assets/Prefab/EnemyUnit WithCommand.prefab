@@ -16,6 +16,10 @@ PrefabInstance:
       propertyPath: m_Center.y
       value: 1.3580129
       objectReference: {fileID: 0}
+    - target: {fileID: 2495065102718132284, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: useTestTarget
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3120659631628476173, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: faction
       value: 1
@@ -132,4 +136,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97244c9565e59494db83018977959239, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CommandListAuthoring
-  CommandList: []
+  CommandList:
+  - Type: 0
+    indexInUnitCommandList: 0
