@@ -256,62 +256,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1940381685}
   m_SourcePrefab: {fileID: 100100000, guid: 8de3ca81766892c47a372f888dd13d23, type: 3}
---- !u!1 &745024908 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-  m_PrefabInstance: {fileID: 1836267482}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &745024909
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 745024908}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 97244c9565e59494db83018977959239, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CommandListAuthoring
-  CommandList:
-  - Type: 2
-    indexInUnitCommandList: 0
-  - Type: 2
-    indexInUnitCommandList: 1
-  - Type: 3
-    indexInUnitCommandList: 0
-  - Type: 3
-    indexInUnitCommandList: 1
-  - Type: 3
-    indexInUnitCommandList: 2
---- !u!114 &745024910
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 745024908}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
-  playerID: 0
-  unitName: 
---- !u!114 &745024916
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 745024908}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
-  healthAmount: 100
-  maxHealthAmount: 100
 --- !u!1001 &886816531
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -342,7 +286,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_Name
-      value: FriendUnit
+      value: UnitController
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.x
@@ -778,7 +722,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d26d958b1fd706449b9cee43c64d187, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerContextAuthoring
-  playerId: 0
+  playerId: 1
   civilizationId: 0
   age: 0
 --- !u!4 &1559832646
@@ -829,18 +773,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 4195059132925248615, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-      propertyPath: UnitPrefabs.Array.size
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195059132925248615, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-      propertyPath: 'UnitPrefabs.Array.data[0]'
-      value: 
-      objectReference: {fileID: 3382223461976398644, guid: caf8cca51aecfc04990eaadc862591de, type: 3}
-    - target: {fileID: 4195059132925248615, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-      propertyPath: 'UnitPrefabs.Array.data[1]'
-      value: 
-      objectReference: {fileID: 5992325127040136266, guid: e4427b335197ab5499da37deab973dc4, type: 3}
     - target: {fileID: 5004000457613146172, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
       propertyPath: m_LocalPosition.x
       value: -54.3
@@ -881,47 +813,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5089674526683291565, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+      propertyPath: playerID
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7139992875957162329, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
       propertyPath: playerID
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
       propertyPath: m_Name
       value: Barracks
       objectReference: {fileID: 0}
-    - target: {fileID: 2831147463277539539, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 2100000, guid: cb608a35da2c18348aab9539e7fd4bf4, type: 2}
-    - target: {fileID: 4195059132925248615, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: UnitPrefabs.Array.size
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195059132925248615, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: 'UnitPrefabs.Array.data[0]'
-      value: 
-      objectReference: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
-    - target: {fileID: 4195059132925248615, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: 'UnitPrefabs.Array.data[1]'
-      value: 
-      objectReference: {fileID: 3382223461976398644, guid: d8f38416d36ac3345a6c7d5f1ca7f04b, type: 3}
-    - target: {fileID: 7139992875957162329, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
-      propertyPath: playerID
-      value: 1
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 745024909}
-    - targetCorrespondingSourceObject: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 745024910}
-    - targetCorrespondingSourceObject: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 745024916}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
 --- !u!1 &1940381674 stripped
 GameObject:

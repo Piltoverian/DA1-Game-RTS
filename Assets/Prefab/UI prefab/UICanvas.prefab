@@ -104,6 +104,7 @@ GameObject:
   - component: {fileID: 8462092850224149774}
   - component: {fileID: 1399981894240387020}
   - component: {fileID: 353780584182413255}
+  - component: {fileID: 8306412127841640222}
   m_Layer: 5
   m_Name: UnitImage
   m_TagString: Untagged
@@ -168,6 +169,18 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &8306412127841640222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1778458161332517092}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5fa4f152e42f284c902544186a939cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitImage
 --- !u!1 &1986691650976920486
 GameObject:
   m_ObjectHideFlags: 0
@@ -202,11 +215,11 @@ RectTransform:
   - {fileID: 6535423967396031353}
   m_Father: {fileID: 8200116338103234990}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 603.5, y: -250.75}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_Pivot: {x: 1, y: 0}
 --- !u!222 &1292030480726007032
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -369,11 +382,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceGroup
   resourceInfoPrefab: {fileID: 1141325338227921684, guid: b47b4abc7a7aace418c6b8c85d87d1dc, type: 3}
-  resources:
-  - Type: 1
-    Amount: 0
-  - Type: 3
-    Amount: 0
 --- !u!1 &2470013267338999665
 GameObject:
   m_ObjectHideFlags: 0
@@ -741,6 +749,7 @@ GameObject:
   - component: {fileID: 3417664442591057434}
   - component: {fileID: 7942737174445335498}
   - component: {fileID: 8352601132971823448}
+  - component: {fileID: 2346642682203812866}
   m_Layer: 5
   m_Name: CommandMenu
   m_TagString: Untagged
@@ -825,10 +834,24 @@ MonoBehaviour:
   m_ChildAlignment: 0
   m_StartCorner: 0
   m_StartAxis: 0
-  m_CellSize: {x: 50, y: 50}
+  m_CellSize: {x: 125, y: 125}
   m_Spacing: {x: 0, y: 0}
   m_Constraint: 0
   m_ConstraintCount: 2
+--- !u!114 &2346642682203812866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4744744510703532935}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6de8f5c16aa05f84aa821da87242db78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CommandMenu
+  ButtonPrefab: {fileID: 8661876455923768033, guid: 828cfd3e76b7f1c4ab277adf5058491a, type: 3}
+  buildingPlacementDatabase: {fileID: 11400000, guid: 5a98b62091ad4cf43a50ed388a1f428b, type: 2}
 --- !u!1 &5035827388261344721
 GameObject:
   m_ObjectHideFlags: 0
@@ -840,6 +863,7 @@ GameObject:
   - component: {fileID: 286355116233708032}
   - component: {fileID: 6186425235363238206}
   - component: {fileID: 4491552574661775196}
+  - component: {fileID: 6840619278207443345}
   m_Layer: 5
   m_Name: Time
   m_TagString: Untagged
@@ -962,12 +986,24 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 99.730194, w: 0}
+  m_margin: {x: 0, y: 0, z: 0.0024414062, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &6840619278207443345
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5035827388261344721}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ad6fd8161941ba4fbeb7719949a69f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MatchTimeTextMesh
 --- !u!1 &6804000731513499075
 GameObject:
   m_ObjectHideFlags: 0
@@ -1336,6 +1372,8 @@ GameObject:
   - component: {fileID: 2552668287669502806}
   - component: {fileID: 4614008802596748531}
   - component: {fileID: 1249483591941642107}
+  - component: {fileID: 3355529043655015703}
+  - component: {fileID: 2324402569432608930}
   m_Layer: 5
   m_Name: Pop
   m_TagString: Untagged
@@ -1464,6 +1502,47 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &3355529043655015703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8586284366742957209}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddca00ad4798abb4bbb31d964ef45408, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PoppulationUpdatedEventListener
+  EventChannel: {fileID: 11400000, guid: db4086b6e25572446a095a6b87e2092d, type: 2}
+  Response:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2324402569432608930}
+        m_TargetAssemblyTypeName: PopText, Assembly-CSharp
+        m_MethodName: OnPopChange
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &2324402569432608930
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8586284366742957209}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e521579843ef04488027adfd880bac2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PopText
+  m_TextMeshPro: {fileID: 1249483591941642107}
 --- !u!1 &9117974970836357425
 GameObject:
   m_ObjectHideFlags: 0

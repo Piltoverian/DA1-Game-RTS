@@ -256,6 +256,9 @@ GameObject:
   - component: {fileID: 1382016280144667554}
   - component: {fileID: 4195059132925248615}
   - component: {fileID: 7139992875957162329}
+  - component: {fileID: 7321354977083968376}
+  - component: {fileID: 5089674526683291565}
+  - component: {fileID: 4146124064123980444}
   m_Layer: 8
   m_Name: Barracks
   m_TagString: Untagged
@@ -342,7 +345,9 @@ MonoBehaviour:
   RallyOffset: {fileID: 8715630179913621966}
   UnitGoldCost: 50
   UnitFoodCost: 0
-  UnitPrefabs: []
+  UnitPrefabs:
+  - {fileID: 3382223461976398644, guid: caf8cca51aecfc04990eaadc862591de, type: 3}
+  - {fileID: 5992325127040136266, guid: e4427b335197ab5499da37deab973dc4, type: 3}
 --- !u!114 &7139992875957162329
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -358,3 +363,54 @@ MonoBehaviour:
   visualGameObject: {fileID: 1006565745583947050}
   showScale: 1.5
   playerID: 0
+--- !u!114 &7321354977083968376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97244c9565e59494db83018977959239, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CommandListAuthoring
+  CommandList:
+  - Type: 2
+    indexInUnitCommandList: 0
+  - Type: 2
+    indexInUnitCommandList: 1
+  - Type: 3
+    indexInUnitCommandList: 0
+  - Type: 3
+    indexInUnitCommandList: 1
+  - Type: 3
+    indexInUnitCommandList: 2
+--- !u!114 &5089674526683291565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  playerID: 0
+  unitName: 
+--- !u!114 &4146124064123980444
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
+  healthAmount: 100
+  maxHealthAmount: 100
