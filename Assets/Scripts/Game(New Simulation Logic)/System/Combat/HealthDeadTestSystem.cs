@@ -1,10 +1,20 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
+
+public struct BuildingCostArea : IComponentData
+{
+    public float3 CenterOffset;
+    public float3 HalfExtents;
+}
 
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 public partial struct HealthDeadTestSystem : ISystem
 {
+    private const int BuildingClearCost = 1;
+    private const float BuildingCostPadding = 0.01f;
+
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -27,6 +37,12 @@ public partial struct HealthDeadTestSystem : ISystem
 
         ComponentLookup<BuildingData> buildingLookup =
             SystemAPI.GetComponentLookup<BuildingData>(true);
+
+        ComponentLookup<BuildingCostArea> buildingCostAreaLookup =
+            SystemAPI.GetComponentLookup<BuildingCostArea>(true);
+
+        ComponentLookup<LocalTransform> localTransformLookup =
+            SystemAPI.GetComponentLookup<LocalTransform>(true);
 
         NativeHashSet<Entity> destroyedRoots =
             new NativeHashSet<Entity>(32, Allocator.Temp);
@@ -55,6 +71,16 @@ public partial struct HealthDeadTestSystem : ISystem
                 rootEntity,
                 unitLookup,
                 buildingLookup,
+                linkedGroupLookup
+            );
+
+            TrySendBuildingClearCostRequest(
+                state.EntityManager,
+                entity,
+                rootEntity,
+                buildingLookup,
+                buildingCostAreaLookup,
+                localTransformLookup,
                 linkedGroupLookup
             );
 
@@ -98,10 +124,7 @@ public partial struct HealthDeadTestSystem : ISystem
         if (result == FunctionResult.Failure)
             return;
 
-        int newPopulation = playerContext.currentPopulation - 1;
-
-        if (newPopulation < 0)
-            newPopulation = 0;
+        int newPopulation = math.max(0, playerContext.currentPopulation - 1);
 
         PlayerContextHelper.UpdatePlayerContext(
             entityManager,
@@ -164,12 +187,200 @@ public partial struct HealthDeadTestSystem : ISystem
         if (!unitLookup.HasComponent(entity))
             return false;
 
-        // Building cũng có thể đang dùng Unit để lưu playerID.
-        // Vì vậy phải chặn BuildingData để nhà chết không bị trừ dân.
+        // Building có thể cũng dùng Unit/playerID để biết chủ sở hữu.
+        // Không trừ population khi building chết.
         if (buildingLookup.HasComponent(entity))
             return false;
 
         return true;
+    }
+
+    private static void TrySendBuildingClearCostRequest(
+        EntityManager entityManager,
+        Entity deadEntity,
+        Entity rootEntity,
+        ComponentLookup<BuildingData> buildingLookup,
+        ComponentLookup<BuildingCostArea> buildingCostAreaLookup,
+        ComponentLookup<LocalTransform> localTransformLookup,
+        BufferLookup<LinkedEntityGroup> linkedGroupLookup)
+    {
+        if (!TryGetBuildingCostAreaForClear(
+                deadEntity,
+                rootEntity,
+                buildingLookup,
+                buildingCostAreaLookup,
+                localTransformLookup,
+                linkedGroupLookup,
+                out float3 footprintCenter,
+                out float3 halfExtents))
+        {
+            return;
+        }
+
+        SendGridCostChangeRequest(
+            entityManager,
+            footprintCenter,
+            halfExtents,
+            BuildingClearCost
+        );
+    }
+
+    private static bool TryGetBuildingCostAreaForClear(
+        Entity deadEntity,
+        Entity rootEntity,
+        ComponentLookup<BuildingData> buildingLookup,
+        ComponentLookup<BuildingCostArea> buildingCostAreaLookup,
+        ComponentLookup<LocalTransform> localTransformLookup,
+        BufferLookup<LinkedEntityGroup> linkedGroupLookup,
+        out float3 footprintCenter,
+        out float3 halfExtents)
+    {
+        if (TryReadBuildingCostAreaAndPosition(
+                rootEntity,
+                buildingLookup,
+                buildingCostAreaLookup,
+                localTransformLookup,
+                out footprintCenter,
+                out halfExtents))
+        {
+            return true;
+        }
+
+        if (TryReadBuildingCostAreaAndPosition(
+                deadEntity,
+                buildingLookup,
+                buildingCostAreaLookup,
+                localTransformLookup,
+                out footprintCenter,
+                out halfExtents))
+        {
+            return true;
+        }
+
+        if (linkedGroupLookup.HasBuffer(rootEntity))
+        {
+            DynamicBuffer<LinkedEntityGroup> linkedEntities =
+                linkedGroupLookup[rootEntity];
+
+            for (int i = 0; i < linkedEntities.Length; i++)
+            {
+                Entity linkedEntity = linkedEntities[i].Value;
+
+                if (TryReadBuildingCostAreaAndPosition(
+                        linkedEntity,
+                        buildingLookup,
+                        buildingCostAreaLookup,
+                        localTransformLookup,
+                        out footprintCenter,
+                        out halfExtents))
+                {
+                    return true;
+                }
+            }
+        }
+
+        footprintCenter = default;
+        halfExtents = default;
+        return false;
+    }
+
+    private static bool TryReadBuildingCostAreaAndPosition(
+        Entity entity,
+        ComponentLookup<BuildingData> buildingLookup,
+        ComponentLookup<BuildingCostArea> buildingCostAreaLookup,
+        ComponentLookup<LocalTransform> localTransformLookup,
+        out float3 footprintCenter,
+        out float3 halfExtents)
+    {
+        footprintCenter = default;
+        halfExtents = default;
+
+        if (entity == Entity.Null)
+            return false;
+
+        if (!buildingLookup.HasComponent(entity))
+            return false;
+
+        if (!localTransformLookup.HasComponent(entity))
+            return false;
+
+        LocalTransform transform = localTransformLookup[entity];
+        BuildingData buildingData = buildingLookup[entity];
+
+        if (buildingCostAreaLookup.HasComponent(entity))
+        {
+            BuildingCostArea costArea = buildingCostAreaLookup[entity];
+
+            footprintCenter = transform.Position + costArea.CenterOffset;
+            halfExtents = costArea.HalfExtents;
+            return true;
+        }
+
+        // Fallback cho building cũ chưa có BuildingCostArea.
+        halfExtents = new float3(
+            buildingData.FootprintSizeX * 0.5f,
+            buildingData.BlockerHeight * 0.5f,
+            buildingData.FootprintSizeZ * 0.5f
+        );
+
+        footprintCenter = transform.Position + new float3(0f, halfExtents.y, 0f);
+        return true;
+    }
+
+    private static void SendGridCostChangeRequest(
+        EntityManager entityManager,
+        float3 footprintCenter,
+        float3 halfExtents,
+        int newCost)
+    {
+        EntityQuery gridQuery = entityManager.CreateEntityQuery(
+            typeof(GridComponent),
+            typeof(CostChangeRequest)
+        );
+
+        if (gridQuery.IsEmpty)
+            return;
+
+        Entity gridEntity = gridQuery.GetSingletonEntity();
+
+        if (!entityManager.HasBuffer<CostChangeRequest>(gridEntity))
+            return;
+
+        GridComponent grid = entityManager.GetComponentData<GridComponent>(gridEntity);
+
+        float padding = BuildingCostPadding;
+
+        if (grid.cellsize > 0f)
+            padding = math.min(padding, grid.cellsize * 0.45f);
+
+        float minX = footprintCenter.x - halfExtents.x + padding;
+        float minZ = footprintCenter.z - halfExtents.z + padding;
+        float maxX = footprintCenter.x + halfExtents.x - padding;
+        float maxZ = footprintCenter.z + halfExtents.z - padding;
+
+        if (minX > maxX)
+        {
+            minX = footprintCenter.x - halfExtents.x;
+            maxX = footprintCenter.x + halfExtents.x;
+        }
+
+        if (minZ > maxZ)
+        {
+            minZ = footprintCenter.z - halfExtents.z;
+            maxZ = footprintCenter.z + halfExtents.z;
+        }
+
+        StartEndRect area = new StartEndRect(new float2(minX, minZ));
+        area.ExpandTo(new float2(maxX, maxZ));
+
+        DynamicBuffer<CostChangeRequest> requestBuffer =
+            entityManager.GetBuffer<CostChangeRequest>(gridEntity);
+
+        requestBuffer.Add(new CostChangeRequest
+        {
+            newCost = newCost,
+            area = area
+        });
     }
 
     private static Entity GetDestroyRoot(

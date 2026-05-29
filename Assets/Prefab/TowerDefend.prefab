@@ -18,7 +18,6 @@ GameObject:
   - component: {fileID: 5544288066034339426}
   - component: {fileID: 8849858697887019221}
   - component: {fileID: 1886805193916276093}
-  - component: {fileID: -7096663888667331584}
   - component: {fileID: 3106437892104779538}
   m_Layer: 0
   m_Name: TowerDefend
@@ -36,7 +35,7 @@ Transform:
   m_GameObject: {fileID: 7331245334246899429}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -16.08, y: 0, z: 71.25}
+  m_LocalPosition: {x: 0, y: 0, z: 71.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -63,8 +62,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 7.4290237, y: 7.475245, z: 15.559814}
-  m_Center: {x: -0.023008347, y: 7.4496593, z: 2.4279099}
+  m_Size: {x: 5.0400176, y: 6.8755465, z: 11.325554}
+  m_Center: {x: -0.6312869, y: 6.764672, z: 1.6609459}
 --- !u!114 &2152310284447787829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -198,20 +197,6 @@ MonoBehaviour:
   targetEmissionColorProperty: _EmissionColor
   revealHeightProperty: _RevealHeight
   defaultRevealHeight: 20
---- !u!114 &-7096663888667331584
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7331245334246899429}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
-  healthAmount: 100
-  maxHealthAmount: 100
 --- !u!114 &3106437892104779538
 MonoBehaviour:
   m_ObjectHideFlags: 0

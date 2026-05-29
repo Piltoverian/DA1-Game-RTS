@@ -30,6 +30,17 @@ public class BuildingPlacer : MonoBehaviour
     public float placementCheckPadding = 0.05f;
     public bool logPlacementBlocking = false;
 
+    [Header("Pathfinding Cost")]
+    public int buildingObstacleCost = int.MaxValue;
+    public float buildingCostPadding = 0.01f;
+
+    [Header("Footprint Collider")]
+    [Tooltip("Nếu true, hệ thống sẽ ưu tiên BoxCollider có tên chứa 'Placement' để lấy size đặt nhà.")]
+    public bool preferPlacementNamedCollider = true;
+
+    [Tooltip("Nếu không có PlacementCollider, hệ thống sẽ dùng BoxCollider có diện tích XZ lớn nhất.")]
+    public bool useLargestBoxColliderWhenNoPlacementCollider = true;
+
     [Header("Debug")]
     public bool logConstructionDebug = true;
 
@@ -51,6 +62,17 @@ public class BuildingPlacer : MonoBehaviour
     private bool lastGhostCanPlace;
 
     private int selectedCommandIndex = -1;
+
+    private struct BuildingFootprint
+    {
+        public Vector3 CenterOffset;
+        public Vector3 HalfExtents;
+
+        public Vector3 GetWorldCenter(Vector3 rootPosition)
+        {
+            return rootPosition + CenterOffset;
+        }
+    }
 
     private void Awake()
     {
@@ -74,7 +96,7 @@ public class BuildingPlacer : MonoBehaviour
 
         if (query.IsEmpty)
         {
-            //Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
+            // Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
             return;
         }
 
@@ -246,15 +268,8 @@ public class BuildingPlacer : MonoBehaviour
 
         currentGhostRenderers = ghost.GetComponentsInChildren<Renderer>(true);
 
-        Debug.Log("Ghost renderer count: " + currentGhostRenderers.Length);
-
-        foreach (Renderer renderer in currentGhostRenderers)
-        {
-            Debug.Log(
-                "Ghost renderer: " + renderer.name +
-                " | material count: " + renderer.sharedMaterials.Length
-            );
-        }
+        if (logConstructionDebug)
+            Debug.Log("Ghost renderer count: " + currentGhostRenderers.Length);
 
         SetGhostMaterial(true, true);
     }
@@ -293,9 +308,10 @@ public class BuildingPlacer : MonoBehaviour
 
         currentGhost.transform.position = currentSnappedPosition;
 
-        Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
+        BuildingFootprint footprint = GetSelectedBuildingFootprint();
+        Vector3 footprintCenter = footprint.GetWorldCenter(currentSnappedPosition);
 
-        currentCanPlace = CanPlace(currentSnappedPosition, halfExtents);
+        currentCanPlace = CanPlace(footprintCenter, footprint.HalfExtents);
 
         SetGhostMaterial(currentCanPlace);
     }
@@ -312,29 +328,182 @@ public class BuildingPlacer : MonoBehaviour
         );
     }
 
-    private Vector3 GetBuildingHalfExtents(Entity prefab)
+    private BuildingFootprint GetSelectedBuildingFootprint()
+    {
+        if (TryGetBoxColliderFootprint(selectedPreviewPrefab, out BuildingFootprint footprint))
+            return footprint;
+
+        return GetBuildingDataFootprint(selectedBuildingPrefab);
+    }
+
+    private bool TryGetBoxColliderFootprint(GameObject prefab, out BuildingFootprint footprint)
+    {
+        footprint = new BuildingFootprint
+        {
+            CenterOffset = Vector3.zero,
+            HalfExtents = defaultHalfExtents
+        };
+
+        if (prefab == null)
+            return false;
+
+        BoxCollider selectedCollider = GetPlacementBoxCollider(prefab);
+
+        if (selectedCollider == null)
+            return false;
+
+        CalculateBoxColliderLocalBounds(
+            prefab.transform,
+            selectedCollider,
+            out Vector3 localMin,
+            out Vector3 localMax
+        );
+
+        Vector3 localSize = localMax - localMin;
+        Vector3 localCenter = (localMin + localMax) * 0.5f;
+
+        footprint.CenterOffset = localCenter;
+        footprint.HalfExtents = new Vector3(
+            Mathf.Max(0.01f, Mathf.Abs(localSize.x) * 0.5f),
+            Mathf.Max(0.01f, Mathf.Abs(localSize.y) * 0.5f),
+            Mathf.Max(0.01f, Mathf.Abs(localSize.z) * 0.5f)
+        );
+
+        return true;
+    }
+
+    private BoxCollider GetPlacementBoxCollider(GameObject prefab)
+    {
+        BoxCollider[] boxes = prefab.GetComponentsInChildren<BoxCollider>(true);
+
+        if (boxes == null || boxes.Length == 0)
+            return null;
+
+        if (preferPlacementNamedCollider)
+        {
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                if (boxes[i] == null)
+                    continue;
+
+                string objectName = boxes[i].name.ToLower();
+
+                if (objectName.Contains("placement") || objectName.Contains("footprint"))
+                    return boxes[i];
+            }
+        }
+
+        if (!useLargestBoxColliderWhenNoPlacementCollider)
+            return boxes[0];
+
+        BoxCollider best = boxes[0];
+        float bestArea = GetColliderXZArea(best);
+
+        for (int i = 1; i < boxes.Length; i++)
+        {
+            float area = GetColliderXZArea(boxes[i]);
+
+            if (area > bestArea)
+            {
+                bestArea = area;
+                best = boxes[i];
+            }
+        }
+
+        return best;
+    }
+
+    private float GetColliderXZArea(BoxCollider box)
+    {
+        if (box == null)
+            return 0f;
+
+        Vector3 scale = box.transform.lossyScale;
+
+        float sizeX = Mathf.Abs(box.size.x * scale.x);
+        float sizeZ = Mathf.Abs(box.size.z * scale.z);
+
+        return sizeX * sizeZ;
+    }
+
+    private void CalculateBoxColliderLocalBounds(
+        Transform root,
+        BoxCollider box,
+        out Vector3 localMin,
+        out Vector3 localMax)
+    {
+        Vector3 half = box.size * 0.5f;
+
+        localMin = new Vector3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity);
+        localMax = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
+
+        for (int x = -1; x <= 1; x += 2)
+        {
+            for (int y = -1; y <= 1; y += 2)
+            {
+                for (int z = -1; z <= 1; z += 2)
+                {
+                    Vector3 localCornerInCollider = box.center + new Vector3(
+                        half.x * x,
+                        half.y * y,
+                        half.z * z
+                    );
+
+                    Vector3 worldCorner = box.transform.TransformPoint(localCornerInCollider);
+                    Vector3 rootLocalCorner = root.InverseTransformPoint(worldCorner);
+
+                    localMin = Vector3.Min(localMin, rootLocalCorner);
+                    localMax = Vector3.Max(localMax, rootLocalCorner);
+                }
+            }
+        }
+    }
+
+    private BuildingFootprint GetBuildingDataFootprint(Entity prefab)
     {
         if (!isEntityManagerReady)
-            return defaultHalfExtents;
+        {
+            return new BuildingFootprint
+            {
+                CenterOffset = Vector3.zero,
+                HalfExtents = defaultHalfExtents
+            };
+        }
 
         if (prefab == Entity.Null)
-            return defaultHalfExtents;
+        {
+            return new BuildingFootprint
+            {
+                CenterOffset = Vector3.zero,
+                HalfExtents = defaultHalfExtents
+            };
+        }
 
         if (!entityManager.HasComponent<BuildingData>(prefab))
-            return defaultHalfExtents;
+        {
+            return new BuildingFootprint
+            {
+                CenterOffset = Vector3.zero,
+                HalfExtents = defaultHalfExtents
+            };
+        }
 
         BuildingData data = entityManager.GetComponentData<BuildingData>(prefab);
 
-        return new Vector3(
-            data.FootprintSizeX * 0.5f,
-            data.BlockerHeight * 0.5f,
-            data.FootprintSizeZ * 0.5f
-        );
+        return new BuildingFootprint
+        {
+            CenterOffset = new Vector3(0f, data.BlockerHeight * 0.5f, 0f),
+            HalfExtents = new Vector3(
+                data.FootprintSizeX * 0.5f,
+                data.BlockerHeight * 0.5f,
+                data.FootprintSizeZ * 0.5f
+            )
+        };
     }
 
-    private bool CanPlace(Vector3 pos, Vector3 halfExtents)
+    private bool CanPlace(Vector3 footprintCenter, Vector3 halfExtents)
     {
-        if (HasPlacementCollision(pos, halfExtents))
+        if (HasPlacementCollision(footprintCenter, halfExtents))
             return false;
 
         EntityQuery gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
@@ -344,10 +513,27 @@ public class BuildingPlacer : MonoBehaviour
 
         GridComponent grid = gridQuery.GetSingleton<GridComponent>();
 
-        float minX = pos.x - halfExtents.x + 0.01f;
-        float minZ = pos.z - halfExtents.z + 0.01f;
-        float maxX = pos.x + halfExtents.x - 0.01f;
-        float maxZ = pos.z + halfExtents.z - 0.01f;
+        float padding = 0.01f;
+
+        if (grid.cellsize > 0f)
+            padding = Mathf.Min(padding, grid.cellsize * 0.45f);
+
+        float minX = footprintCenter.x - halfExtents.x + padding;
+        float minZ = footprintCenter.z - halfExtents.z + padding;
+        float maxX = footprintCenter.x + halfExtents.x - padding;
+        float maxZ = footprintCenter.z + halfExtents.z - padding;
+
+        if (minX > maxX)
+        {
+            minX = footprintCenter.x - halfExtents.x;
+            maxX = footprintCenter.x + halfExtents.x;
+        }
+
+        if (minZ > maxZ)
+        {
+            minZ = footprintCenter.z - halfExtents.z;
+            maxZ = footprintCenter.z + halfExtents.z;
+        }
 
         int2 minGrid = GridHelper.WorldToGrid(new float3(minX, 0, minZ), grid);
         int2 maxGrid = GridHelper.WorldToGrid(new float3(maxX, 0, maxZ), grid);
@@ -376,18 +562,16 @@ public class BuildingPlacer : MonoBehaviour
         return true;
     }
 
-    private bool HasPlacementCollision(Vector3 pos, Vector3 halfExtents)
+    private bool HasPlacementCollision(Vector3 footprintCenter, Vector3 halfExtents)
     {
-        Vector3 boxCenter = pos + Vector3.up * halfExtents.y;
-
         Vector3 checkHalfExtents = new Vector3(
-            Mathf.Max(0.01f, halfExtents.x - placementCheckPadding),
-            Mathf.Max(0.01f, halfExtents.y - placementCheckPadding),
-            Mathf.Max(0.01f, halfExtents.z - placementCheckPadding)
+            Mathf.Max(0.01f, halfExtents.x + placementCheckPadding),
+            Mathf.Max(0.01f, halfExtents.y + placementCheckPadding),
+            Mathf.Max(0.01f, halfExtents.z + placementCheckPadding)
         );
 
         Collider[] hits = Physics.OverlapBox(
-            boxCenter,
+            footprintCenter,
             checkHalfExtents,
             Quaternion.identity,
             placementBlockMask,
@@ -453,8 +637,11 @@ public class BuildingPlacer : MonoBehaviour
         entityManager.SetComponentData(resEntity, res);
     }
 
-    private void PlaceBuilding(Vector3 pos)
+    private void PlaceBuilding(Vector3 rootPosition)
     {
+        BuildingFootprint footprint = GetSelectedBuildingFootprint();
+        Vector3 footprintCenter = footprint.GetWorldCenter(rootPosition);
+
         if (currentGhost != null)
             Destroy(currentGhost);
 
@@ -469,7 +656,7 @@ public class BuildingPlacer : MonoBehaviour
             LocalTransform transform =
                 entityManager.GetComponentData<LocalTransform>(building);
 
-            transform.Position = new float3(pos.x, pos.y, pos.z);
+            transform.Position = new float3(rootPosition.x, rootPosition.y, rootPosition.z);
 
             entityManager.SetComponentData(building, transform);
         }
@@ -477,18 +664,51 @@ public class BuildingPlacer : MonoBehaviour
         {
             entityManager.AddComponentData(
                 building,
-                LocalTransform.FromPosition(new float3(pos.x, pos.y, pos.z))
+                LocalTransform.FromPosition(new float3(rootPosition.x, rootPosition.y, rootPosition.z))
             );
         }
 
+        ApplyFootprintToPlacedBuilding(building, footprint);
         ResetConstructionState(building);
 
         if (logConstructionDebug)
             DebugConstructionState(building, "After PlaceBuilding");
 
-        Vector3 halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
+        CreateBuildingBlocker(footprintCenter, footprint.HalfExtents, building);
+        SendBuildingCostChangeRequest(footprintCenter, footprint.HalfExtents, buildingObstacleCost);
+    }
 
-        CreateBuildingBlocker(pos, halfExtents, building);
+    private void ApplyFootprintToPlacedBuilding(Entity building, BuildingFootprint footprint)
+    {
+        BuildingCostArea costArea = new BuildingCostArea
+        {
+            CenterOffset = new float3(
+                footprint.CenterOffset.x,
+                footprint.CenterOffset.y,
+                footprint.CenterOffset.z
+            ),
+            HalfExtents = new float3(
+                footprint.HalfExtents.x,
+                footprint.HalfExtents.y,
+                footprint.HalfExtents.z
+            )
+        };
+
+        if (entityManager.HasComponent<BuildingCostArea>(building))
+            entityManager.SetComponentData(building, costArea);
+        else
+            entityManager.AddComponentData(building, costArea);
+
+        if (entityManager.HasComponent<BuildingData>(building))
+        {
+            BuildingData data = entityManager.GetComponentData<BuildingData>(building);
+
+            data.FootprintSizeX = footprint.HalfExtents.x * 2f;
+            data.FootprintSizeZ = footprint.HalfExtents.z * 2f;
+            data.BlockerHeight = footprint.HalfExtents.y * 2f;
+
+            entityManager.SetComponentData(building, data);
+        }
     }
 
     private void ResetConstructionState(Entity building)
@@ -546,6 +766,7 @@ public class BuildingPlacer : MonoBehaviour
         Debug.Log(
             $"[{label}] Entity = {building}\n" +
             $"Has BuildingData = {entityManager.HasComponent<BuildingData>(building)}\n" +
+            $"Has BuildingCostArea = {entityManager.HasComponent<BuildingCostArea>(building)}\n" +
             $"Has ConstructionData = {entityManager.HasComponent<ConstructionData>(building)}\n" +
             $"Has RevealHeightProperty = {entityManager.HasComponent<RevealHeightProperty>(building)}\n" +
             $"Has UnderConstructionTag = {entityManager.HasComponent<UnderConstructionTag>(building)}"
@@ -571,9 +792,20 @@ public class BuildingPlacer : MonoBehaviour
 
             Debug.Log("RevealHeightProperty Value = " + reveal.Value);
         }
+
+        if (entityManager.HasComponent<BuildingCostArea>(building))
+        {
+            BuildingCostArea area = entityManager.GetComponentData<BuildingCostArea>(building);
+
+            Debug.Log(
+                $"BuildingCostArea: " +
+                $"CenterOffset={area.CenterOffset}, " +
+                $"HalfExtents={area.HalfExtents}"
+            );
+        }
     }
 
-    private void CreateBuildingBlocker(Vector3 pos, Vector3 halfExtents, Entity buildingEntity)
+    private void CreateBuildingBlocker(Vector3 footprintCenter, Vector3 halfExtents, Entity buildingEntity)
     {
         GameObject blocker = new GameObject("BuildingBlocker");
 
@@ -584,7 +816,7 @@ public class BuildingPlacer : MonoBehaviour
         else
             Debug.LogWarning("Layer 'Building' does not exist.");
 
-        blocker.transform.position = pos + Vector3.up * halfExtents.y;
+        blocker.transform.position = footprintCenter;
 
         BoxCollider col = blocker.AddComponent<BoxCollider>();
         col.size = halfExtents * 2f;
@@ -593,6 +825,76 @@ public class BuildingPlacer : MonoBehaviour
 
         BuildingBlocker buildingBlocker = blocker.AddComponent<BuildingBlocker>();
         buildingBlocker.BuildingEntity = buildingEntity;
+    }
+
+    private void SendBuildingCostChangeRequest(Vector3 footprintCenter, Vector3 halfExtents, int newCost)
+    {
+        if (!isEntityManagerReady)
+            return;
+
+        EntityQuery gridQuery = entityManager.CreateEntityQuery(
+            typeof(GridComponent),
+            typeof(CostChangeRequest)
+        );
+
+        if (gridQuery.IsEmpty)
+        {
+            Debug.LogWarning("Cannot send building cost request. GridComponent or CostChangeRequest buffer not found.");
+            return;
+        }
+
+        Entity gridEntity = gridQuery.GetSingletonEntity();
+
+        if (!entityManager.HasBuffer<CostChangeRequest>(gridEntity))
+        {
+            Debug.LogWarning("Grid entity has no CostChangeRequest buffer.");
+            return;
+        }
+
+        GridComponent grid = entityManager.GetComponentData<GridComponent>(gridEntity);
+
+        float padding = Mathf.Max(0f, buildingCostPadding);
+
+        if (grid.cellsize > 0f)
+            padding = Mathf.Min(padding, grid.cellsize * 0.45f);
+
+        float minX = footprintCenter.x - halfExtents.x + padding;
+        float minZ = footprintCenter.z - halfExtents.z + padding;
+        float maxX = footprintCenter.x + halfExtents.x - padding;
+        float maxZ = footprintCenter.z + halfExtents.z - padding;
+
+        if (minX > maxX)
+        {
+            minX = footprintCenter.x - halfExtents.x;
+            maxX = footprintCenter.x + halfExtents.x;
+        }
+
+        if (minZ > maxZ)
+        {
+            minZ = footprintCenter.z - halfExtents.z;
+            maxZ = footprintCenter.z + halfExtents.z;
+        }
+
+        StartEndRect area = new StartEndRect(new float2(minX, minZ));
+        area.ExpandTo(new float2(maxX, maxZ));
+
+        DynamicBuffer<CostChangeRequest> requestBuffer =
+            entityManager.GetBuffer<CostChangeRequest>(gridEntity);
+
+        requestBuffer.Add(new CostChangeRequest
+        {
+            newCost = newCost,
+            area = area
+        });
+
+        if (logConstructionDebug)
+        {
+            Debug.Log(
+                $"Building cost request sent. " +
+                $"Cost={newCost}, " +
+                $"Area=({minX:F2},{minZ:F2}) -> ({maxX:F2},{maxZ:F2})"
+            );
+        }
     }
 
     private void CancelPlacement()
@@ -660,29 +962,23 @@ public class BuildingPlacer : MonoBehaviour
         if (!isPlacing || currentGhost == null)
             return;
 
-        Vector3 halfExtents = defaultHalfExtents;
-
-        if (isEntityManagerReady &&
-            selectedBuildingPrefab != Entity.Null &&
-            entityManager.HasComponent<BuildingData>(selectedBuildingPrefab))
-        {
-            halfExtents = GetBuildingHalfExtents(selectedBuildingPrefab);
-        }
+        BuildingFootprint footprint = GetSelectedBuildingFootprint();
+        Vector3 footprintCenter = footprint.GetWorldCenter(currentSnappedPosition);
 
         Gizmos.color = currentCanPlace
             ? new Color(0f, 1f, 0f, 0.25f)
             : new Color(1f, 0f, 0f, 0.25f);
 
         Gizmos.DrawCube(
-            currentSnappedPosition + Vector3.up * halfExtents.y,
-            halfExtents * 2f
+            footprintCenter,
+            footprint.HalfExtents * 2f
         );
 
         Gizmos.color = Color.white;
 
         Gizmos.DrawWireCube(
-            currentSnappedPosition + Vector3.up * halfExtents.y,
-            halfExtents * 2f
+            footprintCenter,
+            footprint.HalfExtents * 2f
         );
     }
 }
