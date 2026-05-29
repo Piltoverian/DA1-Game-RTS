@@ -49,6 +49,7 @@ GameObject:
   - component: {fileID: 5544288066034339426}
   - component: {fileID: 8849858697887019221}
   - component: {fileID: 5597510360651243268}
+  - component: {fileID: -6294958023265052791}
   m_Layer: 0
   m_Name: PlasmaTower
   m_TagString: Untagged
@@ -161,6 +162,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee27e6338f587b141a7ff150ce88707e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
+  PlayerID: 1
   BuildingType: 1
   GoldCost: 100
   WoodCost: 50
@@ -232,6 +234,20 @@ MonoBehaviour:
   targetEmissionColorProperty: _EmissionColor
   revealHeightProperty: _RevealHeight
   defaultRevealHeight: -10
+--- !u!114 &-6294958023265052791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331245334246899429}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  playerID: 1
+  unitName: PlasmaTower
 --- !u!1 &8393382258540961797
 GameObject:
   m_ObjectHideFlags: 0

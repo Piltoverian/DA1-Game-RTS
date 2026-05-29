@@ -18,8 +18,10 @@ GameObject:
   - component: {fileID: 5544288066034339426}
   - component: {fileID: 8849858697887019221}
   - component: {fileID: 1886805193916276093}
+  - component: {fileID: -7096663888667331584}
+  - component: {fileID: 3106437892104779538}
   m_Layer: 0
-  m_Name: TowerDedend
+  m_Name: TowerDefend
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -129,10 +131,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee27e6338f587b141a7ff150ce88707e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
+  PlayerID: 1
   BuildingType: 1
   GoldCost: 100
   WoodCost: 50
-  ConstructionTime: 5
+  ConstructionTime: 2
   StartRevealHeight: 0
   EndRevealHeight: 10
   FootprintSizeX: 6
@@ -195,6 +198,34 @@ MonoBehaviour:
   targetEmissionColorProperty: _EmissionColor
   revealHeightProperty: _RevealHeight
   defaultRevealHeight: 20
+--- !u!114 &-7096663888667331584
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331245334246899429}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
+  healthAmount: 100
+  maxHealthAmount: 100
+--- !u!114 &3106437892104779538
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331245334246899429}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  playerID: 1
+  unitName: TowerDefend
 --- !u!1 &8393382258540961797
 GameObject:
   m_ObjectHideFlags: 0
