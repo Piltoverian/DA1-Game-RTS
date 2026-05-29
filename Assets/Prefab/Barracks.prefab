@@ -257,6 +257,9 @@ GameObject:
   - component: {fileID: 4195059132925248615}
   - component: {fileID: 7139992875957162329}
   - component: {fileID: 1873594476172332808}
+  - component: {fileID: 8313083466484460712}
+  - component: {fileID: 4912501920613675292}
+  - component: {fileID: 2579877181806667677}
   m_Layer: 8
   m_Name: Barracks
   m_TagString: Untagged
@@ -344,7 +347,9 @@ MonoBehaviour:
   RallyOffset: {fileID: 8715630179913621966}
   UnitGoldCost: 50
   UnitFoodCost: 0
-  UnitPrefabs: []
+  UnitPrefabs:
+  - {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+  - {fileID: 3382223461976398644, guid: d8f38416d36ac3345a6c7d5f1ca7f04b, type: 3}
 --- !u!114 &7139992875957162329
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -359,7 +364,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SingleSelectable
   visualGameObject: {fileID: 1006565745583947050}
   showScale: 1.5
-  playerID: 0
+  playerID: 1
 --- !u!114 &1873594476172332808
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -375,3 +380,53 @@ MonoBehaviour:
   CommandList:
   - Type: 3
     indexInUnitCommandList: 0
+  - Type: 3
+    indexInUnitCommandList: 1
+  - Type: 3
+    indexInUnitCommandList: 2
+  - Type: 3
+    indexInUnitCommandList: 3
+  - Type: 2
+    indexInUnitCommandList: 0
+  - Type: 2
+    indexInUnitCommandList: 1
+--- !u!114 &8313083466484460712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
+  healthAmount: 1
+  maxHealthAmount: 1
+--- !u!114 &4912501920613675292
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Entities.Hybrid::Unity.Entities.Hybrid.Baking.LinkedEntityGroupAuthoring
+--- !u!114 &2579877181806667677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  playerID: 1
+  unitName: Barracks

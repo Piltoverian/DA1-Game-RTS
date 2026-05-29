@@ -22,15 +22,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -46.8
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 59.7
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalRotation.w
@@ -84,6 +84,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       insertIndex: -1
       addedObject: {fileID: -4636542291449033065}
+    - targetCorrespondingSourceObject: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4071029929804850705}
   m_SourcePrefab: {fileID: 100100000, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
 --- !u!1 &5992325127040136266 stripped
 GameObject:
@@ -104,4 +107,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WorkerAuthoring
   Capacity: 10
   GatherTime: 1
-  StopDistance: 2
+  StopDistance: 4
+--- !u!114 &4071029929804850705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5992325127040136266}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97244c9565e59494db83018977959239, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CommandListAuthoring
+  CommandList:
+  - Type: 1
+    indexInUnitCommandList: 0
+  - Type: 0
+    indexInUnitCommandList: 0
