@@ -7,7 +7,6 @@ using UnityEngine;
 public class CommandListAuthoring : MonoBehaviour
 {
     public List<CommandData> CommandList;
-
     public class Baker : Baker<CommandListAuthoring>
     {
         public override void Bake(CommandListAuthoring authoring)

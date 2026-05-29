@@ -71,7 +71,7 @@ public class BuildingPlacer : MonoBehaviour
 
         if (query.IsEmpty)
         {
-            Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
+            //Debug.LogError("Không tìm thấy BuildingPrefabData. Kiểm tra BuildingPrefabAuthoring trong SubScene.");
             return;
         }
 
