@@ -16,8 +16,8 @@
   <Project Path="Unity.Entities.Editor.csproj" />
   <Project Path="Unity.Searcher.Editor.csproj" />
   <Project Path="Unity.InternalAPIEngineBridge.002.csproj" />
-  <Project Path="Unity.VisualScripting.Core.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Unity.VisualScripting.Core.csproj" />
   <Project Path="Unity.VisualScripting.State.Editor.csproj" />
   <Project Path="Unity.Physics.Hybrid.csproj" />
   <Project Path="Unity.Burst.CodeGen.csproj" />

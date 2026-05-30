@@ -940,6 +940,10 @@ MonoBehaviour:
     m_Bits: 1280
   placementCheckPadding: 0.05
   logPlacementBlocking: 0
+  buildingObstacleCost: 2147483647
+  buildingCostPadding: 0.01
+  preferPlacementNamedCollider: 1
+  useLargestBoxColliderWhenNoPlacementCollider: 1
   logConstructionDebug: 1
 --- !u!4 &2129248350
 Transform:
