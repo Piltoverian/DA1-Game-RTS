@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: BarracksPlacementDefinition
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacementDefinition
   CommandIndex: 0
-  DisplayName: Build Barracks
+  DisplayName: Barracks
   BuildingType: 0
   PreviewPrefab: {fileID: 7068652928532432289, guid: fce83cba02079594d95933172169fa63, type: 3}

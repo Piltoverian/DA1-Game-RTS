@@ -110,7 +110,7 @@ public class EnemySpawnerAuthoring : MonoBehaviour
                 spawnRows = math.max(1, authoring.spawnRows),
                 nextSpawnSlot = 0,
 
-                targetPlayerID = authoring.targetPlayerID,
+                targetPlayerID = 1,
                 stopBeforeMainBaseDistance = math.max(0f, authoring.stopBeforeMainBaseDistance),
                 useFallbackTarget = authoring.useFallbackTarget,
                 fallbackTarget = authoring.fallbackTarget,

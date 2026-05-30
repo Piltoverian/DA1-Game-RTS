@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: TowerPlacementDefinition
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacementDefinition
   CommandIndex: 1
+  DisplayName: Tower
   BuildingType: 1
-  DisplayName: Build Tower
   PreviewPrefab: {fileID: 7331245334246899429, guid: 8ca7bb87babd51849a0c1356743066c9, type: 3}

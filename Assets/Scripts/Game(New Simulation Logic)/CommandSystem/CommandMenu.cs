@@ -72,7 +72,10 @@ public class CommandMenu : MonoBehaviour
             {
                 if (command.Type== CommandType.Build)
                 {
+                    var buildingdef = buildingPlacementDatabase.GetByCommandIndex(command.indexInUnitCommandList);
+                    var buildingName = buildingdef != null ? buildingdef.DisplayName : "Unknown Building";
 
+                    image.sprite = IconMapping.GetIconOfCommand(buildingName);
                 }
 
                 if (command.Type == CommandType.Progression)

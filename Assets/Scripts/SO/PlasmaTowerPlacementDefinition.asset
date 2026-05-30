@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: PlasmaTowerPlacementDefinition
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacementDefinition
   CommandIndex: 3
-  DisplayName: Build Plasma Tower
+  DisplayName: Plasma Tower
   BuildingType: 1
   PreviewPrefab: {fileID: 7331245334246899429, guid: 1870a7c9743393242bdde19064c294b5, type: 3}

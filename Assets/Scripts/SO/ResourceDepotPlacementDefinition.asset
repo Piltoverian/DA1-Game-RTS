@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: ResourceDepotPlacementDefinition
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacementDefinition
   CommandIndex: 2
+  DisplayName: Depot
   BuildingType: 2
-  DisplayName: Build Depot
   PreviewPrefab: {fileID: 7625297489629590005, guid: 3cb8a4d7854d2994e9e2db1afc6234ef, type: 3}
