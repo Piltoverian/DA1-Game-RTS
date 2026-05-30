@@ -172,68 +172,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &114151770
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 114151772}
-  - component: {fileID: 114151771}
-  m_Layer: 0
-  m_Name: BuildingPlacer
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &114151771
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 114151770}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0762a5eabb40ba34b923508e2c6ede4c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacer
-  placementDatabase: {fileID: 0}
-  validGhostMaterial: {fileID: 0}
-  invalidGhostMaterial: {fileID: 0}
-  gridSize: 1
-  defaultHalfExtents: {x: 3, y: 2, z: 3}
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 0
-  placementBlockMask:
-    serializedVersion: 2
-    m_Bits: 0
-  placementCheckPadding: 0.05
-  logPlacementBlocking: 0
-  buildingObstacleCost: 2147483647
-  buildingCostPadding: 0.01
-  preferPlacementNamedCollider: 1
-  useLargestBoxColliderWhenNoPlacementCollider: 1
-  logConstructionDebug: 1
---- !u!4 &114151772
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 114151770}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 90, y: 959, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &118245917
 GameObject:
   m_ObjectHideFlags: 0
@@ -1043,6 +981,68 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1bee279dfc8577e4f9671427bca91235, type: 3}
+--- !u!1 &1872836184
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1872836186}
+  - component: {fileID: 1872836185}
+  m_Layer: 0
+  m_Name: BuildingPlacer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1872836185
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872836184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0762a5eabb40ba34b923508e2c6ede4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacer
+  placementDatabase: {fileID: 11400000, guid: 5a98b62091ad4cf43a50ed388a1f428b, type: 2}
+  validGhostMaterial: {fileID: 2100000, guid: b4768b00b7fc05e4f90c0703efa494e2, type: 2}
+  invalidGhostMaterial: {fileID: 2100000, guid: 633ef79ccc92a8b43af6bf3ccbf12f1d, type: 2}
+  gridSize: 1
+  defaultHalfExtents: {x: 3, y: 2, z: 3}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  placementBlockMask:
+    serializedVersion: 2
+    m_Bits: 1280
+  placementCheckPadding: 0.05
+  logPlacementBlocking: 0
+  buildingObstacleCost: 2147483647
+  buildingCostPadding: 0.01
+  preferPlacementNamedCollider: 1
+  useLargestBoxColliderWhenNoPlacementCollider: 1
+  logConstructionDebug: 1
+--- !u!4 &1872836186
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872836184}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 90, y: 959, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1975128027
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1150,12 +1150,12 @@ SceneRoots:
   m_Roots:
   - {fileID: 119392187}
   - {fileID: 118245919}
-  - {fileID: 114151772}
   - {fileID: 730808905}
   - {fileID: 851872941}
   - {fileID: 1146016332}
   - {fileID: 1549605983}
   - {fileID: 1827138465}
   - {fileID: 1975128027}
-  - {fileID: 24792799}
   - {fileID: 321679047}
+  - {fileID: 1872836186}
+  - {fileID: 24792799}

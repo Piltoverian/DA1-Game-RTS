@@ -58,7 +58,7 @@ public class CommandButton : MonoBehaviour
                         return;
                     }
 
-                    BuildingPlacer.Instance.StartPlacementFromCommand(commandData, sourceEntity);
+                    BuildingPlacer.Instance.StartPlacementFromCommand(commandData, sourceEntity,playerId);
                     break;
                 }
 

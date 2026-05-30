@@ -16,13 +16,17 @@ PrefabInstance:
       propertyPath: playerID
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 3120659631628476173, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
+      propertyPath: unitName
+      value: Worker
+      objectReference: {fileID: 0}
     - target: {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_Name
-      value: EnemyUnit
+      value: Worker
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -46.8
+      value: -32.46377
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.y
@@ -30,7 +34,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 59.7
+      value: -7.6458116
       objectReference: {fileID: 0}
     - target: {fileID: 3510181012055626075, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
       propertyPath: m_LocalRotation.w
@@ -124,4 +128,6 @@ MonoBehaviour:
   - Type: 1
     indexInUnitCommandList: 0
   - Type: 0
+    indexInUnitCommandList: 0
+  - Type: 3
     indexInUnitCommandList: 0

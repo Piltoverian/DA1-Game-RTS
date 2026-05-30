@@ -19,7 +19,18 @@ partial struct SelecUISystem : ISystem
         foreach (var (selected, entity) in
                  SystemAPI.Query<RefRW<Selected>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).WithEntityAccess())
         {
-            var renderer = state.EntityManager.GetComponentObject<SpriteRenderer>(selected.ValueRW.visualEntity);
+            var visualEntity = selected.ValueRO.visualEntity;
+            if (visualEntity == Entity.Null || !state.EntityManager.Exists(visualEntity))
+            {
+                continue;
+            }
+
+            if (!state.EntityManager.HasComponent<SpriteRenderer>(visualEntity))
+            {
+                continue;
+            }
+
+            var renderer = state.EntityManager.GetComponentObject<SpriteRenderer>(visualEntity);
             
             if (!state.EntityManager.IsComponentEnabled<Selected>(entity))
             {

@@ -62,7 +62,7 @@ public class BuildingPlacer : MonoBehaviour
     private bool lastGhostCanPlace;
 
     private int selectedCommandIndex = -1;
-
+    private int currentPlayerID=-1;
     private struct BuildingFootprint
     {
         public Vector3 CenterOffset;
@@ -129,7 +129,7 @@ public class BuildingPlacer : MonoBehaviour
             }
 
             PayBuildingCost(selectedBuildingPrefab);
-            PlaceBuilding(currentSnappedPosition);
+            PlaceBuilding(currentSnappedPosition, currentPlayerID);
         }
 
         if (Input.GetMouseButtonDown(1))
@@ -138,7 +138,7 @@ public class BuildingPlacer : MonoBehaviour
         }
     }
 
-    public void StartPlacementFromCommand(CommandData commandData, Entity sourceEntity)
+    public void StartPlacementFromCommand(CommandData commandData, Entity sourceEntity,int playerID)
     {
         if (commandData.Type != CommandType.Build)
         {
@@ -160,13 +160,14 @@ public class BuildingPlacer : MonoBehaviour
 
         BuildingPlacementDefinition definition =
             placementDatabase.GetByCommandIndex(commandData.indexInUnitCommandList);
-
+        
         if (definition == null)
         {
             Debug.LogError("No BuildingPlacementDefinition for command index: " + commandData.indexInUnitCommandList);
             return;
         }
 
+        currentPlayerID = playerID;
         SelectBuilding(definition);
     }
 
@@ -637,7 +638,7 @@ public class BuildingPlacer : MonoBehaviour
         entityManager.SetComponentData(resEntity, res);
     }
 
-    private void PlaceBuilding(Vector3 rootPosition)
+    private void PlaceBuilding(Vector3 rootPosition,int PlayerID)
     {
         BuildingFootprint footprint = GetSelectedBuildingFootprint();
         Vector3 footprintCenter = footprint.GetWorldCenter(rootPosition);
@@ -650,6 +651,13 @@ public class BuildingPlacer : MonoBehaviour
         isPlacing = false;
 
         Entity building = entityManager.Instantiate(selectedBuildingPrefab);
+
+        if (entityManager.HasComponent<Unit>(building))
+        {
+            Unit unit = entityManager.GetComponentData<Unit>(building);
+            unit.playerID = PlayerID;
+            entityManager.SetComponentData(building, unit);
+        }
 
         if (entityManager.HasComponent<LocalTransform>(building))
         {
@@ -676,6 +684,7 @@ public class BuildingPlacer : MonoBehaviour
 
         CreateBuildingBlocker(footprintCenter, footprint.HalfExtents, building);
         SendBuildingCostChangeRequest(footprintCenter, footprint.HalfExtents, buildingObstacleCost);
+        currentPlayerID = -1;
     }
 
     private void ApplyFootprintToPlacedBuilding(Entity building, BuildingFootprint footprint)
