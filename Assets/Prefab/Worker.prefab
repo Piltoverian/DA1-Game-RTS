@@ -111,7 +111,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WorkerAuthoring
   Capacity: 10
   GatherTime: 1
-  StopDistance: 4
+  StopDistance: 7
 --- !u!114 &4071029929804850705
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -131,3 +131,5 @@ MonoBehaviour:
     indexInUnitCommandList: 0
   - Type: 3
     indexInUnitCommandList: 0
+  - Type: 3
+    indexInUnitCommandList: 2

@@ -37,7 +37,7 @@ public partial struct WorkerGatherSystem : ISystem
             workerCount++;
 
             float3 workerPos = workerTransform.ValueRO.Position;
-
+            float2 WorkerPos2D = workerPos.xz;
             bool needFindNode =
                 gather.ValueRO.TargetNode == Entity.Null ||
                 !nodeLookup.HasComponent(gather.ValueRO.TargetNode) ||
@@ -113,8 +113,9 @@ public partial struct WorkerGatherSystem : ISystem
             }
 
             float3 nodePos = transformLookup[nodeEntity].Position;
+            float2 nodePos2D = nodePos.xz;
             float3 depotPos = transformLookup[depotEntity].Position;
-
+            float2 depotPos2D = depotPos.xz;
             Debug.Log($"[WorkerGather] NodePos={nodePos} DepotPos={depotPos}");
 
             switch (gather.ValueRO.State)
@@ -143,7 +144,7 @@ public partial struct WorkerGatherSystem : ISystem
                         }
 
                         float distSq =
-                            math.distancesq(workerPos, nodePos);
+                            math.distancesq(WorkerPos2D, nodePos2D);
 
                         Debug.Log(
                             $"[WorkerGather] DistanceSq to node = {distSq}, StopDistanceSq = {gather.ValueRO.StopDistanceSq}"
@@ -235,7 +236,7 @@ public partial struct WorkerGatherSystem : ISystem
                         }
 
                         float distSq =
-                            math.distancesq(workerPos, depotPos);
+                            math.distancesq(WorkerPos2D, depotPos2D);
 
                         Debug.Log(
                             $"[WorkerGather] DistanceSq to depot = {distSq}, StopDistanceSq = {gather.ValueRO.StopDistanceSq}"
