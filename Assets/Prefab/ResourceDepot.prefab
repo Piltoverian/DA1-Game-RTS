@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8478659271043453840}
   - component: {fileID: 1382016280144667554}
   - component: {fileID: 147496419893297543}
+  - component: {fileID: 3786601675032313025}
   m_Layer: 8
   m_Name: ResourceDepot
   m_TagString: Untagged
@@ -103,6 +104,20 @@ MonoBehaviour:
   targetEmissionColorProperty: _EmissionColor
   revealHeightProperty: _RevealHeight
   defaultRevealHeight: -10
+--- !u!114 &3786601675032313025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  playerID: 1
+  unitName: ResourceDepot
 --- !u!1001 &1376902972682506400
 PrefabInstance:
   m_ObjectHideFlags: 0

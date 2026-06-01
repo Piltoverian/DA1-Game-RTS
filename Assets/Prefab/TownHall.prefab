@@ -78,6 +78,7 @@ GameObject:
   - component: {fileID: 1873594476172332808}
   - component: {fileID: -1736645685222165999}
   - component: {fileID: 7186738089940683195}
+  - component: {fileID: 5553383681436068101}
   m_Layer: 8
   m_Name: TownHall
   m_TagString: Untagged
@@ -138,7 +139,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
   PlayerID: 1
   BuildingType: 0
-  GoldCost: 100
+  GoldCost: 50
   WoodCost: 0
   ConstructionTime: 5
   StartRevealHeight: 0
@@ -224,6 +225,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
   healthAmount: 1000
   maxHealthAmount: 1000
+--- !u!114 &5553383681436068101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b021132a6c3c448b5f28c0ed2ede5a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainBaseAuthoring
 --- !u!1001 &6536777368619591032
 PrefabInstance:
   m_ObjectHideFlags: 0

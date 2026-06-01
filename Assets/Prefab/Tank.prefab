@@ -94,7 +94,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
   playerID: 1
-  unitName: 
+  unitName: Tank-Future
 --- !u!114 &8938032757841855522
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -93,7 +93,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
   playerID: 2
-  unitName: 
+  unitName: Tank-Normal
 --- !u!114 &8938032757841855522
 MonoBehaviour:
   m_ObjectHideFlags: 0

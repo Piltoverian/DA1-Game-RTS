@@ -315,10 +315,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1382016280144667554, guid: 99b9de51435b7e74cb74a73a26b2490e, type: 3}
-      propertyPath: GoldCost
-      value: 50
-      objectReference: {fileID: 0}
     - target: {fileID: 5004000457613146172, guid: 99b9de51435b7e74cb74a73a26b2490e, type: 3}
       propertyPath: m_LocalPosition.x
       value: -31.281282
@@ -376,10 +372,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: -4636542291449033065, guid: 8de3ca81766892c47a372f888dd13d23, type: 3}
-      propertyPath: StopDistance
-      value: 7
-      objectReference: {fileID: 0}
     - target: {fileID: 5579883717895274021, guid: 8de3ca81766892c47a372f888dd13d23, type: 3}
       propertyPath: m_LocalPosition.x
       value: -26.629076
@@ -1049,6 +1041,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
+      propertyPath: spawnInterval
+      value: 40
+      objectReference: {fileID: 0}
+    - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
+      propertyPath: spawnFirstEnemyImmediately
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
+      propertyPath: unlockNextEnemyTypeInterval
+      value: 300
+      objectReference: {fileID: 0}
     - target: {fileID: 4446238194090829065, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
       propertyPath: m_LocalPosition.x
       value: -98.4
@@ -1464,7 +1468,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
       propertyPath: useFallbackTarget
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
       propertyPath: spawnFirstEnemyImmediately

@@ -19,3 +19,15 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: a75f5699288e1b14dab7e6d02ea81537, type: 3}
   - commandName: Barracks
     icon: {fileID: 21300000, guid: 02943e6d2acee4d42a78bd43eb847f81, type: 3}
+  - commandName: Tank-Normal
+    icon: {fileID: 21300000, guid: c721e2ae8df05f749a6223d9cc6b4178, type: 3}
+  - commandName: Tank-Future
+    icon: {fileID: 21300000, guid: 4d40181a662dc374a81c186abb6df467, type: 3}
+  - commandName: Depot
+    icon: {fileID: 21300000, guid: 248d1c0ff09ab2b49a1459d38d4ed116, type: 3}
+  - commandName: TownHall
+    icon: {fileID: 21300000, guid: 7abdadeaaba858b49bd4d444b750166c, type: 3}
+  - commandName: Tower
+    icon: {fileID: 21300000, guid: dd423ff58d76dc34fb037f6f002c593a, type: 3}
+  - commandName: Plasma Tower
+    icon: {fileID: 21300000, guid: dd423ff58d76dc34fb037f6f002c593a, type: 3}

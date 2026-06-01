@@ -402,8 +402,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
-  healthAmount: 1
-  maxHealthAmount: 1
+  healthAmount: 100
+  maxHealthAmount: 100
 --- !u!114 &4912501920613675292
 MonoBehaviour:
   m_ObjectHideFlags: 0
