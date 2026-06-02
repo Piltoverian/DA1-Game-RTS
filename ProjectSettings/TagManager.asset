@@ -12,11 +12,11 @@ TagManager:
   - Ground
   - Water
   - UI
-  - Units
+  - Unit
   - Selectable
-  - 
-  - 
-  - 
+  - Building
+  - Ghost
+  - Resource
   - 
   - 
   - 

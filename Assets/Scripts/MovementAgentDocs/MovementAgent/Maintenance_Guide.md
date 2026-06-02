@@ -11,22 +11,22 @@ Hiện tại, trong file `IntegrationFieldSystem.cs`, số lượng "hạt giố
 - **Vấn đề**: Nếu bản đồ của bạn có quá nhiều hòn đảo vụn vặt (> 1000), Game có thể bị crash khi Unit cố gắng tìm đường.
 - **Giải pháp**: Cần nâng cấp mảng này sang `NativeParallelHashMap` để co giãn linh hoạt theo quy mô bản đồ.
 
-### Độ phân giải Context Steering
-Trong `MovementAgentAvoidanceSystem.cs`, chúng ta đang dùng 16 hướng (Resolution = 16).
-- **Tối ưu**: Nếu bạn thấy CPU quá tải khi có hàng nghìn Unit, hãy cân nhắc giảm xuống 8 hoặc 12 hướng.
-- **Độ mượt**: Nếu Unit rẽ hướng bị giật, hãy tăng Resolution lên 24 hoặc 32 (tuy nhiên sẽ tốn CPU hơn).
+### Tối ưu chi phí ORCA (Time Horizon)
+Thuật toán ORCA dùng giá trị `timeHorizon` để quyết định xem nó cần nhìn trước bao nhiêu giây để né.
+- **Tối ưu hóa**: Tránh đặt `timeHorizon` quá lớn (>3 giây) khi có quá đông Unit, bởi vì số lượng Velocity Obstacle (VO) sẽ quét rất rộng và Unit có thể bị đứng hình vì không tìm thấy vận tốc an toàn chung.
+- **Độ linh hoạt**: Nếu Unit né nhau quá sát nút (sắp đụng tới nơi mới lách), hãy tăng nhẹ `timeHorizon` lên để chúng bắt đầu thay đổi vận tốc từ xa.
 
 ---
 
 ## 2. Tinh chỉnh tham số (Tuning)
 
-Các tham số trong `ContextSteeringConfig` ảnh hưởng trực tiếp đến "tính cách" của Unit:
+Các tham số mới (hoặc các component cấu hình Agent) ảnh hưởng cốt lõi đến sự mượt mà của bầy đàn:
 
-| Tham số | Ý nghĩa | Ảnh hưởng |
+| Tham số/Hệ số | Ý nghĩa | Ảnh hưởng |
 | :--- | :--- | :--- |
-| **DangerThreshold** | Ngưỡng nguy hiểm | Giá trị càng thấp, Unit càng "nhát" và né vật cản từ xa. |
-| **H_Alpha** | Độ trễ bám đuổi | Dùng để làm mượt hướng đi. Giá trị nhỏ sẽ mượt hơn nhưng phản ứng chậm hơn. |
-| **AvoidRadius** | Bán kính né | Khoảng cách Unit bắt đầu cảm nhận được hàng xóm. |
+| **Radius (Bán kính)** | Kích thước vật lý thực của Unit. | RADIUS cực kỳ quan trọng đối với ORCA. Quá to sẽ gây tắc đường hẹp, quá nhỏ sẽ làm model Unit bị xuyên thấu. |
+| **Separation Multiplier** | Hệ số dạt ra khi bị nén (chồng chéo). | Nếu bầy đàn tụ lại và bị jitter (run bần bật), hãy giảm điểm Separation xuống. Hệ số này quyết định lực đẩy `Hard Collision`. |
+| **First-come-first-settled Threshold** | Ngưỡng khoảng cách và vận tốc để một Unit được tính là đã "neo đậu". | Nếu giá trị này quá nhỏ, Unit sẽ lách liên tục quanh điểm đến mà không chịu dừng lại làm vật cản neo. |
 
 ---
 

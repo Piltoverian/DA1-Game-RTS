@@ -80,21 +80,34 @@ if (gridCosts[idx].cost >= 250) // Là vật cản
 }
 ```
 
-### 3.3 Tính toán nguy hiểm (Time-To-Collision Lite)
-Mức độ nguy hiểm (`Danger`) của một tia trong Context Steering không chỉ phụ thuộc vào khoảng cách mà còn phụ thuộc vào **vận tốc tương đối** của hai Unit.
-- Nếu hai Unit đi cùng hướng (Consensus cao): Giảm nguy hiểm để chúng có thể đi sát nhau (bầy đàn).
-- Nếu hai Unit đối đầu: Tăng nguy hiểm để chúng né nhau từ sớm.
-
-```csharp
-float consensus = math.dot(math.normalizesafe(myVel), math.normalizesafe(neighborVel));
-if (consensus > 0.8f) danger *= 0.1f;    // Đi song song
-else if (consensus < -0.5f) danger *= 1.5f; // Đi đối đầu
-```
+### 3.3 Hội tụ bầy đàn (First-come-first-settled)
+Thay vì các Unit liên tục xô đẩy nhau để giành giật một `slotTarget`, hệ thống áp dụng chiến lược hội tụ:
+- **Settled (Đã neo đậu)**: Khi một Unit đi vào bán kính đích (ví dụ `0.1` đơn vị) và vận tốc đã chậm lại, nó sẽ chuyển trạng thái sang `isSettled = true`. Lúc này Unit trở thành một "vật cản tĩnh" cực kỳ vững chắc.
+- Ưu điểm: Các Unit tới sau bắt buộc phải né Unit đã "neo đậu" bằng thuật toán ORCA, tạo ra đội hình bao quanh mục tiêu mượt mà thay vì dồn cục.
 
 ---
 
-## 4. Local Avoidance (Context Steering)
-Hệ thống sử dụng **Context Steering** với 16 hướng (Resolution = 16).
-1. **Interest Map**: Các tia chỉ về phía Flow Field hoặc Slot đội hình.
-2. **Danger Map**: Các tia bị cản bởi Unit khác hoặc tường.
-3. **Solver**: Chọn tia có `Interest` cao nhất và `Danger` thấp nhất để làm hướng đi cuối cùng.
+## 4. Local Avoidance (Mô hình Hybrid ORCA & Separation)
+Hệ thống sử dụng mô hình kết hợp giữa không gian Vận tốc (Velocity-based) và Vị trí (Position-based). Trọng tâm bao gồm:
+
+### 4.1 Không gian Vận Tốc - ORCA (Optimal Reciprocal Collision Avoidance)
+Dựa trên thuật toán cắt nửa mặt phẳng (Half-plane constraints), hệ thống sẽ tìm một vận tốc an toàn:
+1. **Velocity Obstacle (VO)**: Tính toán tập hợp tất cả các vận tốc tương đối sẽ gây ra va chạm trong khoảng thời gian `timeHorizon` (thường là 1-2 giây) đối với các Unit xung quanh.
+2. **Half-plane Creation**: Tạo một ràng buộc dưới dạng đường thẳng giới hạn (Line), trong đó vùng hợp lệ bảo đảm khoảng cách an toàn. Hệ số `reciprocalFactor` (0.5) yêu cầu cả 2 Unit đều có trách nhiệm nhường đường, giúp giải quyết nút thắt cổ chai.
+3. **Linear Programming (LP)**: Giải bài toán quy hoạch tuyến tính 2D qua 3 bước (LP1, LP2, LP3) để tìm ra vận tốc an toàn nhất nhưng có độ ưu tiên cao nhất, vẫn đảm bảo bám sát `PreferredVelocity`.
+
+```csharp
+// Tạo đường ORCA Line giữa 2 Unit
+Line line = ORCAMath.CreateAgentLine(
+    relPos, agentVel, neighborVel, combinedRadius, timeHorizon, invDt, 0.5f);
+```
+
+### 4.2 Lực đẩy không gian (Position-based Separation)
+ORCA hoạt động rất tốt cho các va chạm dự báo trong tương lai. Nhưng nếu 2 Unit rủ nhau đi chung và _chồng luôn_ vào nhau tại cùng khung hình (Hard Overlap), ORCA không kịp đẩy xa. Lớp Separation giải quyết việc này:
+- Tính khoảng cách vật lý của Unit. Nếu nhỏ hơn `combinedRadius` (chồng chéo), tính Vector phân li:
+```csharp
+float2 diff = new float2(worldPos.x - nPos.x, worldPos.z - nPos.z);
+// Lực đẩy dạt ra ngoài tỉ lệ với mức độ chồng lấn
+separationForce += math.normalizesafe(diff) * overlapAmount * SeparationMultiplier;
+```
+Từ sức đẩy Separation cộng với kết quả tính của ORCA, ta có Vận tốc chuẩn xác và hoàn toàn không bị overlap khi di chuyển đoàn lớn.

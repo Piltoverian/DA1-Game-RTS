@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fba5808a6addd4242b163dab297293a8, type: 3}
+  m_Name: IconMapping
+  m_EditorClassIdentifier: Assembly-CSharp::CommandIconMapping
+  IconPairs:
+  - commandName: Soldier
+    icon: {fileID: 21300000, guid: 7d31029006b1a80419931dc8741e793e, type: 3}
+  - commandName: Worker
+    icon: {fileID: 21300000, guid: a75f5699288e1b14dab7e6d02ea81537, type: 3}
+  - commandName: Barracks
+    icon: {fileID: 21300000, guid: 02943e6d2acee4d42a78bd43eb847f81, type: 3}
+  - commandName: Tank-Normal
+    icon: {fileID: 21300000, guid: c721e2ae8df05f749a6223d9cc6b4178, type: 3}
+  - commandName: Tank-Future
+    icon: {fileID: 21300000, guid: 4d40181a662dc374a81c186abb6df467, type: 3}
+  - commandName: Depot
+    icon: {fileID: 21300000, guid: 248d1c0ff09ab2b49a1459d38d4ed116, type: 3}
+  - commandName: TownHall
+    icon: {fileID: 21300000, guid: 7abdadeaaba858b49bd4d444b750166c, type: 3}
+  - commandName: Tower
+    icon: {fileID: 21300000, guid: dd423ff58d76dc34fb037f6f002c593a, type: 3}
+  - commandName: Plasma Tower
+    icon: {fileID: 21300000, guid: dd423ff58d76dc34fb037f6f002c593a, type: 3}

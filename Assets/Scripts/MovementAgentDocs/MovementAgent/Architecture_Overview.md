@@ -32,10 +32,12 @@ Dựa trên mục tiêu mới, hệ thống sẽ tìm trong `Cache` xem đã có
 - Nếu không: Khởi tạo một Flow Field mới và yêu cầu `IntegrationFieldSystem` tính toán.
 
 ### Bước 4: Di chuyển và Né tránh (`AvoidanceSystem`)
-Mỗi frame, Unit sẽ đọc hướng từ Flow Field và kết hợp với `slotTarget`. Sau đó, nó sử dụng **Context Steering** để né các Unit khác trên đường đi.
+Mỗi frame, Unit sẽ đọc hướng từ Flow Field và kết hợp với đích đến hiện tại (`slotTarget`). Sau đó, nó đi qua hai lớp chống va chạm:
+1. **Lớp ORCA** (Tối ưu vận tốc): Tính toán vận tốc giúp né tránh dự phòng các va chạm trong tương lai gần với các Agent lân cận mà không làm lệch lạc quỹ đạo chung.
+2. **Lớp Separation** (Chống nén): Tính toán một vector lực khuếch tán dựa trên khoảng cách, đẩy dạt các Unit ra ngay lập tức nếu chúng vi phạm bán kính vật lý của nhau (hard-collision prevention).
 
 ### Bước 5: Thực thi (`ActuatorSystem`)
-Tính toán vận tốc cuối cùng, cập nhật hướng nhìn (`Rotation`) và ghi dữ liệu vào `LocalTransform` của Unity.
+Kết hợp Preferred Velocity (vận tốc tối ưu ban đầu), ORCA Velocity, và lực Separation Force để tính toán vận tốc cuối cùng. Áp dụng cơ chế Hội tụ (First-come-first-settled) để hệ thống nhận diện khi Agent đến đích có thể lập tức dừng ("được neo") mà không bị xô đẩy bởi các Unit đang tụ lại phía sau. Cuối cùng, cập nhật hướng nhìn (`Rotation`) và ghi dữ liệu vào `LocalTransform` của hệ thống lý thuyết (DOTS).
 
 ---
 
