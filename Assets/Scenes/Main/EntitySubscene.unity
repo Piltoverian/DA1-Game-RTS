@@ -1656,7 +1656,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 06e26683db9bba2418eb89f87df48276, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerResourceAuthoring
-  StartGold: 500
+  StartGold: 100000
   StartWood: 300
   StartFood: 0
 --- !u!4 &2080775909

@@ -72,7 +72,7 @@ MonoBehaviour:
   PlayerID: 1
   BuildingType: 2
   GoldCost: 100
-  WoodCost: 50
+  WoodCost: 0
   ConstructionTime: 1
   StartRevealHeight: 0
   EndRevealHeight: 20
