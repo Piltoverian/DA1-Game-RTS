@@ -27,11 +27,7 @@ partial struct BulletMoverSystem : ISystem
             float3 targetPosition;
             if (shootVictimLookup.HasComponent(targetEntity))
             {
-<<<<<<< HEAD:Assets/Scripts/Systems/BulletMoverSystem.cs
-                // Lấy transform của unit và cộng thêm offset đã chuyển sang World Space
-=======
                 // Lß║Ñy transform cß╗ºa unit v├á cß╗Öng th├¬m offset ─æ├ú chuyß╗ân sang World Space
->>>>>>> Tien-ver4:Assets/Scripts/Game(New Simulation Logic)/System/Combat/BulletMoverSystem.cs
                 var victimTransform = transformLookup[targetEntity];
                 targetPosition = victimTransform.TransformPoint(shootVictimLookup[targetEntity].localHitOffset);
             }
