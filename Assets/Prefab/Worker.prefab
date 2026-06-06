@@ -128,4 +128,10 @@ MonoBehaviour:
   - Type: 3
     indexInUnitCommandList: 0
   - Type: 3
+    indexInUnitCommandList: 1
+  - Type: 3
     indexInUnitCommandList: 2
+  - Type: 3
+    indexInUnitCommandList: 3
+  - Type: 3
+    indexInUnitCommandList: 4

@@ -6,7 +6,8 @@ public enum BuildingType
 {
     Barracks,
     Tower,
-    ResourceDepot
+    ResourceDepot,
+    House
 }
 
 public class BuildingAuthoring : MonoBehaviour

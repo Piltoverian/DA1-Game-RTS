@@ -315,6 +315,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 4195059132925248615, guid: 99b9de51435b7e74cb74a73a26b2490e, type: 3}
+      propertyPath: MaxQueue
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 5004000457613146172, guid: 99b9de51435b7e74cb74a73a26b2490e, type: 3}
       propertyPath: m_LocalPosition.x
       value: -31.281282
@@ -1043,7 +1047,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
       propertyPath: spawnInterval
-      value: 40
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 75571627272594128, guid: b18f207a0bab8f149b66c5ccaaf21276, type: 3}
       propertyPath: spawnFirstEnemyImmediately
@@ -1637,9 +1641,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPrefabCatalogAuthoring
   Buildings:
   - CommandIndex: 0
-    BuildingPrefab: {fileID: 7625297489629590005, guid: e22557968a15cd44383e7257c3d7a977, type: 3}
+    BuildingPrefab: {fileID: 7625297489629590005, guid: 1af5f3889268bc7469c5c05db37b36b3, type: 3}
   - CommandIndex: 1
-    BuildingPrefab: {fileID: 7331245334246899429, guid: 8ca7bb87babd51849a0c1356743066c9, type: 3}
+    BuildingPrefab: {fileID: 7331245334246899429, guid: 3787ee168d9ad594e845f3f1ab63064a, type: 3}
   - CommandIndex: 2
     BuildingPrefab: {fileID: 7625297489629590005, guid: 3cb8a4d7854d2994e9e2db1afc6234ef, type: 3}
   - CommandIndex: 3
@@ -1657,8 +1661,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerResourceAuthoring
   StartGold: 100000
-  StartWood: 300
-  StartFood: 0
+  StartWood: 100000
+  StartFood: 100000
 --- !u!4 &2080775909
 Transform:
   m_ObjectHideFlags: 0

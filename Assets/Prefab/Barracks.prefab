@@ -321,8 +321,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
   PlayerID: 1
   BuildingType: 0
-  GoldCost: 100
-  WoodCost: 0
+  GoldCost: 10
+  WoodCost: 10
   ConstructionTime: 5
   StartRevealHeight: 0
   EndRevealHeight: 20
@@ -342,10 +342,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ProductionAuthoring
   ProductionTime: 1
-  MaxQueue: 5
+  MaxQueue: 100
   SpawnOffset: {fileID: 7201032675521671080}
   RallyOffset: {fileID: 8715630179913621966}
-  UnitGoldCost: 50
+  UnitGoldCost: 10
   UnitFoodCost: 0
   UnitPrefabs:
   - {fileID: 3382223461976398644, guid: ac458f79c7da4ac44a5a080cd27a3077, type: 3}
