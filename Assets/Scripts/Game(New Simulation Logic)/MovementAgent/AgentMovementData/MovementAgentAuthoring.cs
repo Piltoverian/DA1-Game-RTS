@@ -1,5 +1,4 @@
 using Unity.Entities;
-using UnityEditor.ShaderGraph.Internal;
 using UnityEngine;
 using Unity.Mathematics;
 public class MovementAgentAuthoring : MonoBehaviour
@@ -76,24 +75,6 @@ public class MovementAgentAuthoring : MonoBehaviour
                 minDistanceToTarget = float.MaxValue,
                 stuckTime = 0f
             });
-
-            // --- CONTEXT STEERING BAKE ---
-            int resolution = 16;
-            AddComponent(entity, new ContextSteeringConfig
-            {
-                Resolution = resolution,
-                H_Alpha = 0.15f,
-                DangerThreshold = 0.8f
-            });
-
-            var mapBuffer = AddBuffer<ContextMapElement>(entity);
-            var historyBuffer = AddBuffer<ContextHistoryElement>(entity);
-
-            for (int i = 0; i < resolution; i++)
-            {
-                mapBuffer.Add(new ContextMapElement { Interest = 0, Danger = 0 });
-                historyBuffer.Add(new ContextHistoryElement { LastInterest = 0 });
-            }
 
             if (authoring.useTestTarget)
             {

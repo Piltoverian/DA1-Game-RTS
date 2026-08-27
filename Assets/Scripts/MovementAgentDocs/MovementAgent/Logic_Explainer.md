@@ -1,113 +1,71 @@
-# Movement Agent - Giải thích Logic & Toán học
+# Hướng Dẫn Đọc Code & Flow Hệ Thống Movement Agent
 
-Tài liệu này giải thích các thành phần cốt lõi trong hệ thống di chuyển (Movement Agent) của project RTS. Các đoạn code được trích dẫn trực tiếp từ các file `Helper` để làm rõ cơ chế vận hành.
-
----
-
-## 1. Hệ thống Lưới (GridHelper)
-Hệ thống di chuyển dựa trên một lưới 2D phẳng (Grid). Việc chuyển đổi giữa tọa độ thế giới (float3) và tọa độ lưới (int2) là bước đầu tiên để truy cập dữ liệu Flow Field.
-
-### Chuyển đổi từ World sang Grid
-Sử dụng phép chia cho `cellsize` và làm tròn xuống (`floor`) để tìm đúng ô lưới mà Unit đang đứng.
-```csharp
-public static int2 WorldToGrid(float3 worldPos, GridComponent grid)
-{
-    float xLocal = (worldPos.x - grid.origin.x) / grid.cellsize;
-    float yLocal = (worldPos.z - grid.origin.z) / grid.cellsize;
-    return new int2((int)math.floor(xLocal), (int)math.floor(yLocal));
-}
-```
+Tài liệu này được viết ngắn gọn, đúng trọng tâm để bạn nắm lại dự án ngay lập tức sau một thời gian dài không đụng tới. Dưới đây là giải thích luồng chạy thực tế và cách tìm đúng file để đọc.
 
 ---
 
-## 2. Quản lý Flow Field (FlowFieldHelper)
-Hệ thống sử dụng **Reference Counting** (Đếm tham chiếu) để quản lý bộ nhớ của Flow Field. Điều này đảm bảo rằng:
-- Khi có ít nhất 1 Unit sử dụng Flow Field, nó sẽ được giữ lại trong Cache.
-- Khi Unit cuối cùng rời đi hoặc đổi mục tiêu, Flow Field sẽ bị đánh dấu để dọn dẹp.
+## 1. Code chạy ra làm sao? (Execution Pipeline)
 
-### Cơ chế gán Field và đếm Ref
-```csharp
-public static void AssignFieldToMoveComponent(...)
-{
-    // 1. Giảm Ref của Field cũ
-    if (unit.FieldEntity != Entity.Null && em.Exists(unit.FieldEntity))
-    {
-        var oldRef = em.GetComponentData<FlowFieldRefCount>(unit.FieldEntity);
-        oldRef.value--;
-        ecb.SetComponent(unit.FieldEntity, oldRef);
-    }
+Hệ thống Movement hoạt động hoàn toàn tự động dựa trên ECS (Entity Component System). Khi bạn click chuột ra lệnh di chuyển (ví dụ: Worker đi hái khoáng), code sẽ chạy theo chuỗi tuần tự sau:
 
-    // 2. Gán Field mới
-    unit.FieldEntity = field;
-    
-    // 3. Tăng Ref của Field mới
-    var newRef = em.GetComponentData<FlowFieldRefCount>(field);
-    newRef.value++;
-    ecb.SetComponent(field, newRef);
-}
-```
+1. **Nhận lệnh (Command Bridge):**
+   - Các hệ thống bên ngoài (như `WorkerGatherSystem`) gọi `MoveOverride` để báo cho Agent biết nó cần đi đâu. Khi có mục tiêu mới, component `TargetChangeRequest` được gắn vào Unit.
+   - *File liên quan:* `MovementAgentPathRequestSystem.cs`, `MoveOverrideSystem.cs`
 
----
+2. **Dàn trận (Formation):**
+   - **Chỉ chạy 1 lần duy nhất lúc xuất phát.**
+   - Quét tất cả Unit đang có lệnh di chuyển tới cùng 1 đích. Sau đó, nó sinh ra một mảng các vị trí (Slot) xếp theo hình vuông hoặc tròn xung quanh đích đến. Nó có cơ chế `IsValidSlot` để chủ động bỏ qua các tọa độ đè lên tòa nhà/vật cản (`cost >= 250`).
+   - Dùng thuật toán **Greedy** để chia phần. Mỗi Unit sẽ ôm một cái đích phụ này (`slotTarget`) để khi tới gần đích thật thì tách ra chiếm chỗ.
+   - *File liên quan:* `MovementAgentGroupFormationSystem.cs`
 
-## 3. Toán học Di chuyển (UnitMovementMath)
-Đây là "trái tim" của hệ thống di chuyển, xử lý việc hợp nhất các lực đẩy và né tránh.
+3. **Tìm đường vĩ mô (Flow Field):**
+   - **Chỉ chạy 1 lần lúc xuất phát.**
+   - Tìm trong `Cache` xem đã có lưới (Flow Field) nào chỉ tới đích đó chưa, nếu chưa thì báo `IntegrationFieldSystem` tính lưới mới để lách qua các chướng ngại vật tĩnh (Tường, Vách đá).
+   - *File liên quan:* `FlowFieldAssignmentSystem.cs`
 
-### 3.1 Nội suy hướng di chuyển (Bilinear Interpolation)
-Thay vì Unit đi giật cục theo từng ô lưới, chúng ta lấy 4 ô xung quanh vị trí Unit và nội suy hướng di chuyển để Unit rẽ hướng mượt mà hơn.
-```csharp
-public static float3 CalculateFlowVelocity(...)
-{
-    // Tìm 4 ô hàng xóm (00, 10, 01, 11)
-    // Nội suy theo trục X, sau đó nội suy theo trục Y
-    float2 interpolatedDir = math.lerp(
-        math.lerp(d00, d10, t.x),
-        math.lerp(d01, d11, t.x),
-        t.y
-    );
-    return new float3(interpolatedDir.x, 0, interpolatedDir.y) * speed;
-}
-```
+4. **Tính hướng đi tối ưu (Targeting):**
+   - **Chạy liên tục mỗi Frame.**
+   - Đọc vector từ lưới Flow Field để biết cần rẽ hướng nào qua chướng ngại vật.
+   - Khi tới gần đích (`formationRange`), nó bỏ Flow Field và chuyển sang đi thẳng vào `slotTarget` đã được chia phần ở Bước 2.
+   - *File liên quan:* `MovementAgentTargetSystem.cs`
 
-### 3.2 Né vật cản Grid (Gradient Avoidance)
-Thay vì chỉ check va chạm vật lý, hệ thống tính toán một "Vector Gradient" hướng ra xa các ô có chi phí cao (tường/vật cản). Lực này tỉ lệ nghịch với bình phương khoảng cách, giúp Unit không bao giờ đâm sầm vào tường.
-```csharp
-if (gridCosts[idx].cost >= 250) // Là vật cản
-{
-    float2 diff = new float2(worldPos.x - obstacleWorldPos.x, worldPos.z - obstacleWorldPos.z);
-    float distSq = math.lengthsq(diff);
-    // Lực đẩy mạnh dần khi càng gần vật cản
-    gradient += math.normalizesafe(diff) / math.max(0.1f, distSq);
-}
-```
+5. **Né tránh đám đông (Local Avoidance - ORCA):**
+   - **Chạy liên tục mỗi Frame.**
+   - Nhận "Vận tốc mong muốn" từ Bước 4, đem đối chiếu với tất cả hàng xóm (neighbor) trong bán kính gần.
+   - Dùng thuật toán RVO2 (Reciprocal Velocity Obstacles) để bóp méo vận tốc sao cho các Unit không đụng nhau mà vẫn trượt lết được tới đích.
+   - *File liên quan:* `MovementAgentORCASystem.cs`
 
-### 3.3 Hội tụ bầy đàn (First-come-first-settled)
-Thay vì các Unit liên tục xô đẩy nhau để giành giật một `slotTarget`, hệ thống áp dụng chiến lược hội tụ:
-- **Settled (Đã neo đậu)**: Khi một Unit đi vào bán kính đích (ví dụ `0.1` đơn vị) và vận tốc đã chậm lại, nó sẽ chuyển trạng thái sang `isSettled = true`. Lúc này Unit trở thành một "vật cản tĩnh" cực kỳ vững chắc.
-- Ưu điểm: Các Unit tới sau bắt buộc phải né Unit đã "neo đậu" bằng thuật toán ORCA, tạo ra đội hình bao quanh mục tiêu mượt mà thay vì dồn cục.
+6. **Áp dụng vật lý & Chống kẹt (Actuator):**
+   - **Chạy liên tục mỗi Frame.**
+   - Đẩy các Unit văng ra (Separation Force) nếu lỡ bị đè lấn lên nhau ở cùng 1 frame.
+   - **Chống kẹt (Stuck Detection):** So sánh khoảng cách di chuyển vật lý của frame hiện tại với frame trước (`lastPosition`). Nếu thấy Unit lết quá chậm (do tông vào Building hoặc bị kẹt cứng), nó sẽ đếm giờ (`stuckTime`).
+   - Khi kẹt quá lâu, nó bắt Unit đó dừng hẳn (`isSettled = true`). Lúc này `MoveOverrideSystem` sẽ ngắt lệnh di chuyển, báo cho hệ thống bên trên biết là "Tôi không lết thêm được nữa, coi như đã tới nơi".
+   - *File liên quan:* `MovementAgentActuatorSystem.cs`
 
 ---
 
-## 4. Local Avoidance (Mô hình Hybrid ORCA & Separation)
-Hệ thống sử dụng mô hình kết hợp giữa không gian Vận tốc (Velocity-based) và Vị trí (Position-based). Trọng tâm bao gồm:
+## 2. Cách đọc code như thế nào? (Where to look)
 
-### 4.1 Không gian Vận Tốc - ORCA (Optimal Reciprocal Collision Avoidance)
-Dựa trên thuật toán cắt nửa mặt phẳng (Half-plane constraints), hệ thống sẽ tìm một vận tốc an toàn:
-1. **Velocity Obstacle (VO)**: Tính toán tập hợp tất cả các vận tốc tương đối sẽ gây ra va chạm trong khoảng thời gian `timeHorizon` (thường là 1-2 giây) đối với các Unit xung quanh.
-2. **Half-plane Creation**: Tạo một ràng buộc dưới dạng đường thẳng giới hạn (Line), trong đó vùng hợp lệ bảo đảm khoảng cách an toàn. Hệ số `reciprocalFactor` (0.5) yêu cầu cả 2 Unit đều có trách nhiệm nhường đường, giúp giải quyết nút thắt cổ chai.
-3. **Linear Programming (LP)**: Giải bài toán quy hoạch tuyến tính 2D qua 3 bước (LP1, LP2, LP3) để tìm ra vận tốc an toàn nhất nhưng có độ ưu tiên cao nhất, vẫn đảm bảo bám sát `PreferredVelocity`.
+Để không bị ngợp, hãy tuân theo quy tắc thư mục sau, cần sửa phần nào thì chui vào đúng Folder phần đó:
 
-```csharp
-// Tạo đường ORCA Line giữa 2 Unit
-Line line = ORCAMath.CreateAgentLine(
-    relPos, agentVel, neighborVel, combinedRadius, timeHorizon, invDt, 0.5f);
-```
+### 2.1. Nơi chứa dữ liệu cốt lõi (Components)
+👉 *Thư mục:* `AgentMovementData/`
+- `MovementAgentComponent.cs`: Lưu vận tốc hiện tại, đích đến thực tế, và `slotTarget`.
+- `MovementSteeringComponent`: Lưu trạng thái có bị kẹt không (`stuckTime`), có dừng hẳn chưa (`isSettled`), và lưu lại vị trí frame cũ (`lastPosition`) để tính độ dời vật lý.
 
-### 4.2 Lực đẩy không gian (Position-based Separation)
-ORCA hoạt động rất tốt cho các va chạm dự báo trong tương lai. Nhưng nếu 2 Unit rủ nhau đi chung và _chồng luôn_ vào nhau tại cùng khung hình (Hard Overlap), ORCA không kịp đẩy xa. Lớp Separation giải quyết việc này:
-- Tính khoảng cách vật lý của Unit. Nếu nhỏ hơn `combinedRadius` (chồng chéo), tính Vector phân li:
-```csharp
-float2 diff = new float2(worldPos.x - nPos.x, worldPos.z - nPos.z);
-// Lực đẩy dạt ra ngoài tỉ lệ với mức độ chồng lấn
-separationForce += math.normalizesafe(diff) * overlapAmount * SeparationMultiplier;
-```
-Từ sức đẩy Separation cộng với kết quả tính của ORCA, ta có Vận tốc chuẩn xác và hoàn toàn không bị overlap khi di chuyển đoàn lớn.
+### 2.2. Khi muốn sửa logic Né tránh / Lách nhau
+👉 *Thư mục:* `LocalAvoidance/`
+- Nếu muốn chỉnh sửa thuật toán né nhau -> Đọc `Avoidance/MovementAgentORCASystem.cs` và file toán học `Helpers/ORCAMath.cs`.
+- Nếu thấy quân bị đè lên nhau, kẹt vào mép nhà mãi không thoát, hoặc nhận diện nhầm "isSettled" -> Đọc `Actuation/MovementAgentActuatorSystem.cs` (tập trung vào khối Anti-Deadlock).
+
+### 2.3. Khi muốn sửa thuật toán xếp Đội hình (Formation)
+👉 *Thư mục:* `LocalAvoidance/Formating/`
+- Đọc `MovementAgentGroupFormationSystem.cs`.
+- Xem các hàm `FindBoxSlotsWorld` và `FindCircleSlotsWorld` để biết cách nó đẻ ra mảng Slot xung quanh mục tiêu.
+- Xem vòng lặp `while (itAssign.MoveNext())` ở hàm `OnUpdate` để hiểu cách nó chia Slot (thuật toán Greedy) cho từng Unit lúc bắt đầu nhận lệnh.
+
+### 2.4. Khi code hệ thống khác (Harvesting, Combat) cần điều khiển Unit di chuyển
+👉 *Thư mục:* `CommandBridge/`
+- Tuyệt đối **KHÔNG** chọc thẳng thay đổi tọa độ `LocalTransform` hay thay đổi `MovementAgentComponent.velocity` của Unit.
+- Để cấp lệnh di chuyển, hãy dùng Helper API: Gọi `MovementAgentAPI.SetTarget(...)`.
+- Nếu hệ thống của bạn dùng ISystem (như `WorkerGatherSystem`), hãy Add/Enable component `MoveOverride` cho Unit. Hệ thống `MoveOverrideSystem` sẽ tự động cầu nối với Movement Agent. Tương tự, gọi `MovementAgentAPI.StopAgent(...)` hoặc Disable `MoveOverride` để ép Agent đứng lại.

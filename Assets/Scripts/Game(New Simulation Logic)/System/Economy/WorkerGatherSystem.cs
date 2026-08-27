@@ -122,19 +122,11 @@ public partial struct WorkerGatherSystem : ISystem
             {
                 case WorkerGatherState.GoingToNode:
                     {
-                        Debug.Log("[WorkerGather] State = GoingToNode");
-
                         bool moveEnabled =
                             SystemAPI.IsComponentEnabled<MoveOverride>(workerEntity);
 
-                        Debug.Log(
-                            $"[WorkerGather] MoveOverride enabled = {moveEnabled}"
-                        );
-
                         if (!moveEnabled)
                         {
-                            Debug.Log($"[WorkerGather] MoveTo Node {nodePos}");
-
                             MoveTo(
                                 ecb,
                                 workerEntity,
@@ -146,16 +138,18 @@ public partial struct WorkerGatherSystem : ISystem
                         float distSq =
                             math.distancesq(WorkerPos2D, nodePos2D);
 
-                        Debug.Log(
-                            $"[WorkerGather] DistanceSq to node = {distSq}, StopDistanceSq = {gather.ValueRO.StopDistanceSq}"
-                        );
+                        float interactDist = math.sqrt(gather.ValueRO.StopDistanceSq);
+                        if (SystemAPI.HasComponent<BuildingData>(nodeEntity)) {
+                            var bData = SystemAPI.GetComponent<BuildingData>(nodeEntity);
+                            interactDist += math.max(bData.FootprintSizeX, bData.FootprintSizeZ) * 0.5f;
+                        } else {
+                            interactDist += 1.5f; // Bù hao cho Resource Node
+                        }
 
-                        if (distSq <= gather.ValueRO.StopDistanceSq)
+                        bool isSettled = SystemAPI.GetComponent<MovementSteeringComponent>(workerEntity).isSettled;
+
+                        if (distSq <= interactDist * interactDist || (!moveEnabled && isSettled && distSq <= interactDist * interactDist * 1.5f))
                         {
-                            Debug.Log(
-                                "[WorkerGather] Đã tới mỏ → chuyển sang Gathering"
-                            );
-
                             ecb.SetComponentEnabled<MoveOverride>(
                                 workerEntity,
                                 false
@@ -214,19 +208,11 @@ public partial struct WorkerGatherSystem : ISystem
 
                 case WorkerGatherState.ReturningDepot:
                     {
-                        Debug.Log("[WorkerGather] State = ReturningDepot");
-
                         bool moveEnabled =
                             SystemAPI.IsComponentEnabled<MoveOverride>(workerEntity);
 
-                        Debug.Log(
-                            $"[WorkerGather] MoveOverride enabled = {moveEnabled}"
-                        );
-
                         if (!moveEnabled)
                         {
-                            Debug.Log($"[WorkerGather] MoveTo Depot {depotPos}");
-
                             MoveTo(
                                 ecb,
                                 workerEntity,
@@ -238,16 +224,18 @@ public partial struct WorkerGatherSystem : ISystem
                         float distSq =
                             math.distancesq(WorkerPos2D, depotPos2D);
 
-                        Debug.Log(
-                            $"[WorkerGather] DistanceSq to depot = {distSq}, StopDistanceSq = {gather.ValueRO.StopDistanceSq}"
-                        );
+                        float interactDist = math.sqrt(gather.ValueRO.StopDistanceSq);
+                        if (SystemAPI.HasComponent<BuildingData>(depotEntity)) {
+                            var bData = SystemAPI.GetComponent<BuildingData>(depotEntity);
+                            interactDist += math.max(bData.FootprintSizeX, bData.FootprintSizeZ) * 0.5f;
+                        } else {
+                            interactDist += 2.0f; // Bù hao cho Depot
+                        }
 
-                        if (distSq <= gather.ValueRO.StopDistanceSq)
+                        bool isSettled = SystemAPI.GetComponent<MovementSteeringComponent>(workerEntity).isSettled;
+
+                        if (distSq <= interactDist * interactDist || (!moveEnabled && isSettled && distSq <= interactDist * interactDist * 1.5f))
                         {
-                            Debug.Log(
-                                $"[WorkerGather] Đã về depot → cộng {gather.ValueRO.CarryAmount} {gather.ValueRO.CurrentResourceType}"
-                            );
-
                             ecb.SetComponentEnabled<MoveOverride>(
                                 workerEntity,
                                 false

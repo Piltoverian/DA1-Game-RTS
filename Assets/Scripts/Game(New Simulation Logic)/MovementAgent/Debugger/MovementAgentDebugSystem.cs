@@ -28,8 +28,8 @@ public partial struct MovementAgentDebugSystem : ISystem
         var config = SystemAPI.GetSingleton<MovementAgentDebugConfig>();
         int agentCount = 0;
         
-        foreach (var (transform, agent, avoidance, contextMap, entity) 
-            in SystemAPI.Query<RefRO<LocalTransform>, RefRO<MovementAgentComponent>, RefRO<MovementAgentAvoidanceComponent>, DynamicBuffer<ContextMapElement>>()
+        foreach (var (transform, agent, avoidance, steering, entity) 
+            in SystemAPI.Query<RefRO<LocalTransform>, RefRO<MovementAgentComponent>, RefRO<MovementAgentAvoidanceComponent>, RefRO<MovementSteeringComponent>>()
             .WithEntityAccess())
         {
             agentCount++;
@@ -46,31 +46,6 @@ public partial struct MovementAgentDebugSystem : ISystem
             {
                 float3 desiredDir = math.normalizesafe(agent.ValueRO.realTarget - transform.ValueRO.Position);
                 Debug.DrawRay(pos + new float3(0, 0.2f, 0), desiredDir * 3f, Color.green, 0.05f, false);
-            }
-
-            // 3. Vẽ Context Steering Rays (Tia Né Tránh)
-            if (config.ShowContextSteer && contextMap.Length > 0)
-            {
-                int res = contextMap.Length;
-                for (int i = 0; i < res; i++)
-                {
-                    float angle = i * 2 * math.PI / res;
-                    float3 dir = new float3(math.cos(angle), 0, math.sin(angle)); 
-                    
-                    var element = contextMap[i];
-                    
-                    // Vẽ tia Interest (Xanh dương) - Cao hơn một chút
-                    if (element.Interest > 0.05f)
-                    {
-                        Debug.DrawRay(pos + new float3(0, 0.4f, 0), dir * element.Interest * 2f, Color.cyan, 0.05f, false);
-                    }
-                    
-                    // Vẽ tia Danger (Đỏ) - Thấp hơn một chút
-                    if (element.Danger > 0.05f)
-                    {
-                        Debug.DrawRay(pos + new float3(0, 0.3f, 0), dir * element.Danger * 2f, Color.red, 0.05f, false);
-                    }
-                }
             }
 
             // 4. Vẽ Đường nối và Điểm Mục tiêu
@@ -93,12 +68,45 @@ public partial struct MovementAgentDebugSystem : ISystem
             {
                 DrawCircle(pos, avoidance.ValueRO.radius, Color.gray);
             }
+
+            // 6. Vẽ Slot Debug (Trạng thái đội hình)
+            if (config.ShowSlotDebug)
+            {
+                bool hasSlot = math.lengthsq(agent.ValueRO.slotTarget) > 0.001f;
+                bool isSettled = steering.ValueRO.isSettled;
+                bool useSlot = agent.ValueRO.useSlotTarget;
+
+                if (hasSlot)
+                {
+                    float3 slotPos = agent.ValueRO.slotTarget;
+
+                    // Màu theo trạng thái
+                    Color slotColor;
+                    if (isSettled)
+                        slotColor = Color.cyan;           // Đã settled tại slot
+                    else if (useSlot)
+                        slotColor = Color.yellow;         // Đang lái thẳng vào slot
+                    else
+                        slotColor = Color.green;          // Đang đi theo FlowField tới slot
+
+                    // Vẽ hình thoi tại vị trí slot
+                    DrawDiamond(slotPos, 0.7f, slotColor);
+
+                    // Vẽ đường nối agent → slot
+                    Debug.DrawLine(pos, slotPos, slotColor, 0.05f, false);
+
+                    // Vẽ vòng tròn nhỏ tại slot để thấy stoppingDistance
+                    DrawCircle(slotPos, steering.ValueRO.stoppingDistance, new Color(slotColor.r, slotColor.g, slotColor.b, 0.5f));
+                }
+                else
+                {
+                    // Không có slot → vẽ vòng đỏ cảnh báo quanh agent
+                    DrawCircle(pos, avoidance.ValueRO.radius + 0.3f, Color.red);
+                }
+            }
         }
         
-        if (agentCount > 0 && Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"MovementAgentDebugSystem: Drawing {agentCount} agents.");
-        }
+
     }
 
     private void DrawCircle(float3 center, float radius, Color color)
@@ -122,5 +130,27 @@ public partial struct MovementAgentDebugSystem : ISystem
         Debug.DrawLine(center + new float3(-s, 0, 0), center + new float3(s, 0, 0), color, 0.05f, false);
         Debug.DrawLine(center + new float3(0, 0, -s), center + new float3(0, 0, s), color, 0.05f, false);
         Debug.DrawLine(center + new float3(0, -s, 0), center + new float3(0, s, 0), color, 0.05f, false);
+    }
+
+    private void DrawDiamond(float3 center, float size, Color color)
+    {
+        float s = size * 0.5f;
+        // Hình thoi trên mặt phẳng XZ
+        float3 top = center + new float3(0, 0, s);
+        float3 right = center + new float3(s, 0, 0);
+        float3 bottom = center + new float3(0, 0, -s);
+        float3 left = center + new float3(-s, 0, 0);
+
+        Debug.DrawLine(top, right, color, 0.05f, false);
+        Debug.DrawLine(right, bottom, color, 0.05f, false);
+        Debug.DrawLine(bottom, left, color, 0.05f, false);
+        Debug.DrawLine(left, top, color, 0.05f, false);
+
+        // Đường chéo dọc (Y) để thấy rõ trong 3D
+        float3 up = center + new float3(0, s * 0.6f, 0);
+        Debug.DrawLine(top, up, color, 0.05f, false);
+        Debug.DrawLine(right, up, color, 0.05f, false);
+        Debug.DrawLine(bottom, up, color, 0.05f, false);
+        Debug.DrawLine(left, up, color, 0.05f, false);
     }
 }

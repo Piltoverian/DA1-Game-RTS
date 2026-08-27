@@ -24,7 +24,11 @@ public static class MovementAgentAPI
         agent.currentworldtarget = worldTarget;
         agent.hastarget = true;
         agent.useSlotTarget = false; 
+        agent.slotTarget = float3.zero; // Xóa slot cũ để tránh dùng lại slot sai lệch
         ecb.SetComponent(agentEntity, agent);
+
+        // Luôn trigger TargetChangeRequest khi có lệnh đổi đích, thay vì phụ thuộc vào PathRequestSystem (vốn bỏ qua các lệnh di chuyển trong cùng 1 ô lưới)
+        ecb.AddComponent(agentEntity, new TargetChangeRequest { newWorldTarget = worldTarget });
 
         if (entityManager.HasComponent<MovementSteeringComponent>(agentEntity))
         {

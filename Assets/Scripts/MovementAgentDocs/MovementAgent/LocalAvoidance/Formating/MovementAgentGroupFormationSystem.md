@@ -23,11 +23,12 @@ Mỗi vị trí Slot ứng viên phải thỏa mãn:
 
 ---
 
-## 3. Phân bổ vị trí (Assignment)
-Sau khi đã có danh sách các Slot hợp lệ, hệ thống sẽ gán mỗi Unit vào một Slot gần nó nhất:
-- Sử dụng thuật toán so sánh khoảng cách đơn giản để tối ưu hiệu năng.
-- Cập nhật `slotTarget` cho Unit.
-- Đặt `lookAtPoint` dựa trên hướng từ tâm đội hình đến đích, giúp Unit quay mặt về đúng hướng sau khi đứng vào hàng.
+## 3. Phân bổ vị trí (Assignment) - Thuật toán "Slot-Centric Greedy"
+Sau khi đã sinh ra một mảng các Slot hợp lệ từ tâm lan dần ra ngoài, hệ thống dùng thuật toán **Slot chọn Unit** (thay vì Unit chọn Slot) để tối ưu:
+- Lấy Slot ở trung tâm (gần đích nhất), duyệt tìm Unit đang đứng gần Slot đó nhất để gán.
+- Tiếp tục làm vậy với các Slot lan dần ra rìa.
+- **Tác dụng cực lớn:** Những Unit đi đầu đội hình sẽ luôn được xếp vào các Slot trung tâm, những Unit lẹt đẹt đi sau sẽ tự động dạt ra rìa. Quá trình di chuyển sẽ tịnh tiến nhịp nhàng, các Unit **không bao giờ vắt chéo đường (cross paths)** của nhau khi đến đích.
+- Cuối cùng, đặt `lookAtPoint` dựa trên hướng từ tâm đội hình đến đích, giúp Unit quay mặt về đúng hướng sau khi đứng vào hàng.
 
 ---
 

@@ -57,25 +57,6 @@ public struct MovementSteeringComponent : IComponentData
     public float minDistanceToTarget; // Khoảng cách nhỏ nhất từng đạt được tới đích (Progress Tracking)
 }
 
-// --- CONTEXT STEERING COMPONENTS ---
-
-public struct ContextMapElement : IBufferElementData
-{
-    public float Interest;
-    public float Danger;
-}
-
-public struct ContextHistoryElement : IBufferElementData
-{
-    public float LastInterest;
-}
-
-public struct ContextSteeringConfig : IComponentData
-{
-    public int Resolution; // 16 or 32
-    public float H_Alpha;  // EMA Hysteresis coefficient (0.1 - 0.2)
-    public float DangerThreshold; // threshold to mask interest
-}
 
 public struct TargetChangeRequest : IComponentData
 {

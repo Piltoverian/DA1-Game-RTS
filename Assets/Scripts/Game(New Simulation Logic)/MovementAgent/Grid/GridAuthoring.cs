@@ -3,7 +3,6 @@ using Unity.Mathematics;
 using Unity.Physics;
 using UnityEngine;
 using Unity.Physics.Authoring;
-using static UnityEditor.PlayerSettings;
 
 public class GridAuthoring : MonoBehaviour
 {

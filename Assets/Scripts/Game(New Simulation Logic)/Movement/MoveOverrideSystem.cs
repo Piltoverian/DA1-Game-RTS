@@ -11,7 +11,6 @@ public partial struct MoveOverrideSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
-        state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
     }
 
     [BurstCompile]
@@ -19,10 +18,7 @@ public partial struct MoveOverrideSystem : ISystem
     {
         GridComponent grid = SystemAPI.GetSingleton<GridComponent>();
 
-        EntityCommandBuffer ecb = SystemAPI
-            .GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-            .CreateCommandBuffer(state.WorldUnmanaged);
-
+        var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
         EntityManager entityManager = state.EntityManager;
 
         foreach (var (
@@ -103,5 +99,7 @@ public partial struct MoveOverrideSystem : ISystem
                 }
             }
         }
+        ecb.Playback(state.EntityManager);
+        ecb.Dispose();
     }
 }

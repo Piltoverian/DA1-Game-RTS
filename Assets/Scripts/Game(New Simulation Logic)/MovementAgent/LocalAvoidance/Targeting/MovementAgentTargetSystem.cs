@@ -27,6 +27,7 @@ public partial struct MovementAgentTargetSystem : ISystem
             FieldNodeLookup = SystemAPI.GetBufferLookup<FieldNode>(true),
             IslandSeedLookup = SystemAPI.GetBufferLookup<IslandSeed>(true),
             GridIslands = SystemAPI.GetBuffer<GridIsland>(gridEntity).AsNativeArray(),
+            GridCosts = SystemAPI.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(),
             DeltaTime = deltaTime
         };
 
@@ -40,6 +41,7 @@ public partial struct MovementAgentTargetSystem : ISystem
         [ReadOnly] public BufferLookup<FieldNode> FieldNodeLookup;
         [ReadOnly] public BufferLookup<IslandSeed> IslandSeedLookup;
         [ReadOnly] public NativeArray<GridIsland> GridIslands;
+        [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
         [ReadOnly] public float DeltaTime;
         public void Execute(Entity entity, [ReadOnly] in LocalTransform transform, 
             ref MovementAgentComponent move, 
@@ -68,32 +70,77 @@ public partial struct MovementAgentTargetSystem : ISystem
             int unitIsland = GridIslands[nodeIndex].islandID;
 
             // --- 1. ISLAND SYNC ---
-            if (IslandSeedLookup.HasBuffer(move.FieldEntity))
+            int2 globalTargetGrid = GridHelper.WorldToGrid(globalTarget, Grid);
+            bool targetIsObstacle = false;
+            if (globalTargetGrid.x >= 0 && globalTargetGrid.x < Grid.width && globalTargetGrid.y >= 0 && globalTargetGrid.y < Grid.height)
+            {
+                int targetNodeIndex = GridHelper.GetNodeIndex(globalTargetGrid, Grid);
+                targetIsObstacle = GridCosts[targetNodeIndex].cost >= 250;
+            }
+            
+            if (IslandSeedLookup.HasBuffer(move.FieldEntity) && !targetIsObstacle)
             {
                 var seedBuffer = IslandSeedLookup[move.FieldEntity];
+                float minDistToSeed = float.MaxValue;
+                
                 for (int i = 0; i < seedBuffer.Length; i++)
                 {
                     if (seedBuffer[i].islandID == unitIsland)
                     {
-                        islandGoal = seedBuffer[i].seedPosition;
-                        break;
+                        float dSq = math.distancesq(pos, seedBuffer[i].seedPosition);
+                        if (dSq < minDistToSeed)
+                        {
+                            minDistToSeed = dSq;
+                            islandGoal = seedBuffer[i].seedPosition;
+                        }
                     }
                 }
             }
+
             move.realTarget = islandGoal;
             float3 finalGoal = move.realTarget;
 
             // --- 2. SLOT FORMATION ---
             if (math.lengthsq(move.slotTarget) > 0.001f && distToGlobal < steering.formationRange)
             {
-                int currentCellcost = buffer[nodeIndex].bestcost;
-                float pathDist = currentCellcost / 10f;
-                float directDistToSlot = math.distance(pos, move.slotTarget);
-
-                if (currentCellcost == int.MaxValue || pathDist <= directDistToSlot * 1.8f)
+                // Kiểm tra xem slot còn hợp lệ không (có thể địa hình vừa bị thay đổi như xây nhà)
+                int2 slotCell = GridHelper.WorldToGrid(move.slotTarget, Grid);
+                bool isSlotValid = true;
+                if (slotCell.x >= 0 && slotCell.x < Grid.width && slotCell.y >= 0 && slotCell.y < Grid.height)
                 {
-                    finalGoal = move.slotTarget;
-                    if (distToGlobal < steering.arrivalRadius) move.useSlotTarget = true;
+                    int slotNodeIndex = GridHelper.GetNodeIndex(slotCell, Grid);
+                    if (GridCosts[slotNodeIndex].cost >= 250) isSlotValid = false;
+                }
+                else isSlotValid = false;
+
+                if (!isSlotValid)
+                {
+                    move.slotTarget = float3.zero;
+                    move.useSlotTarget = false;
+                }
+                else
+                {
+                    int currentCellcost = buffer[nodeIndex].bestcost;
+                    float directDistToSlot = math.distance(pos, move.slotTarget);
+
+                    float2 flowDir = buffer[nodeIndex].direction;
+                    float2 toSlotDir = math.normalizesafe(new float2(
+                        move.slotTarget.x - pos.x,
+                        move.slotTarget.z - pos.z
+                    ));
+                    float dotFlowSlot = math.dot(flowDir, toSlotDir);
+
+                    bool slotAlongPath = dotFlowSlot > -0.2f || directDistToSlot < steering.stoppingDistance * 3f;
+
+                    if (slotAlongPath)
+                    {
+                        float pathDist = currentCellcost / 10f;
+                        if (currentCellcost == int.MaxValue || pathDist <= directDistToSlot * 1.8f)
+                        {
+                            finalGoal = move.slotTarget;
+                            if (distToGlobal < steering.arrivalRadius) move.useSlotTarget = true;
+                        }
+                    }
                 }
             }
 

@@ -69,7 +69,7 @@ public partial struct FlowFieldAssignmentSystem : ISystem
             steering.ValueRW.stuckTime = 0;
             steering.ValueRW.lastPosition = SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position;
 
-            ecb.RemoveComponent<TargetChangeRequest>(entity);
+
         }
 
         ecb.Playback(state.EntityManager);
