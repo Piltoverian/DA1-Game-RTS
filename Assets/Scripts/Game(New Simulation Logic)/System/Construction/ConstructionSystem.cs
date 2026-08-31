@@ -49,6 +49,11 @@ public partial struct ConstructionSystem : ISystem
                 progress
             );
 
+            if (progress >= 1f)
+            {
+                revealValue = construction.ValueRO.EndRevealHeight;
+            }
+
             SetRevealHeight(
                 entity,
                 revealValue,
@@ -82,39 +87,6 @@ public partial struct ConstructionSystem : ISystem
 
             if (progress >= 1f)
             {
-                float finalRevealValue = construction.ValueRO.EndRevealHeight;
-
-                SetRevealHeight(
-                    entity,
-                    finalRevealValue,
-                    ref revealLookup,
-                    ecb
-                );
-
-                if (linkedEntityLookup.HasBuffer(entity))
-                {
-                    DynamicBuffer<LinkedEntityGroup> linkedEntities =
-                        linkedEntityLookup[entity];
-
-                    for (int i = 0; i < linkedEntities.Length; i++)
-                    {
-                        Entity linkedEntity = linkedEntities[i].Value;
-
-                        if (linkedEntity == entity)
-                            continue;
-
-                        if (!materialMeshLookup.HasComponent(linkedEntity))
-                            continue;
-
-                        SetRevealHeight(
-                            linkedEntity,
-                            finalRevealValue,
-                            ref revealLookup,
-                            ecb
-                        );
-                    }
-                }
-
                 ecb.RemoveComponent<UnderConstructionTag>(entity);
                 ecb.RemoveComponent<ConstructionData>(entity);
             }

@@ -2,18 +2,15 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using System.Collections.Generic;
 
-/// <summary>
-/// Authoring cho PlayerContext entity.
-/// Đặt trên GameObject trong SubScene để Baker tạo entity chứa:
-/// - PlayerContext component (PlayerId, CivilizationId, Age)
-/// - DynamicBuffer ResourcePair (cache resource cho Presentation layer)
-/// </summary>
+
 public class PlayerContextAuthoring : MonoBehaviour
 {
     public int playerId = 0;
     public int civilizationId = 0;
     public Age age = Age.Industrial;
+    public List<ResourcePair> startResources;
 
     class Baker : Baker<PlayerContextAuthoring>
     {
@@ -27,17 +24,25 @@ public class PlayerContextAuthoring : MonoBehaviour
             );
             AddComponent(entity, playerContext);
 
-            // Tạo buffer ResourcePair với size = số lượng ResourceType
             var buffer = AddBuffer<ResourcePair>(entity);
-            int resourceCount = Enum.GetNames(typeof(ResourceType)).Length;
-            buffer.ResizeUninitialized(resourceCount);
+            buffer.ResizeUninitialized(authoring.startResources.Count);
 
-            // Init tất cả về 0
-            var types = (ResourceType[])Enum.GetValues(typeof(ResourceType));
-            for (int i = 0; i < types.Length && i < buffer.Length; i++)
+            for (int i = 0; i < authoring.startResources.Count; i++)
             {
-                buffer[i] = new ResourcePair(types[i], 0);
+                buffer[i] = authoring.startResources[i];
             }
+
+            var contextCache = new PlayerContextCache(playerContext);
+
+            AddComponent(entity, contextCache);
+
+            var cacheBuffer = AddBuffer<ResourcePairCache>(entity);
+            cacheBuffer.ResizeUninitialized(authoring.startResources.Count);
+            for (int i = 0; i < authoring.startResources.Count; i++)
+            {
+                cacheBuffer[i] = new ResourcePairCache(authoring.startResources[i]);
+            }
+
             AddComponent(entity, new PlayerContextCachePendingTag());
         }
     }

@@ -1493,6 +1493,13 @@ MonoBehaviour:
   playerId: 1
   civilizationId: 0
   age: 0
+  startResources:
+  - Type: 0
+    Amount: 300
+  - Type: 1
+    Amount: 500
+  - Type: 2
+    Amount: 0
 --- !u!4 &1730584000
 Transform:
   m_ObjectHideFlags: 0
@@ -1672,7 +1679,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2080775909}
-  - component: {fileID: 2080775908}
   - component: {fileID: 2080775907}
   m_Layer: 0
   m_Name: 'Bootstrap '
@@ -1704,21 +1710,6 @@ MonoBehaviour:
     BuildingPrefab: {fileID: 7331245334246899429, guid: 1870a7c9743393242bdde19064c294b5, type: 3}
   - CommandIndex: 4
     BuildingPrefab: {fileID: 7625297489629590005, guid: 375d09ad42860f241b0589f65f38bd5c, type: 3}
---- !u!114 &2080775908
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2080775906}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 06e26683db9bba2418eb89f87df48276, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerResourceAuthoring
-  StartGold: 100000
-  StartWood: 300
-  StartFood: 0
 --- !u!4 &2080775909
 Transform:
   m_ObjectHideFlags: 0

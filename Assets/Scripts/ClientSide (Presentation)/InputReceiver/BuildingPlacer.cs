@@ -598,19 +598,17 @@ public class BuildingPlacer : MonoBehaviour
         if (!entityManager.HasComponent<BuildingData>(prefab))
             return false;
 
-        EntityQuery query = entityManager.CreateEntityQuery(typeof(PlayerResourceData));
-
-        if (query.IsEmpty)
-        {
-            Debug.LogWarning("PlayerResourceData not found.");
+        if (currentPlayerID < 0)
             return false;
-        }
 
         BuildingData building = entityManager.GetComponentData<BuildingData>(prefab);
-        PlayerResourceData res = query.GetSingleton<PlayerResourceData>();
 
-        return res.Gold >= building.GoldCost &&
-               res.Wood >= building.WoodCost;
+        float gold = 0;
+        float wood = 0;
+        PlayerContextHelper.GetPlayerResourceByType(entityManager, currentPlayerID, ResourceType.Gold, out gold);
+        PlayerContextHelper.GetPlayerResourceByType(entityManager, currentPlayerID, ResourceType.Wood, out wood);
+
+        return gold >= building.GoldCost && wood >= building.WoodCost;
     }
 
     private void PayBuildingCost(Entity prefab)
@@ -621,21 +619,22 @@ public class BuildingPlacer : MonoBehaviour
         if (!entityManager.HasComponent<BuildingData>(prefab))
             return;
 
-        BuildingData building = entityManager.GetComponentData<BuildingData>(prefab);
-
-        EntityQuery query = entityManager.CreateEntityQuery(typeof(PlayerResourceData));
-
-        if (query.IsEmpty)
+        if (currentPlayerID < 0)
             return;
 
-        Entity resEntity = query.GetSingletonEntity();
+        BuildingData building = entityManager.GetComponentData<BuildingData>(prefab);
 
-        PlayerResourceData res = entityManager.GetComponentData<PlayerResourceData>(resEntity);
+        float gold = 0;
+        float wood = 0;
+        if (PlayerContextHelper.GetPlayerResourceByType(entityManager, currentPlayerID, ResourceType.Gold, out gold) == FunctionResult.Success)
+        {
+            PlayerContextHelper.SetPlayerResource(entityManager, currentPlayerID, ResourceType.Gold, gold - building.GoldCost);
+        }
 
-        res.Gold -= building.GoldCost;
-        res.Wood -= building.WoodCost;
-
-        entityManager.SetComponentData(resEntity, res);
+        if (PlayerContextHelper.GetPlayerResourceByType(entityManager, currentPlayerID, ResourceType.Wood, out wood) == FunctionResult.Success)
+        {
+            PlayerContextHelper.SetPlayerResource(entityManager, currentPlayerID, ResourceType.Wood, wood - building.WoodCost);
+        }
     }
 
     private void PlaceBuilding(Vector3 rootPosition,int PlayerID)

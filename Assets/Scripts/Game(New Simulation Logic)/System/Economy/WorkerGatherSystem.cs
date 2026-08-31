@@ -14,14 +14,6 @@ public partial struct WorkerGatherSystem : ISystem
         var nodeLookup = SystemAPI.GetComponentLookup<ResourceNodeData>(false);
         var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
 
-        if (!SystemAPI.TryGetSingletonEntity<PlayerResourceData>(out Entity resourceEntity))
-        {
-            Debug.LogError("[WorkerGather] Không tìm thấy PlayerResourceData singleton");
-            return;
-        }
-
-        RefRW<PlayerResourceData> playerResource =
-            SystemAPI.GetComponentRW<PlayerResourceData>(resourceEntity);
 
         var ecb = SystemAPI
             .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
@@ -29,8 +21,8 @@ public partial struct WorkerGatherSystem : ISystem
 
         int workerCount = 0;
 
-        foreach (var (workerTransform, gather, workerEntity) in
-                 SystemAPI.Query<RefRO<LocalTransform>, RefRW<WorkerGatherData>>()
+        foreach (var (workerTransform,unit,gather, workerEntity) in
+                 SystemAPI.Query<RefRO<LocalTransform>,RefRO<Unit>,RefRW<WorkerGatherData>>()
                      .WithAll<WorkerTag>()
                      .WithEntityAccess())
         {
@@ -241,11 +233,16 @@ public partial struct WorkerGatherSystem : ISystem
                                 false
                             );
 
-                            AddResource(
-                                ref playerResource.ValueRW,
-                                gather.ValueRO.CurrentResourceType,
-                                gather.ValueRO.CarryAmount
-                            );
+
+                            float currentAmount;
+                            if (PlayerContextHelper.GetPlayerResourceByType(state.EntityManager, unit.ValueRO.playerID, gather.ValueRO.CurrentResourceType, out currentAmount)==FunctionResult.Success)
+                            {
+                                PlayerContextHelper.SetPlayerResource(state.EntityManager, unit.ValueRO.playerID, gather.ValueRO.CurrentResourceType, currentAmount + gather.ValueRO.CarryAmount);
+                            }
+                            else
+                            {
+                                Debug.LogError($"[WorkerGather] Không thể lấy resource của player {unit.ValueRO.playerID} loại {gather.ValueRO.CurrentResourceType}");
+                            }
 
                             gather.ValueRW.CarryAmount = 0;
 
@@ -283,31 +280,6 @@ public partial struct WorkerGatherSystem : ISystem
         });
 
         ecb.SetComponentEnabled<MoveOverride>(entity, true);
-    }
-
-    private static void AddResource(
-        ref PlayerResourceData res,
-        ResourceType type,
-        int amount)
-    {
-        switch (type)
-        {
-            case ResourceType.Gold:
-                res.Gold += amount;
-                break;
-
-            case ResourceType.Wood:
-                res.Wood += amount;
-                break;
-
-            case ResourceType.Food:
-                res.Food += amount;
-                break;
-        }
-
-        Debug.Log(
-            $"[WorkerGather] PlayerResource = Gold:{res.Gold}, Wood:{res.Wood}, Food:{res.Food}"
-        );
     }
 
     private Entity FindNearestResourceNode(

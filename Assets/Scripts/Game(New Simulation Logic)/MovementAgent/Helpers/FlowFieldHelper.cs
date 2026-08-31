@@ -44,17 +44,14 @@ public static class FlowFieldHelper
         float3 worldTarget,
         Entity unitEntity,
         EntityCommandBuffer ecb,
-        EntityManager em)
+        EntityManager em,
+        ref Unity.Collections.NativeHashMap<Entity, int> refCountDeltas)
     {
         // 1. Giảm Ref cũ
         if (unit.FieldEntity != Entity.Null && em.Exists(unit.FieldEntity))
         {
-            if (em.HasComponent<FlowFieldRefCount>(unit.FieldEntity))
-            {
-                var oldRef = em.GetComponentData<FlowFieldRefCount>(unit.FieldEntity);
-                oldRef.value--;
-                ecb.SetComponent(unit.FieldEntity, oldRef);
-            }
+            if (!refCountDeltas.TryGetValue(unit.FieldEntity, out int delta)) delta = 0;
+            refCountDeltas[unit.FieldEntity] = delta - 1;
         }
 
         if (!em.HasComponent<MovementAgentFieldCleanUpData>(unitEntity))
@@ -75,19 +72,8 @@ public static class FlowFieldHelper
 
         if (field != Entity.Null)
         {
-            if (em.Exists(field))
-            {
-                if (em.HasComponent<FlowFieldRefCount>(field))
-                {
-                    var newRef = em.GetComponentData<FlowFieldRefCount>(field);
-                    newRef.value++;
-                    ecb.SetComponent(field, newRef);
-                }
-                else
-                {
-                    ecb.AddComponent(field, new FlowFieldRefCount { value = 1 });
-                }
-            }
+            if (!refCountDeltas.TryGetValue(field, out int delta)) delta = 0;
+            refCountDeltas[field] = delta + 1;
         }
     }
 
@@ -99,7 +85,7 @@ public static class FlowFieldHelper
             {
                 var oldRef = em.GetComponentData<FlowFieldRefCount>(unit.FieldEntity);
                 oldRef.value--;
-                ecb.SetComponent(unit.FieldEntity, oldRef);
+                em.SetComponentData(unit.FieldEntity, oldRef);
             }
         }
         unit.FieldEntity = Entity.Null;

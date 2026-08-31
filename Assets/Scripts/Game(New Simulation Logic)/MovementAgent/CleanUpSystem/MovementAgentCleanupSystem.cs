@@ -20,7 +20,7 @@ public partial struct MovementAgentCleanupSystem : ISystem
                 {
                     var refCount = state.EntityManager.GetComponentData<FlowFieldRefCount>(cleanup.ValueRO.FieldEntity);
                     refCount.value--;
-                    ecb.SetComponent(cleanup.ValueRO.FieldEntity, refCount);
+                    state.EntityManager.SetComponentData(cleanup.ValueRO.FieldEntity, refCount);
                 }
             }
 

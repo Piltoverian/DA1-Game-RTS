@@ -12,7 +12,7 @@ public enum BuildingType
 public class BuildingAuthoring : MonoBehaviour
 {
     [Header("Owner")]
-    public int PlayerID = 1;
+    public int PlayerID = 0;
 
     [Header("Building Info")]
     public BuildingType BuildingType;

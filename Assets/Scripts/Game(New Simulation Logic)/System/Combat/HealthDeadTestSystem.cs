@@ -126,10 +126,9 @@ public partial struct HealthDeadTestSystem : ISystem
 
         int newPopulation = math.max(0, playerContext.currentPopulation - 1);
 
-        PlayerContextHelper.UpdatePlayerContext(
+        PlayerContextHelper.SetCurrentPopulation(
             entityManager,
             playerContext.PlayerId,
-            PlayerContextDataType.currentPopulation,
             newPopulation
         );
     }

@@ -36,30 +36,32 @@ public static class TrainUnitHelper
             Debug.Log("Invalid unit prefab index.");
             return;
         }
-        queueBuffer.Add(new ProductionQueueElement
+
+        int playerId = 0;
+        if (entityManager.HasComponent<Unit>(buildingEntity))
         {
-            UnitPrefab = prefabBuffer[indexInPrefabList].UnitPrefab
-        });
-        
-        EntityQuery query =
-            entityManager.CreateEntityQuery(typeof(PlayerResourceData));
-        if (query.IsEmpty)
-        {
-            Debug.LogWarning("PlayerResourceData not found.");
-            return;
+            playerId = entityManager.GetComponentData<Unit>(buildingEntity).playerID;
         }
-        Entity resEntity = query.GetSingletonEntity();
-        PlayerResourceData res =
-            entityManager.GetComponentData<PlayerResourceData>(resEntity);
-        if (res.Gold < prod.UnitGoldCost ||
-            res.Food < prod.UnitFoodCost)
+
+        float gold = 0;
+        float food = 0;
+        PlayerContextHelper.GetPlayerResourceByType(entityManager, playerId, ResourceType.Gold, out gold);
+        PlayerContextHelper.GetPlayerResourceByType(entityManager, playerId, ResourceType.Food, out food);
+
+        if (gold < prod.UnitGoldCost || food < prod.UnitFoodCost)
         {
             Debug.Log("Not enough resources to train.");
             return;
         }
-        res.Gold -= prod.UnitGoldCost;
-        res.Food -= prod.UnitFoodCost;
-        entityManager.SetComponentData(resEntity, res);
+
+        PlayerContextHelper.SetPlayerResource(entityManager, playerId, ResourceType.Gold, gold - prod.UnitGoldCost);
+        PlayerContextHelper.SetPlayerResource(entityManager, playerId, ResourceType.Food, food - prod.UnitFoodCost);
+
+        queueBuffer.Add(new ProductionQueueElement
+        {
+            UnitPrefab = prefabBuffer[indexInPrefabList].UnitPrefab
+        });
+
         if (prod.TimeRemaining <= 0f)
         {
             prod.TimeRemaining = prod.ProductionTime;

@@ -94,7 +94,7 @@ public partial struct ProductionSystem : ISystem
 
             Entity unit = ecb.Instantiate(unitPrefab);
 
-            PlayerContextHelper.UpdatePlayerContext(state.EntityManager, playerContextEntity.PlayerId, PlayerContextDataType.currentPopulation, playerContextEntity.currentPopulation + 1);
+            PlayerContextHelper.SetCurrentPopulation(state.EntityManager, playerContextEntity.PlayerId, playerContextEntity.currentPopulation + 1);
 
             float3 spawnPos = buildingTransform.ValueRO.TransformPoint(prod.ValueRO.SpawnOffset);
             float3 rallyPos = buildingTransform.ValueRO.TransformPoint(prod.ValueRO.RallyOffset);
