@@ -21,6 +21,11 @@ public partial struct MovementAgentTargetSystem : ISystem
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var deltaTime = SystemAPI.Time.DeltaTime;
+
+        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalToWorld>().Build();
+        var blockageDatas = blockageQuery.ToComponentDataArray<BlockageData>(Allocator.TempJob);
+        var blockageLocalToWorlds = blockageQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
+
         var job = new UnitTargetJob
         {
             Grid = grid,
@@ -28,10 +33,14 @@ public partial struct MovementAgentTargetSystem : ISystem
             IslandSeedLookup = SystemAPI.GetBufferLookup<IslandSeed>(true),
             GridIslands = SystemAPI.GetBuffer<GridIsland>(gridEntity).AsNativeArray(),
             GridCosts = SystemAPI.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(),
+            BlockageDatas = blockageDatas,
+            BlockageLocalToWorlds = blockageLocalToWorlds,
             DeltaTime = deltaTime
         };
 
         state.Dependency = job.ScheduleParallel(state.Dependency);
+        blockageDatas.Dispose(state.Dependency);
+        blockageLocalToWorlds.Dispose(state.Dependency);
     }
 
     [BurstCompile]
@@ -42,6 +51,8 @@ public partial struct MovementAgentTargetSystem : ISystem
         [ReadOnly] public BufferLookup<IslandSeed> IslandSeedLookup;
         [ReadOnly] public NativeArray<GridIsland> GridIslands;
         [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
+        [ReadOnly] public NativeArray<BlockageData> BlockageDatas;
+        [ReadOnly] public NativeArray<LocalToWorld> BlockageLocalToWorlds;
         [ReadOnly] public float DeltaTime;
         public void Execute(Entity entity, [ReadOnly] in LocalTransform transform, 
             ref MovementAgentComponent move, 
@@ -69,30 +80,142 @@ public partial struct MovementAgentTargetSystem : ISystem
             int nodeIndex = GridHelper.GetNodeIndex(gridPos, Grid);
             int unitIsland = GridIslands[nodeIndex].islandID;
 
-            // --- 1. ISLAND SYNC ---
-            int2 globalTargetGrid = GridHelper.WorldToGrid(globalTarget, Grid);
-            bool targetIsObstacle = false;
-            if (globalTargetGrid.x >= 0 && globalTargetGrid.x < Grid.width && globalTargetGrid.y >= 0 && globalTargetGrid.y < Grid.height)
+            // --- 1. ISLAND SYNC & BLOCKAGE FOOTPRINT TARGETING ---
+            float3 targetWorldPos = globalTarget;
+            float2 targetWorld2D = new float2(targetWorldPos.x, targetWorldPos.z);
+            int2 targetGrid = GridHelper.WorldToGrid(globalTarget, Grid);
+            bool foundBuilding = false;
+            int2 bMinGrid = targetGrid;
+            int2 bMaxGrid = targetGrid;
+
+            for (int b = 0; b < BlockageDatas.Length; b++)
             {
-                int targetNodeIndex = GridHelper.GetNodeIndex(globalTargetGrid, Grid);
-                targetIsObstacle = GridCosts[targetNodeIndex].cost >= 250;
-            }
-            
-            if (IslandSeedLookup.HasBuffer(move.FieldEntity) && !targetIsObstacle)
-            {
-                var seedBuffer = IslandSeedLookup[move.FieldEntity];
-                float minDistToSeed = float.MaxValue;
-                
-                for (int i = 0; i < seedBuffer.Length; i++)
+                BlockageData bData = BlockageDatas[b];
+                float3 bPos = BlockageLocalToWorlds[b].Position;
+
+                float2 worldMin = new float2(bPos.x + bData.LocalRect.MinPoint.x, bPos.z + bData.LocalRect.MinPoint.y);
+                float2 worldMax = new float2(bPos.x + bData.LocalRect.MaxPoint.x, bPos.z + bData.LocalRect.MaxPoint.y);
+
+                StartEndRect worldRect = new StartEndRect(worldMin);
+                worldRect.ExpandTo(worldMax);
+
+                if (worldRect.isContains(targetWorld2D))
                 {
-                    if (seedBuffer[i].islandID == unitIsland)
+                    float3 minWorld3D = new float3(worldRect.MinPoint.x + 0.01f, 0, worldRect.MinPoint.y + 0.01f);
+                    float3 maxWorld3D = new float3(worldRect.MaxPoint.x - 0.01f, 0, worldRect.MaxPoint.y - 0.01f);
+
+                    int2 bMin = GridHelper.WorldToGrid(minWorld3D, Grid);
+                    int2 bMax = GridHelper.WorldToGrid(maxWorld3D, Grid);
+
+                    bMinGrid = math.min(bMin, bMax);
+                    bMaxGrid = math.max(bMin, bMax);
+                    foundBuilding = true;
+                    break;
+                }
+            }
+
+            if (foundBuilding)
+            {
+                // Quét đúng các ô đất trống viền ngoài của công trình này và chọn ô gần vị trí lính nhất
+                int startX = math.max(0, bMinGrid.x - 1);
+                int endX = math.min(Grid.width - 1, bMaxGrid.x + 1);
+                int startY = math.max(0, bMinGrid.y - 1);
+                int endY = math.min(Grid.height - 1, bMaxGrid.y + 1);
+
+                float minDistSq = float.MaxValue;
+                float3 bestSlot = globalTarget;
+                bool foundSlot = false;
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    for (int y = startY; y <= endY; y++)
                     {
-                        float dSq = math.distancesq(pos, seedBuffer[i].seedPosition);
-                        if (dSq < minDistToSeed)
+                        if (x == startX || x == endX || y == startY || y == endY)
                         {
-                            minDistToSeed = dSq;
-                            islandGoal = seedBuffer[i].seedPosition;
+                            int pIndex = GridHelper.GetNodeIndex(new int2(x, y), Grid);
+                            if (GridCosts[pIndex].cost < 255 && GridCosts[pIndex].cost != int.MaxValue && GridIslands[pIndex].islandID == unitIsland)
+                            {
+                                float3 slotWorldPos = GridHelper.GridToWorld(new int2(x, y), Grid);
+                                float dSq = math.distancesq(pos, slotWorldPos);
+                                if (dSq < minDistSq)
+                                {
+                                    minDistSq = dSq;
+                                    bestSlot = slotWorldPos;
+                                    foundSlot = true;
+                                }
+                            }
                         }
+                    }
+                }
+
+                if (foundSlot)
+                {
+                    islandGoal = bestSlot;
+                }
+            }
+            else
+            {
+                int targetIndex = GridHelper.GetNodeIndex(targetGrid, Grid);
+                bool isTargetInGrid = targetGrid.x >= 0 && targetGrid.x < Grid.width && targetGrid.y >= 0 && targetGrid.y < Grid.height;
+                bool isTargetBlocked = isTargetInGrid && (GridCosts[targetIndex].cost >= 255 || GridCosts[targetIndex].cost == int.MaxValue);
+
+                if (isTargetBlocked)
+                {
+                    // LƯỚI AN TOÀN: Ô click là vật cản Cost >= 255 -> Tự động tìm ô đất trống gần nhất thay vì đi vào trong!
+                    float minDistSq = float.MaxValue;
+                    float3 nearestWalkable = globalTarget;
+                    bool foundWalkable = false;
+
+                    for (int r = 1; r <= 8 && !foundWalkable; r++)
+                    {
+                        for (int dx = -r; dx <= r; dx++)
+                        {
+                            for (int dy = -r; dy <= r; dy++)
+                            {
+                                if (math.abs(dx) == r || math.abs(dy) == r)
+                                {
+                                    int2 neighbor = targetGrid + new int2(dx, dy);
+                                    if (neighbor.x >= 0 && neighbor.x < Grid.width && neighbor.y >= 0 && neighbor.y < Grid.height)
+                                    {
+                                        int nIdx = GridHelper.GetNodeIndex(neighbor, Grid);
+                                        if (GridCosts[nIdx].cost < 255 && GridCosts[nIdx].cost != int.MaxValue && GridIslands[nIdx].islandID == unitIsland)
+                                        {
+                                            float3 nPos = GridHelper.GridToWorld(neighbor, Grid);
+                                            float dSq = math.distancesq(pos, nPos);
+                                            if (dSq < minDistSq)
+                                            {
+                                                minDistSq = dSq;
+                                                nearestWalkable = nPos;
+                                                foundWalkable = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    islandGoal = foundWalkable ? nearestWalkable : globalTarget;
+                }
+                else
+                {
+                    int targetIsland = (isTargetInGrid && targetIndex < GridIslands.Length) ? GridIslands[targetIndex].islandID : 0;
+
+                    // Chỉ khi lính ở KHÁC đảo với mục tiêu (bị ngăn cách) mới dùng IslandSeed của đảo đó để ra bờ mép
+                    if (targetIsland > 0 && unitIsland != targetIsland && IslandSeedLookup.HasBuffer(move.FieldEntity))
+                    {
+                        var seedBuffer = IslandSeedLookup[move.FieldEntity];
+                        for (int i = 0; i < seedBuffer.Length; i++)
+                        {
+                            if (seedBuffer[i].islandID == unitIsland)
+                            {
+                                islandGoal = seedBuffer[i].seedPosition;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        islandGoal = globalTarget;
                     }
                 }
             }
@@ -109,7 +232,7 @@ public partial struct MovementAgentTargetSystem : ISystem
                 if (slotCell.x >= 0 && slotCell.x < Grid.width && slotCell.y >= 0 && slotCell.y < Grid.height)
                 {
                     int slotNodeIndex = GridHelper.GetNodeIndex(slotCell, Grid);
-                    if (GridCosts[slotNodeIndex].cost >= 250) isSlotValid = false;
+                    if (GridCosts[slotNodeIndex].cost >= 255 || GridCosts[slotNodeIndex].cost == int.MaxValue) isSlotValid = false;
                 }
                 else isSlotValid = false;
 

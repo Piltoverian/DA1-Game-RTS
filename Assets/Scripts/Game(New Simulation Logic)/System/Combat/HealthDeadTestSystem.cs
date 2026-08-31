@@ -74,16 +74,6 @@ public partial struct HealthDeadTestSystem : ISystem
                 linkedGroupLookup
             );
 
-            TrySendBuildingClearCostRequest(
-                state.EntityManager,
-                entity,
-                rootEntity,
-                buildingLookup,
-                buildingCostAreaLookup,
-                localTransformLookup,
-                linkedGroupLookup
-            );
-
             DestroyEntityWithLinkedGroup(
                 rootEntity,
                 linkedGroupLookup,

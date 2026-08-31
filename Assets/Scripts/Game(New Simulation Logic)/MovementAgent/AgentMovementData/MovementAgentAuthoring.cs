@@ -5,8 +5,8 @@ public class MovementAgentAuthoring : MonoBehaviour
 {
     public float speed = 10.0f;
     public float radius = 1.0f;
-    public float arrivalRadius = 8.0f;
-    public float formationRange = 25.0f; // Mặc định 25m cho dàn quân mượt
+    public float arrivalRadius = 3.5f;
+    public float formationRange = 8.0f; // 8m cho dàn quân gọn gàng
     public float stoppingDistance = 1.5f;
     public float rotationSpeed = 8.0f;
     public FormationType formationType = FormationType.Box;

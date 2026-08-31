@@ -681,8 +681,6 @@ public class BuildingPlacer : MonoBehaviour
         if (logConstructionDebug)
             DebugConstructionState(building, "After PlaceBuilding");
 
-        CreateBuildingBlocker(footprintCenter, footprint.HalfExtents, building);
-        SendBuildingCostChangeRequest(footprintCenter, footprint.HalfExtents, buildingObstacleCost);
         currentPlayerID = -1;
     }
 

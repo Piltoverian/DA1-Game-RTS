@@ -29,20 +29,22 @@ partial struct CostChangeSystem : ISystem
             if (requestbuffer.Length == 0) continue;
             foreach(var request in requestbuffer)
             {
-                float3 worldMin = new float3(request.area.MinPoint.x, 0, request.area.MinPoint.y);
-                float3 worldMax = new float3(request.area.MaxPoint.x, 0, request.area.MaxPoint.y);
-                int2 gridMin = GridHelper.WorldToGrid(worldMin, grid.ValueRW);
-                int2 gridMax = GridHelper.WorldToGrid(worldMax, grid.ValueRW);
-                gridMin= new int2(math.clamp(gridMin.x,0,grid.ValueRW.width-1),math.clamp(gridMin.y,0,grid.ValueRW.height-1));
-                gridMax= new int2(math.clamp(gridMax.x, 0, grid.ValueRW.width - 1), math.clamp(gridMax.y, 0, grid.ValueRW.height - 1));
+                float3 worldMin = new float3(request.area.MinPoint.x + 0.01f, 0, request.area.MinPoint.y + 0.01f);
+                float3 worldMax = new float3(request.area.MaxPoint.x - 0.01f, 0, request.area.MaxPoint.y - 0.01f);
+                int2 gMin = GridHelper.WorldToGrid(worldMin, grid.ValueRW);
+                int2 gMax = GridHelper.WorldToGrid(worldMax, grid.ValueRW);
+                int2 gridMin = math.min(gMin, gMax);
+                int2 gridMax = math.max(gMin, gMax);
+                gridMin = new int2(math.clamp(gridMin.x, 0, grid.ValueRW.width - 1), math.clamp(gridMin.y, 0, grid.ValueRW.height - 1));
+                gridMax = new int2(math.clamp(gridMax.x, 0, grid.ValueRW.width - 1), math.clamp(gridMax.y, 0, grid.ValueRW.height - 1));
                 for (int x = gridMin.x; x <= gridMax.x; x++)
                 {
-                    for(int y=gridMin.y; y<=gridMax.y; y++)
+                    for (int y = gridMin.y; y <= gridMax.y; y++)
                     {
                         int index = GridHelper.GetNodeIndex(new int2(x, y), grid.ValueRW);
                         GridNodeCost nodeCostNew = costbuffer[index];
                         nodeCostNew.cost = request.newCost;
-                        costbuffer[index]=nodeCostNew;
+                        costbuffer[index] = nodeCostNew;
                     }
                 }
             }

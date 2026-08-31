@@ -133,7 +133,7 @@ public static class UnitMovementMath
                 if (neighbor.x < 0 || neighbor.x >= grid.width || neighbor.y < 0 || neighbor.y >= grid.height) continue;
 
                 int idx = GridHelper.GetNodeIndex(neighbor, grid);
-                if (gridCosts[idx].cost >= 250) // Là vật cản
+                if (gridCosts[idx].cost >= 255 || gridCosts[idx].cost == int.MaxValue) // Là vật cản
                 {
                     float3 obstacleWorldPos = GridHelper.GridToWorld(neighbor, grid);
                     float2 diff = new float2(worldPos.x - obstacleWorldPos.x, worldPos.z - obstacleWorldPos.z);
