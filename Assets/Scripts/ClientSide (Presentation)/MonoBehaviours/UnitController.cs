@@ -17,12 +17,10 @@ public class UnitController : MonoBehaviour
     {
         if (!GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.rightButton))
             return;
-        Debug.Log("Right click detected, processing command...");
         var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         if (TryCommandGather(entityManager))
         {
-            Debug.Log("Gather command processed.");
             return;
         }
         CommandMove(entityManager);
@@ -44,7 +42,6 @@ public class UnitController : MonoBehaviour
         Entity resourceNode = FindResourceNodeEntityNearHit(entityManager, hit.point);
         if (resourceNode == Entity.Null)
         {
-            Debug.LogWarning("Clicked resource object but could not find ECS ResourceNode entity.");
             return false;
         }
 
@@ -81,7 +78,6 @@ public class UnitController : MonoBehaviour
         if (queuedCount == 0)
             return false;
 
-        Debug.Log($"Queued gather for {queuedCount} worker(s) on node {resourceNode}");
         return true;
     }
 
@@ -134,7 +130,6 @@ public class UnitController : MonoBehaviour
     private void CommandMove(EntityManager entityManager)
     {
         int playerId = GetCurrentPlayerId();
-        Debug.Log($"Processing move command for player ID: {playerId}");
         if (playerId < 0)
             return;
 
@@ -163,8 +158,5 @@ public class UnitController : MonoBehaviour
 
             queuedCount++;
         }
-
-        if (queuedCount > 0)
-            Debug.Log($"Queued move for {queuedCount} unit(s) to {mouseWorldPosition}");
     }
 }

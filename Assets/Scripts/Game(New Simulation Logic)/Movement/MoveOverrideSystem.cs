@@ -63,7 +63,7 @@ public partial struct MoveOverrideSystem : ISystem
                 moveOverride.ValueRW.targetApplied = false;
                 moveOverrideEnabled.ValueRW = false;
 
-                MovementAgentAPI.StopAgent(
+                MovementAgentAPI.PauseAgent(
                     entityManager,
                     entity,
                     ecb
@@ -91,7 +91,7 @@ public partial struct MoveOverrideSystem : ISystem
                     moveOverride.ValueRW.targetApplied = false;
                     moveOverrideEnabled.ValueRW = false;
 
-                    MovementAgentAPI.StopAgent(
+                    MovementAgentAPI.PauseAgent(
                         entityManager,
                         entity,
                         ecb

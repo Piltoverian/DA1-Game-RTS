@@ -31,7 +31,7 @@ public partial struct PlayerContextSyncSystem : ISystem
             bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
             if (IsResourceChanged(buffer, ref resourcescontextcache)) flowcontrol = RaiseResourceChangeEvent(buffer, playerContext.PlayerId, eventBus);
             if (!flowcontrol) {
-                Debug.Log("Something went wrong.");
+                Debug.LogError("[PlayerContextSyncSystem] Failed to raise ResourceChangeEvent.");
                 return;
             }
 

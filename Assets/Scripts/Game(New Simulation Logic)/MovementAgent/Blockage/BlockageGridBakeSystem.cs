@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -19,6 +18,7 @@ public partial struct BlockageGridBakeSystem : ISystem
         state.RequireForUpdate<GridComponent>();
     }
 
+    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         if (!SystemAPI.TryGetSingletonEntity<GridComponent>(out Entity gridEntity))
@@ -49,7 +49,6 @@ public partial struct BlockageGridBakeSystem : ISystem
                 newCost = blockage.ValueRO.CustomCost,
                 area = area
             });
-            UnityEngine.Debug.Log($"[BlockageGridBakeSystem] Added CostChangeRequest for Blockage at {bPos} with area {area.MinPoint} to {area.MaxPoint} and cost {blockage.ValueRO.CustomCost}");
             ecb.AddComponent(entity, new BlockageCleanupData
             {
                 Position = bPos,

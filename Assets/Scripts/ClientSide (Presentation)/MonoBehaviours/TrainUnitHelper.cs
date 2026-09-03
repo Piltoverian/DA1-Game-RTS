@@ -8,7 +8,6 @@ public static class TrainUnitHelper
     {
         if (BuildingHelper.IsUnderConstruction(entityManager, buildingEntity))
         {
-            Debug.Log("Building is still under construction.");
             return;
         }
         if (!entityManager.Exists(buildingEntity))
@@ -21,19 +20,16 @@ public static class TrainUnitHelper
         }
         else
         {
-            Debug.Log("Selected building is not a production building.");
             return;
         }
         var queueBuffer = entityManager.GetBuffer<ProductionQueueElement>(buildingEntity);
         var prefabBuffer = entityManager.GetBuffer<ProductionElement>(buildingEntity);
         if (queueBuffer.Length >= prod.MaxQueue)
         {
-            Debug.Log("Production queue full.");
             return;
         }
         if (indexInPrefabList < 0 || indexInPrefabList >= prefabBuffer.Length)
         {
-            Debug.Log("Invalid unit prefab index.");
             return;
         }
 
@@ -50,7 +46,6 @@ public static class TrainUnitHelper
 
         if (gold < prod.UnitGoldCost || food < prod.UnitFoodCost)
         {
-            Debug.Log("Not enough resources to train.");
             return;
         }
 
@@ -67,7 +62,6 @@ public static class TrainUnitHelper
             prod.TimeRemaining = prod.ProductionTime;
         }
         entityManager.SetComponentData(buildingEntity, prod);
-        Debug.Log("Queued unit. Queue = " + queueBuffer.Length);
     }
 }
 

@@ -68,7 +68,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
 
                 if (blockedByNeighbor)
                     stuckThreshold = 1.0f;
-                else if (distToGlobal < steering.formationRange)
+                else if (distToGlobal < steering.arrivalRadius)
                     stuckThreshold = 1.5f;
                 else
                     stuckThreshold = 2.5f;

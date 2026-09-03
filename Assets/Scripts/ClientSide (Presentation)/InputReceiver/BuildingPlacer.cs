@@ -116,7 +116,6 @@ public class BuildingPlacer : MonoBehaviour
 
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
         {
-            Debug.Log("Click blocked by UI");
             return;
         }
 
@@ -124,7 +123,6 @@ public class BuildingPlacer : MonoBehaviour
         {
             if (!CanAffordBuilding(selectedBuildingPrefab))
             {
-                Debug.Log("Not enough resources to build.");
                 return;
             }
 
@@ -142,13 +140,11 @@ public class BuildingPlacer : MonoBehaviour
     {
         if (commandData.Type != CommandType.Build)
         {
-            Debug.LogWarning("Command is not Build.");
             return;
         }
 
         if (sourceEntity == Entity.Null)
         {
-            Debug.LogWarning("Build command has null source entity.");
             return;
         }
 
@@ -259,8 +255,6 @@ public class BuildingPlacer : MonoBehaviour
 
         if (ghostLayer >= 0)
             SetLayerRecursively(ghost, ghostLayer);
-        else
-            Debug.LogWarning("Layer 'Ghost' does not exist.");
 
         Collider[] colliders = ghost.GetComponentsInChildren<Collider>(true);
 
@@ -268,9 +262,6 @@ public class BuildingPlacer : MonoBehaviour
             col.enabled = false;
 
         currentGhostRenderers = ghost.GetComponentsInChildren<Renderer>(true);
-
-        if (logConstructionDebug)
-            Debug.Log("Ghost renderer count: " + currentGhostRenderers.Length);
 
         SetGhostMaterial(true, true);
     }
@@ -581,9 +572,6 @@ public class BuildingPlacer : MonoBehaviour
 
         if (hits.Length > 0)
         {
-            if (logPlacementBlocking)
-                Debug.Log("Cannot place. Blocked by: " + hits[0].name);
-
             return true;
         }
 
@@ -678,33 +666,11 @@ public class BuildingPlacer : MonoBehaviour
         ApplyFootprintToPlacedBuilding(building, footprint);
         ResetConstructionState(building);
 
-        if (logConstructionDebug)
-            DebugConstructionState(building, "After PlaceBuilding");
-
         currentPlayerID = -1;
     }
 
     private void ApplyFootprintToPlacedBuilding(Entity building, BuildingFootprint footprint)
     {
-        BuildingCostArea costArea = new BuildingCostArea
-        {
-            CenterOffset = new float3(
-                footprint.CenterOffset.x,
-                footprint.CenterOffset.y,
-                footprint.CenterOffset.z
-            ),
-            HalfExtents = new float3(
-                footprint.HalfExtents.x,
-                footprint.HalfExtents.y,
-                footprint.HalfExtents.z
-            )
-        };
-
-        if (entityManager.HasComponent<BuildingCostArea>(building))
-            entityManager.SetComponentData(building, costArea);
-        else
-            entityManager.AddComponentData(building, costArea);
-
         if (entityManager.HasComponent<BuildingData>(building))
         {
             BuildingData data = entityManager.GetComponentData<BuildingData>(building);
@@ -721,7 +687,6 @@ public class BuildingPlacer : MonoBehaviour
     {
         if (!entityManager.HasComponent<BuildingData>(building))
         {
-            Debug.LogWarning("Placed building has no BuildingData.");
             return;
         }
 
@@ -769,138 +734,6 @@ public class BuildingPlacer : MonoBehaviour
 
     private void DebugConstructionState(Entity building, string label)
     {
-        Debug.Log(
-            $"[{label}] Entity = {building}\n" +
-            $"Has BuildingData = {entityManager.HasComponent<BuildingData>(building)}\n" +
-            $"Has BuildingCostArea = {entityManager.HasComponent<BuildingCostArea>(building)}\n" +
-            $"Has ConstructionData = {entityManager.HasComponent<ConstructionData>(building)}\n" +
-            $"Has RevealHeightProperty = {entityManager.HasComponent<RevealHeightProperty>(building)}\n" +
-            $"Has UnderConstructionTag = {entityManager.HasComponent<UnderConstructionTag>(building)}"
-        );
-
-        if (entityManager.HasComponent<ConstructionData>(building))
-        {
-            ConstructionData con = entityManager.GetComponentData<ConstructionData>(building);
-
-            Debug.Log(
-                $"ConstructionData: " +
-                $"TotalTime={con.TotalTime}, " +
-                $"Elapsed={con.Elapsed}, " +
-                $"StartReveal={con.StartRevealHeight}, " +
-                $"EndReveal={con.EndRevealHeight}"
-            );
-        }
-
-        if (entityManager.HasComponent<RevealHeightProperty>(building))
-        {
-            RevealHeightProperty reveal =
-                entityManager.GetComponentData<RevealHeightProperty>(building);
-
-            Debug.Log("RevealHeightProperty Value = " + reveal.Value);
-        }
-
-        if (entityManager.HasComponent<BuildingCostArea>(building))
-        {
-            BuildingCostArea area = entityManager.GetComponentData<BuildingCostArea>(building);
-
-            Debug.Log(
-                $"BuildingCostArea: " +
-                $"CenterOffset={area.CenterOffset}, " +
-                $"HalfExtents={area.HalfExtents}"
-            );
-        }
-    }
-
-    private void CreateBuildingBlocker(Vector3 footprintCenter, Vector3 halfExtents, Entity buildingEntity)
-    {
-        GameObject blocker = new GameObject("BuildingBlocker");
-
-        int buildingLayer = LayerMask.NameToLayer("Building");
-
-        if (buildingLayer >= 0)
-            blocker.layer = buildingLayer;
-        else
-            Debug.LogWarning("Layer 'Building' does not exist.");
-
-        blocker.transform.position = footprintCenter;
-
-        BoxCollider col = blocker.AddComponent<BoxCollider>();
-        col.size = halfExtents * 2f;
-        col.center = Vector3.zero;
-        col.isTrigger = false;
-
-        BuildingBlocker buildingBlocker = blocker.AddComponent<BuildingBlocker>();
-        buildingBlocker.BuildingEntity = buildingEntity;
-    }
-
-    private void SendBuildingCostChangeRequest(Vector3 footprintCenter, Vector3 halfExtents, int newCost)
-    {
-        if (!isEntityManagerReady)
-            return;
-
-        EntityQuery gridQuery = entityManager.CreateEntityQuery(
-            typeof(GridComponent),
-            typeof(CostChangeRequest)
-        );
-
-        if (gridQuery.IsEmpty)
-        {
-            Debug.LogWarning("Cannot send building cost request. GridComponent or CostChangeRequest buffer not found.");
-            return;
-        }
-
-        Entity gridEntity = gridQuery.GetSingletonEntity();
-
-        if (!entityManager.HasBuffer<CostChangeRequest>(gridEntity))
-        {
-            Debug.LogWarning("Grid entity has no CostChangeRequest buffer.");
-            return;
-        }
-
-        GridComponent grid = entityManager.GetComponentData<GridComponent>(gridEntity);
-
-        float padding = Mathf.Max(0f, buildingCostPadding);
-
-        if (grid.cellsize > 0f)
-            padding = Mathf.Min(padding, grid.cellsize * 0.45f);
-
-        float minX = footprintCenter.x - halfExtents.x + padding;
-        float minZ = footprintCenter.z - halfExtents.z + padding;
-        float maxX = footprintCenter.x + halfExtents.x - padding;
-        float maxZ = footprintCenter.z + halfExtents.z - padding;
-
-        if (minX > maxX)
-        {
-            minX = footprintCenter.x - halfExtents.x;
-            maxX = footprintCenter.x + halfExtents.x;
-        }
-
-        if (minZ > maxZ)
-        {
-            minZ = footprintCenter.z - halfExtents.z;
-            maxZ = footprintCenter.z + halfExtents.z;
-        }
-
-        StartEndRect area = new StartEndRect(new float2(minX, minZ));
-        area.ExpandTo(new float2(maxX, maxZ));
-
-        DynamicBuffer<CostChangeRequest> requestBuffer =
-            entityManager.GetBuffer<CostChangeRequest>(gridEntity);
-
-        requestBuffer.Add(new CostChangeRequest
-        {
-            newCost = newCost,
-            area = area
-        });
-
-        if (logConstructionDebug)
-        {
-            Debug.Log(
-                $"Building cost request sent. " +
-                $"Cost={newCost}, " +
-                $"Area=({minX:F2},{minZ:F2}) -> ({maxX:F2},{maxZ:F2})"
-            );
-        }
     }
 
     private void CancelPlacement()
@@ -931,7 +764,6 @@ public class BuildingPlacer : MonoBehaviour
 
         if (targetMaterial == null)
         {
-            Debug.LogWarning("Ghost material is null.");
             return;
         }
 

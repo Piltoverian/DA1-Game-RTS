@@ -21,10 +21,6 @@ public class ResourceGroup : UIComponent
                 info.SetInfoValue(resource.Amount);
             }
         }
-        else
-        {
-            Debug.LogWarning($"ResourceGroup: Received ResourceChangeEvent for playerId {eventData.playerId}, but this UI is for playerId {playerId}. Ignoring.");
-        }
     }
 
     public void ClearInfo()

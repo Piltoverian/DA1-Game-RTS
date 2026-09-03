@@ -68,4 +68,4 @@ Hệ thống Movement hoạt động hoàn toàn tự động dựa trên ECS (E
 👉 *Thư mục:* `CommandBridge/`
 - Tuyệt đối **KHÔNG** chọc thẳng thay đổi tọa độ `LocalTransform` hay thay đổi `MovementAgentComponent.velocity` của Unit.
 - Để cấp lệnh di chuyển, hãy dùng Helper API: Gọi `MovementAgentAPI.SetTarget(...)`.
-- Nếu hệ thống của bạn dùng ISystem (như `WorkerGatherSystem`), hãy Add/Enable component `MoveOverride` cho Unit. Hệ thống `MoveOverrideSystem` sẽ tự động cầu nối với Movement Agent. Tương tự, gọi `MovementAgentAPI.StopAgent(...)` hoặc Disable `MoveOverride` để ép Agent đứng lại.
+- Nếu hệ thống của bạn dùng ISystem (như `WorkerGatherSystem`), hãy Add/Enable component `MoveOverride` cho Unit. Hệ thống `MoveOverrideSystem` sẽ tự động cầu nối với Movement Agent. Tương tự, gọi `MovementAgentAPI.PauseAgent(...)` hoặc Disable `MoveOverride` để ép Agent tạm dừng (và `ResumeAgent` để tiếp tục di chuyển).

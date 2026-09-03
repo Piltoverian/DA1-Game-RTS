@@ -7,10 +7,6 @@ public class CommandButton : MonoBehaviour
 
     public void OnClick()
     {
-        Debug.Log(
-            $"Command Button Clicked! Type: {commandData.Type}, Index: {commandData.indexInUnitCommandList}"
-        );
-
         int playerId = GameManager.Instance.GetModule<SelectManager>().currentContext.playerId;
         Entity sourceEntity = SelectHelper.GetFirstSelectedEntityByplayerID(playerId);
 
@@ -23,7 +19,6 @@ public class CommandButton : MonoBehaviour
                 {
                     if (sourceEntity == Entity.Null)
                     {
-                        Debug.LogWarning("No selected entity for Progression command.");
                         return;
                     }
 
@@ -48,7 +43,6 @@ public class CommandButton : MonoBehaviour
                 {
                     if (sourceEntity == Entity.Null)
                     {
-                        Debug.LogWarning("No selected entity for Build command.");
                         return;
                     }
 
@@ -66,7 +60,6 @@ public class CommandButton : MonoBehaviour
                 // Handle target to command
                 break;
             default:
-                Debug.LogWarning("Unknown command type.");
                 break;
         }
     }

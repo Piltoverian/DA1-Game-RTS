@@ -67,7 +67,6 @@ public static class FlowFieldHelper
         unit.FieldEntity = field;
         unit.currentworldtarget = worldTarget;
         unit.hastarget = field != Entity.Null;
-        unit.useSlotTarget = false;
         steering.isSettled = false;
 
         if (field != Entity.Null)
@@ -90,7 +89,6 @@ public static class FlowFieldHelper
         }
         unit.FieldEntity = Entity.Null;
         unit.hastarget = false;
-        unit.useSlotTarget = false;
         if (em.HasComponent<MovementAgentFieldCleanUpData>(unitEntity))
         {
             var cleanup = em.GetComponentData<MovementAgentFieldCleanUpData>(unitEntity);

@@ -23,8 +23,6 @@ public static class MovementAgentAPI
         var agent= entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
         agent.currentworldtarget = worldTarget;
         agent.hastarget = true;
-        agent.useSlotTarget = false; 
-        agent.slotTarget = float3.zero; // Xóa slot cũ để tránh dùng lại slot sai lệch
         ecb.SetComponent(agentEntity, agent);
 
         // Luôn trigger TargetChangeRequest khi có lệnh đổi đích, thay vì phụ thuộc vào PathRequestSystem (vốn bỏ qua các lệnh di chuyển trong cùng 1 ô lưới)
@@ -60,7 +58,7 @@ public static class MovementAgentAPI
         ecb.SetComponent(agentEntity, steeringComponent);
     }
 
-    public static void StopAgent(EntityManager entityManager, Entity agentEntity, EntityCommandBuffer ecb)
+    public static void PauseAgent(EntityManager entityManager, Entity agentEntity, EntityCommandBuffer ecb)
     {
         if (!entityManager.HasComponent<MovementAgentComponent>(agentEntity))
         {
@@ -69,11 +67,39 @@ public static class MovementAgentAPI
         var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
         var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
         agentComponent.hastarget = false;
-        agentComponent.velocity= float3.zero;
+        agentComponent.velocity = float3.zero;
+        agentComponent.preferredVelocity = float3.zero;
         ecb.SetComponent(agentEntity, agentComponent);
+
         steeringComponent.isSettled = true;
         steeringComponent.stuckTime = 0;
         steeringComponent.minDistanceToTarget = float.MaxValue;
         ecb.SetComponent(agentEntity, steeringComponent);
+    }
+
+    public static void ResumeAgent(EntityManager entityManager, Entity agentEntity, EntityCommandBuffer ecb)
+    {
+        if (!entityManager.HasComponent<MovementAgentComponent>(agentEntity))
+        {
+            return;
+        }
+        var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
+        
+        if (math.lengthsq(agentComponent.currentworldtarget) < 0.001f)
+        {
+            return;
+        }
+
+        agentComponent.hastarget = true;
+        ecb.SetComponent(agentEntity, agentComponent);
+
+        if (entityManager.HasComponent<MovementSteeringComponent>(agentEntity))
+        {
+            var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
+            steeringComponent.isSettled = false;
+            steeringComponent.stuckTime = 0;
+            steeringComponent.minDistanceToTarget = float.MaxValue;
+            ecb.SetComponent(agentEntity, steeringComponent);
+        }
     }
 }

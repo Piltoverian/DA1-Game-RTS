@@ -107,13 +107,6 @@ public partial struct EnemySpawnerSystem : ISystem
 
             if (prefabBuffer.Length == 0)
             {
-                if (spawner.logSpawnFailures)
-                {
-                    Debug.LogWarning(
-                        $"[EnemySpawner][NoPrefab] Spawner={spawnerEntity}. " +
-                        "EnemySpawnPrefabElement buffer is empty. Add enemy prefabs in EnemySpawnerAuthoring.");
-                }
-
                 entityManager.SetComponentData(spawnerEntity, spawner);
                 continue;
             }
@@ -205,12 +198,6 @@ public partial struct EnemySpawnerSystem : ISystem
 
         if (prefab == Entity.Null || !entityManager.Exists(prefab))
         {
-            if (spawner.logSpawnFailures)
-            {
-                Debug.LogWarning(
-                    $"[EnemySpawner][InvalidPrefab] Spawner={spawnerEntity}, PrefabIndex={prefabIndex}, Prefab={prefab}.");
-            }
-
             return;
         }
 
@@ -228,11 +215,6 @@ public partial struct EnemySpawnerSystem : ISystem
 
             transform.Position = spawnPosition;
             entityManager.SetComponentData(enemyEntity, transform);
-        }
-        else if (spawner.logSpawnFailures)
-        {
-            Debug.LogWarning(
-                $"[EnemySpawner][MissingLocalTransform] Enemy={enemyEntity}, PrefabIndex={prefabIndex}.");
         }
 
         bool hadDefaultPositionSetup =
@@ -259,63 +241,14 @@ public partial struct EnemySpawnerSystem : ISystem
         bool destinationInsideGrid = IsInsideGrid(destinationCell, grid);
         int destinationCost = GetGridCost(entityManager, gridEntity, grid, destinationCell);
 
-        if (spawner.enableDetailedDebug)
-        {
-            Debug.Log(
-                $"[EnemySpawner][SpawnAttempt] Spawner={spawnerEntity}, Enemy={enemyEntity}, PrefabIndex={prefabIndex}, " +
-                $"Spawn={Format(spawnPosition)}, SpawnCell={Format(spawnCell)}, SpawnInsideGrid={spawnInsideGrid}, " +
-                $"Destination={Format(destination)}, DestinationCell={Format(destinationCell)}, " +
-                $"DestinationInsideGrid={destinationInsideGrid}, DestinationCost={destinationCost}, " +
-                $"HasMovementAgent={hasMovementAgent}, HasSteering={hasSteering}, " +
-                $"RemovedSetupUnitMoverDefaultPosition={hadDefaultPositionSetup}, " +
-                $"HadMoveOverride={hadMoveOverride}, MoveOverrideWasEnabled={moveOverrideWasEnabled}.");
-        }
-
-        if (!spawnInsideGrid)
-        {
-            Debug.LogWarning(
-                $"[EnemySpawner][SpawnOutsideGrid] Enemy={enemyEntity}, Spawn={Format(spawnPosition)}, SpawnCell={Format(spawnCell)}. " +
-                "Move the spawner inside the GridComponent area or reduce Spawn Spacing / Spawn Rows.");
-        }
-
         if (!destinationInsideGrid)
         {
-            if (spawner.logSpawnFailures)
-            {
-                Debug.LogWarning(
-                    $"[EnemySpawner][DestinationOutsideGrid] Enemy={enemyEntity}, Destination={Format(destination)}, " +
-                    $"DestinationCell={Format(destinationCell)}. SetTarget will return InvalidTarget.");
-            }
-
             return;
-        }
-
-        if (destinationCost == int.MaxValue && spawner.logSpawnFailures)
-        {
-            Debug.LogWarning(
-                $"[EnemySpawner][BlockedDestination] Enemy={enemyEntity}, Destination={Format(destination)}, " +
-                $"DestinationCell={Format(destinationCell)} has GridNodeCost=int.MaxValue. " +
-                "Increase Stop Before Main Base Distance so the target is outside the building footprint.");
         }
 
         if (!hasMovementAgent)
         {
-            if (spawner.logSpawnFailures)
-            {
-                Debug.LogWarning(
-                    $"[EnemySpawner][MissingMovementAgent] Enemy={enemyEntity}. " +
-                    "Add MovementAgentAuthoring to the enemy prefab.");
-            }
-
             return;
-        }
-
-        if (!hasSteering && spawner.logSpawnFailures)
-        {
-            Debug.LogWarning(
-                $"[EnemySpawner][MissingSteering] Enemy={enemyEntity}. " +
-                "MovementAgentTargetSystem requires MovementSteeringComponent. " +
-                "Check MovementAgentAuthoring on the prefab.");
         }
 
         TargetChangeResult result = MovementAgentAPI.SetTarget(
@@ -324,14 +257,6 @@ public partial struct EnemySpawnerSystem : ISystem
             destination,
             grid,
             ecb);
-
-        if (spawner.enableDetailedDebug ||
-            (result != TargetChangeResult.Success && spawner.logSpawnFailures))
-        {
-            Debug.Log(
-                $"[EnemySpawner][SetTarget] Enemy={enemyEntity}, Result={result}, " +
-                $"Destination={Format(destination)}, DestinationCell={Format(destinationCell)}.");
-        }
 
         if (spawner.enableDetailedDebug)
         {
@@ -400,34 +325,6 @@ public partial struct EnemySpawnerSystem : ISystem
         EntityManager entityManager,
         NativeList<SpawnPostPlaybackCheck> postPlaybackChecks)
     {
-        for (int i = 0; i < postPlaybackChecks.Length; i++)
-        {
-            SpawnPostPlaybackCheck check = postPlaybackChecks[i];
-
-            if (!entityManager.Exists(check.enemyEntity))
-            {
-                Debug.LogWarning(
-                    $"[EnemySpawner][AfterPlayback] Enemy={check.enemyEntity} no longer exists.");
-                continue;
-            }
-
-            if (!entityManager.HasComponent<MovementAgentComponent>(check.enemyEntity))
-            {
-                Debug.LogWarning(
-                    $"[EnemySpawner][AfterPlayback] Enemy={check.enemyEntity} still has no MovementAgentComponent.");
-                continue;
-            }
-
-            MovementAgentComponent move =
-                entityManager.GetComponentData<MovementAgentComponent>(check.enemyEntity);
-
-            Debug.Log(
-                $"[EnemySpawner][AfterPlayback] Enemy={check.enemyEntity}, SetTargetResult={check.setTargetResult}, " +
-                $"HasTarget={move.hastarget}, CurrentWorldTarget={Format(move.currentworldtarget)}, " +
-                $"ExpectedTarget={Format(check.expectedTarget)}, FieldEntity={move.FieldEntity}, " +
-                $"HasTargetChangeRequest={entityManager.HasComponent<TargetChangeRequest>(check.enemyEntity)}. " +
-                "Expected immediately after playback: HasTarget=True and FieldEntity may still be Entity.Null until the flow-field request pipeline runs.");
-        }
     }
 
     private static void LogMainBaseScanOnce(
@@ -438,25 +335,6 @@ public partial struct EnemySpawnerSystem : ISystem
         NativeList<MainBaseInfo> mainBases,
         ref EnemySpawner spawner)
     {
-        if (!spawner.enableDetailedDebug || spawner.hasLoggedBaseScan)
-            return;
-
-        spawner.hasLoggedBaseScan = true;
-
-        Debug.Log(
-            $"[EnemySpawner][BaseScan] Spawner={spawnerEntity}, TargetPlayerID={spawner.targetPlayerID}, " +
-            $"FoundMainBaseCount={mainBases.Length}, UseFallbackTarget={spawner.useFallbackTarget}.");
-
-        for (int i = 0; i < mainBases.Length; i++)
-        {
-            int2 cell = GridHelper.WorldToGrid(mainBases[i].position, grid);
-            int cost = GetGridCost(entityManager, gridEntity, grid, cell);
-
-            Debug.Log(
-                $"[EnemySpawner][BaseScan] MainBase[{i}] Entity={mainBases[i].entity}, " +
-                $"PlayerID={mainBases[i].playerID}, Position={Format(mainBases[i].position)}, " +
-                $"Cell={Format(cell)}, CellCost={cost}.");
-        }
     }
 
     private static void LogResolvedDestinationOnce(
@@ -469,20 +347,6 @@ public partial struct EnemySpawnerSystem : ISystem
         float3 destination,
         ref EnemySpawner spawner)
     {
-        if (!spawner.enableDetailedDebug || spawner.hasLoggedResolvedDestination)
-            return;
-
-        spawner.hasLoggedResolvedDestination = true;
-
-        int2 destinationCell = GridHelper.WorldToGrid(destination, grid);
-        int destinationCost = GetGridCost(entityManager, gridEntity, grid, destinationCell);
-
-        Debug.Log(
-            $"[EnemySpawner][ResolvedDestination] Spawner={spawnerEntity}, UsedFallback={usedFallbackTarget}, " +
-            $"SelectedBaseEntity={selectedBase.entity}, SelectedBasePlayerID={selectedBase.playerID}, " +
-            $"SelectedBasePosition={Format(selectedBase.position)}, Destination={Format(destination)}, " +
-            $"DestinationCell={Format(destinationCell)}, InsideGrid={IsInsideGrid(destinationCell, grid)}, " +
-            $"DestinationCost={destinationCost}, StopBeforeMainBaseDistance={spawner.stopBeforeMainBaseDistance:F2}.");
     }
 
     private static bool TryGetDestination(
@@ -529,9 +393,9 @@ public partial struct EnemySpawnerSystem : ISystem
         usedFallbackTarget = false;
         destination = default;
 
-        if (!spawner.hasWarnedMissingTarget && spawner.logSpawnFailures)
+        if (!spawner.hasWarnedMissingTarget)
         {
-            Debug.LogWarning(
+            Debug.LogError(
                 $"[EnemySpawner][MissingMainBase] Cannot find an entity with MainBaseTag and " +
                 $"BuildingData.PlayerID={spawner.targetPlayerID}. Attach MainBaseAuthoring and " +
                 "BuildingAuthoring to the SAME main-base GameObject, or enable Use Fallback Target.");
@@ -738,30 +602,6 @@ public partial struct EnemySpawnMoveDebugSystem : ISystem
             float remainingDistance = math.distance(
                 transform.ValueRO.Position,
                 debug.ValueRO.expectedTarget);
-
-            Debug.Log(
-                $"[EnemyMoveDebug] Enemy={entity}, T={debug.ValueRO.elapsed:F2}s, " +
-                $"Position={Format(transform.ValueRO.Position)}, Moved={movedDistance:F2}, " +
-                $"HasTarget={move.ValueRO.hastarget}, CurrentWorldTarget={Format(move.ValueRO.currentworldtarget)}, " +
-                $"ExpectedTarget={Format(debug.ValueRO.expectedTarget)}, Remaining={remainingDistance:F2}, " +
-                $"Velocity={Format(move.ValueRO.velocity)}, PreferredVelocity={Format(move.ValueRO.preferredVelocity)}, " +
-                $"Field={fieldInfo}, HasTargetChangeRequest={hasRequest}, " +
-                $"HasSetupUnitMoverDefaultPosition={hasDefaultSetup}, " +
-                $"MoveOverrideEnabled={moveOverrideEnabled}, Steering=[{steeringInfo}].");
-
-            if (!move.ValueRO.hastarget &&
-                remainingDistance > 1f &&
-                !debug.ValueRO.warnedTargetLost)
-            {
-                debug.ValueRW.warnedTargetLost = true;
-
-                Debug.LogWarning(
-                    $"[EnemyMoveDebug][TargetLost] Enemy={entity} no longer has a movement target " +
-                    $"but is still {remainingDistance:F2} units away. Read the preceding debug line: " +
-                    "if StuckTime reached its threshold, MovementAgentActuatorSystem settled the unit; " +
-                    "if HasSetupUnitMoverDefaultPosition=True, a setup component is overwriting the target; " +
-                    "if FieldEntity stays null, inspect the flow-field request pipeline.");
-            }
 
             if (debug.ValueRO.elapsed >= debug.ValueRO.duration)
             {

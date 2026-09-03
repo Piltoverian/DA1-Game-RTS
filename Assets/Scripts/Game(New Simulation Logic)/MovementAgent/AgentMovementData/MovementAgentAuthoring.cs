@@ -6,10 +6,8 @@ public class MovementAgentAuthoring : MonoBehaviour
     public float speed = 10.0f;
     public float radius = 1.0f;
     public float arrivalRadius = 3.5f;
-    public float formationRange = 8.0f; // 8m cho dàn quân gọn gàng
     public float stoppingDistance = 1.5f;
     public float rotationSpeed = 8.0f;
-    public FormationType formationType = FormationType.Box;
 
     [Header("Testing")]
     public bool useTestTarget = false;
@@ -21,9 +19,6 @@ public class MovementAgentAuthoring : MonoBehaviour
         {
             radius = 0.75f; // Đặt giới hạn tối thiểu để tránh lỗi vật lý và tránh trường hợp overlapped
         }
-        // Công thức tối ưu cho hệ thống Slotting:
-        // Stopping Distance nên nhỏ hơn bán kính dãn cách Đội hình (2.2m)
-        // để unit có thể thực sự chạm tới điểm slot của mình.
         stoppingDistance = radius * 1.5f;
 
         // Arrival Radius: Cần đủ lớn để bù đắp cho vân tốc speed = 10.
@@ -43,32 +38,22 @@ public class MovementAgentAuthoring : MonoBehaviour
                 speed = authoring.speed,
                 hastarget = authoring.useTestTarget, // Bật nếu dùng test target
                 FieldEntity = Entity.Null,
-                currentworldtarget = authoring.useTestTarget ? authoring.testTarget : float3.zero,
-                slotTarget = float3.zero,
-                useSlotTarget = false
+                currentworldtarget = authoring.useTestTarget ? authoring.testTarget : float3.zero
             });
-
-            AddComponent(entity, new MovementAgentFormationComponent { SelectedType = authoring.formationType });
 
             AddComponent(entity, new MovementAgentAvoidanceComponent
             {
                 radius = authoring.radius,
                 gridIndex = -1,
-                avoidanceForce = float3.zero,
-                lastAvoidDir = float3.zero,
                 separationForce = float3.zero,
-
                 IsStatic = false,
-                avoidTimer = 0f,
                 closestDistance = 999f,
-                sidePreference = (entity.Index % 2 == 0) ? 1.0f : -1.0f,
                 neighborCount = 0
             });
 
             AddComponent(entity, new MovementSteeringComponent
             {
                 arrivalRadius = authoring.arrivalRadius,
-                formationRange = authoring.formationRange,
                 stoppingDistance = authoring.stoppingDistance,
                 isSettled = false,
                 rotationSpeed = authoring.rotationSpeed,

@@ -47,7 +47,6 @@ public class UnitSelectionManager : MonoBehaviour
 
         if (resourceNode == Entity.Null)
         {
-            Debug.LogWarning("Clicked resource object but could not find ECS ResourceNode entity.");
             return false;
         }
 
@@ -93,8 +92,6 @@ public class UnitSelectionManager : MonoBehaviour
 
         workers.Dispose();
         selectedWorkerQuery.Dispose();
-
-        Debug.Log($"Assigned {workerCount} worker(s) to gather node {resourceNode}");
 
         return true;
     }
@@ -156,7 +153,6 @@ public class UnitSelectionManager : MonoBehaviour
 
         if (gridQuery.IsEmpty)
         {
-            Debug.LogWarning("GridComponent not found in world!");
             return;
         }
 

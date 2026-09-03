@@ -52,13 +52,11 @@ public class FixedUpdateInputTracker : IFixedUpdateModule, IUpdateModule
         InputControl control = FromActionToControl(inputAction);
         if (control == null)
         {
-            Debug.LogWarning("this input has not been bind yet");
             return false;
         }
         TrackerPair pairforcontrol = trackerList.Find(controlR => control == controlR.Control);
         if (pairforcontrol == null)
         {
-            Debug.LogWarning("this action has not been pressed yet");
             return false;
         }
         if (pairforcontrol.status == InputStatus.JustPress)
@@ -73,13 +71,11 @@ public class FixedUpdateInputTracker : IFixedUpdateModule, IUpdateModule
         InputControl control = FromActionToControl(inputAction);
         if (control == null)
         {
-            Debug.LogWarning("this input has not been bind yet");
             return false;
         }
         TrackerPair pairforcontrol = trackerList.Find(controlR => control == controlR.Control);
         if (pairforcontrol == null)
         {
-            Debug.LogWarning("this action has not been pressed yet");
             return false;
         }
         if (pairforcontrol.status == InputStatus.Held)
@@ -94,13 +90,11 @@ public class FixedUpdateInputTracker : IFixedUpdateModule, IUpdateModule
         InputControl control = FromActionToControl(inputAction);
         if (control == null)
         {
-            Debug.LogWarning("this input has not been bind yet");
             return true;
         }
         TrackerPair pairforcontrol = trackerList.Find(controlR => control == controlR.Control);
         if (pairforcontrol == null)
         {
-            Debug.LogWarning("this action has not been pressed yet");
             return true;
         }
         if (pairforcontrol.status == InputStatus.Released)

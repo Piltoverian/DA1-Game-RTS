@@ -10,11 +10,10 @@ public class UIComponent : MonoBehaviour
         if(uiManager != null)
         {
             playerId = uiManager.PlayerId;
-            Debug.Log($"UIComponent found UIManager with PlayerId: {playerId}");
         }
         else
         {
-            Debug.LogWarning("UIComponent could not find a UIManager in the scene.");
+            Debug.LogError("UIComponent could not find a UIManager in the scene.");
         }   
     }
 }

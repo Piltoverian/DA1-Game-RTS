@@ -12,7 +12,6 @@ public class EventBus : ScriptableObject
         name = name.Normalize();
         foreach (var channel in channels)
         {
-            Debug.Log(channel.name.Normalize() + " vs " + name);
             if (channel.name.Normalize() == name)
             {
                 return channel;

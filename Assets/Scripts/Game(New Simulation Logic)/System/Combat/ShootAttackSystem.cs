@@ -94,10 +94,10 @@ public partial struct ShootAttackSystem : ISystem
             }
 
             // Trong tầm bắn thì dừng lại để bắn.
-            // Chỉ gọi StopAgent nếu agent đang có target để tránh record ECB thừa.
+            // Chỉ gọi PauseAgent nếu agent đang có target để tránh record ECB thừa.
             if (movementAgent.ValueRO.hastarget)
             {
-                MovementAgentAPI.StopAgent(
+                MovementAgentAPI.PauseAgent(
                     state.EntityManager,
                     entity,
                     ecb

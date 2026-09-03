@@ -218,7 +218,6 @@ public partial struct MovementAgentORCASystem : ISystem
             lines.Dispose();
 
             avoidance.closestDistance = closestDist;
-            avoidance.closestNeighborNormal = closestNormal;
             avoidance.separationForce = separationPush; // Cumulative push từ TẤT CẢ overlapping
             avoidance.neighborCount = neighborCount;
             avoidance.IsStatic = !move.hastarget;

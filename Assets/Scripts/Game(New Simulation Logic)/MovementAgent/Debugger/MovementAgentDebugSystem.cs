@@ -20,10 +20,7 @@ public partial struct MovementAgentDebugSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         if (!SystemAPI.HasSingleton<MovementAgentDebugConfig>())
-        {
-            Debug.LogWarning("Missing MovementAgentDebugConfig singleton! Make sure to add MovementAgentDebugAuthoring to a GameObject.");
             return;
-        }
 
         var config = SystemAPI.GetSingleton<MovementAgentDebugConfig>();
         int agentCount = 0;
@@ -48,17 +45,10 @@ public partial struct MovementAgentDebugSystem : ISystem
                 Debug.DrawRay(pos + new float3(0, 0.2f, 0), desiredDir * 3f, Color.green, 0.05f, false);
             }
 
-            // 4. Vẽ Đường nối và Điểm Mục tiêu
+            // 4. Vẽ Target Lines
             if (config.ShowTargetLines)
             {
-                // Đường tới điểm Slot trong đội hình (Vàng Cam) - Vẽ ngay khi có dữ liệu Slot
-                if (math.lengthsq(agent.ValueRO.slotTarget) > 0.001f)
-                {
-                    Debug.DrawLine(pos, agent.ValueRO.slotTarget, new Color(1f, 0.6f, 0f), 0.05f, false);
-                    DrawCross(agent.ValueRO.slotTarget, 0.6f, new Color(1f, 0.6f, 0f));
-                }
-                
-                // Đường tới Target thực tế trên đảo (Tím) - Luôn vẽ
+                // Đường tới Target thực tế trên đảo (Tím)
                 Debug.DrawLine(pos, agent.ValueRO.realTarget, new Color(0.5f, 0, 1f), 0.05f, false);
                 DrawCross(agent.ValueRO.realTarget, 0.8f, new Color(0.5f, 0, 1f));
             }
@@ -69,40 +59,10 @@ public partial struct MovementAgentDebugSystem : ISystem
                 DrawCircle(pos, avoidance.ValueRO.radius, Color.gray);
             }
 
-            // 6. Vẽ Slot Debug (Trạng thái đội hình)
-            if (config.ShowSlotDebug)
+            // 6. Vẽ Trạng thái Settled
+            if (config.ShowSlotDebug && steering.ValueRO.isSettled)
             {
-                bool hasSlot = math.lengthsq(agent.ValueRO.slotTarget) > 0.001f;
-                bool isSettled = steering.ValueRO.isSettled;
-                bool useSlot = agent.ValueRO.useSlotTarget;
-
-                if (hasSlot)
-                {
-                    float3 slotPos = agent.ValueRO.slotTarget;
-
-                    // Màu theo trạng thái
-                    Color slotColor;
-                    if (isSettled)
-                        slotColor = Color.cyan;           // Đã settled tại slot
-                    else if (useSlot)
-                        slotColor = Color.yellow;         // Đang lái thẳng vào slot
-                    else
-                        slotColor = Color.green;          // Đang đi theo FlowField tới slot
-
-                    // Vẽ hình thoi tại vị trí slot
-                    DrawDiamond(slotPos, 0.7f, slotColor);
-
-                    // Vẽ đường nối agent → slot
-                    Debug.DrawLine(pos, slotPos, slotColor, 0.05f, false);
-
-                    // Vẽ vòng tròn nhỏ tại slot để thấy stoppingDistance
-                    DrawCircle(slotPos, steering.ValueRO.stoppingDistance, new Color(slotColor.r, slotColor.g, slotColor.b, 0.5f));
-                }
-                else
-                {
-                    // Không có slot → vẽ vòng đỏ cảnh báo quanh agent
-                    DrawCircle(pos, avoidance.ValueRO.radius + 0.3f, Color.red);
-                }
+                DrawCircle(pos, avoidance.ValueRO.radius + 0.1f, Color.cyan);
             }
         }
         

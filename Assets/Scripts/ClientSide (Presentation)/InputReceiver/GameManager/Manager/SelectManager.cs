@@ -24,7 +24,6 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         cam=Camera.main;
         PlayerContextAuthoring playerContextAuthoring = FindAnyObjectByType<PlayerContextAuthoring>();
         currentContext = playerContextAuthoring;
-        Debug.Log($"SelectManager found PlayerContextAuthoring with playerId {currentContext.playerId}");
     }
     public void OnGameStart()
     {
@@ -45,7 +44,6 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             {
-                Debug.Log("Click blocked by UI");
                 return;
             }
             SingleSelecting(MousePos, em);
@@ -80,7 +78,6 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     {
         if (cam==null)
         {
-            Debug.Log("WhereMyCam Wth", cam);
             return;
         }
         
