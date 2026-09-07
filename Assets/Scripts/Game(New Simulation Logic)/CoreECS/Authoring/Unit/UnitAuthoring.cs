@@ -15,10 +15,18 @@ class UnitAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Unit
             {
-                playerID = authoring.playerID
-                ,
+                playerID = authoring.playerID,
                 unitName = new FixedString64Bytes(authoring.unitName)
             });
+
+            if (authoring.GetComponent<TargetCacheAuthoring>() == null)
+            {
+                AddComponent(entity, new TargetCache
+                {
+                    targetEntity = Entity.Null,
+                    lastTargetPosition = Unity.Mathematics.float3.zero
+                });
+            }
         }
     }
 }

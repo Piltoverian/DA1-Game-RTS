@@ -282,6 +282,7 @@ GameObject:
   - component: {fileID: 405627792234750708}
   - component: {fileID: 7792902102167481432}
   - component: {fileID: 7789239051558378192}
+  - component: {fileID: -4282296084372084695}
   m_Layer: 0
   m_Name: Crystal
   m_TagString: Untagged
@@ -354,3 +355,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f439dbe7d29af754d99a40daad34abd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceNodeReference
+--- !u!114 &-4282296084372084695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8405901110692033759}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Entities.Hybrid::Unity.Entities.Hybrid.Baking.LinkedEntityGroupAuthoring

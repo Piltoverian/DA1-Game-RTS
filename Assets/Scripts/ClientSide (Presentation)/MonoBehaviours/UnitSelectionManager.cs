@@ -219,9 +219,17 @@ public class UnitSelectionManager : MonoBehaviour
                 gather.TargetNode = Entity.Null;
                 gather.TargetDepot = Entity.Null;
                 gather.CarryAmount = 0;
-                gather.State = WorkerGatherState.GoingToNode;
+                gather.State = WorkerGatherState.Idle;
 
                 ecb.SetComponent(entity, gather);
+            }
+
+            if (entityManager.HasComponent<TargetCache>(entity))
+            {
+                var targetCache = entityManager.GetComponentData<TargetCache>(entity);
+                targetCache.targetEntity = Entity.Null;
+                targetCache.lastTargetPosition = mouseWorldPosition;
+                ecb.SetComponent(entity, targetCache);
             }
         }
 

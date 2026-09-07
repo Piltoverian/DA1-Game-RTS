@@ -81,6 +81,12 @@ public partial struct MovementAgentORCASystem : ISystem
             float maxSpeed = move.speed;
             float agentRadius = avoidance.radius;
 
+            // --- 0. CHECK WALL NORMAL ---
+            float2 gridGradient = UnitMovementMath.CalculateGridGradient(
+                pos, GridCosts, Grid, agentRadius + 0.8f);
+            bool isNearWall = math.lengthsq(gridGradient) > 0.001f;
+            float3 wallNormal = isNearWall ? new float3(gridGradient.x, 0, gridGradient.y) : float3.zero;
+
             // --- 1. SCAN NEIGHBORS ---
             int2 cell = GridHelper.WorldToGrid(pos, Grid);
             float searchRadius = agentRadius + NEIGHBOR_RANGE;
@@ -88,7 +94,7 @@ public partial struct MovementAgentORCASystem : ISystem
 
             float closestDist = float.MaxValue;
             float3 closestNormal = float3.zero;
-            float3 separationPush = float3.zero; // Cumulative push từ TẤT CẢ overlapping neighbors
+            float3 separationPush = float3.zero;
             int neighborCount = 0;
             int settledCount = 0;
 
@@ -120,13 +126,11 @@ public partial struct MovementAgentORCASystem : ISystem
                         float dist = math.length(diff);
 
                         float neighborRadius = AvoidanceLookup[neighbor].radius;
-                        // Buffer 0.15 để ORCA tránh SỚM hơn
                         float combinedRadius = agentRadius + neighborRadius + 0.15f;
 
                         float maxDist = combinedRadius + NEIGHBOR_RANGE;
                         if (dist > maxDist) continue;
 
-                        // Track closest neighbor (cho stuck detection)
                         if (dist < closestDist)
                         {
                             closestDist = dist;
@@ -136,18 +140,26 @@ public partial struct MovementAgentORCASystem : ISystem
                         }
                         neighborCount++;
 
-                        // Đếm settled neighbors (Fix 3: speed scaling)
                         if (AvoidanceLookup[neighbor].IsStatic) settledCount++;
 
-                        // Cumulative separation: push từ TẤT CẢ overlapping neighbors
-                        // Position-based → KHÔNG phụ thuộc ORCA/velocity/stuck
-                        float actualCombined = agentRadius + neighborRadius; // Không dùng buffer ở đây
+                        float actualCombined = agentRadius + neighborRadius;
                         if (dist < actualCombined)
                         {
                             float overlap = 1.0f - dist / actualCombined;
                             float3 pushDir = dist > 0.001f
                                 ? diff / dist
                                 : new float3(1, 0, 0);
+
+                            if (isNearWall)
+                            {
+                                float pushIntoWall = math.dot(pushDir, -wallNormal);
+                                if (pushIntoWall > 0)
+                                {
+                                    pushDir -= (-wallNormal) * pushIntoWall;
+                                    pushDir += wallNormal * pushIntoWall;
+                                }
+                            }
+
                             separationPush += pushDir * overlap;
                         }
 
@@ -159,7 +171,7 @@ public partial struct MovementAgentORCASystem : ISystem
                         float2 neighborVel = new float2(nVel3.x, nVel3.z);
 
                         bool neighborStatic = AvoidanceLookup[neighbor].IsStatic;
-                        float recipFactor = neighborStatic ? 1.0f : 0.5f;
+                        float recipFactor = (neighborStatic || isNearWall) ? 1.0f : 0.5f;
 
                         lines[lineCount] = ORCAMath.CreateAgentLine(
                             relPos, agentVel, neighborVel,
@@ -172,26 +184,17 @@ public partial struct MovementAgentORCASystem : ISystem
                 }
             }
 
-            // Speed scaling (Fix 3) ĐÃ BỎ — cumulative separation + stuck system đủ xử lý convergence
-            // Không cần giảm tốc → full speed như Context Steering
-
-            // --- 4. GRID GRADIENT (wall avoidance) ---
-            // Blend hướng né tường vào prefVel — giữ lại từ Context Steering cũ
-            // Cần thiết cho dynamic flowfield + 100 unit scale
-            float2 gridGradient = UnitMovementMath.CalculateGridGradient(
-                pos, GridCosts, Grid, agentRadius + 1.0f);
-
-            if (math.lengthsq(gridGradient) > 0.001f)
+            // --- 3. GRID GRADIENT (wall avoidance) ---
+            if (isNearWall)
             {
-                // Gradient hướng RA XA tường → cộng vào prefVel
-                prefVel += gridGradient * maxSpeed * 0.5f;
+                separationPush += wallNormal * 0.3f;
 
-                // Re-clamp vào maxSpeed
+                prefVel += gridGradient * maxSpeed * 0.5f;
                 if (math.lengthsq(prefVel) > maxSpeed * maxSpeed)
                     prefVel = math.normalize(prefVel) * maxSpeed;
             }
 
-            // --- 5. LP SOLVE ---
+            // --- 4. LP SOLVE ---
             float2 newVel;
 
             if (lineCount > 0)
