@@ -14,6 +14,8 @@ using UnityEngine;
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 public partial struct PlayerContextSyncSystem : ISystem
 {
+     private static EventBus s_CachedEventBus;
+
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<PlayerContext>();
@@ -21,15 +23,18 @@ public partial struct PlayerContextSyncSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
-        EventBus eventBus = Resources.Load<EventBus>("EventBus");
-        if (eventBus == null) return;
+        if(s_CachedEventBus==null)
+        {
+            s_CachedEventBus = Resources.Load<EventBus>("EventBus");
+            if (s_CachedEventBus == null) return;
+        }
 
         foreach (var (playerContext,playerContextCache, contextEntity) in SystemAPI.Query<PlayerContext, PlayerContextCache>().WithEntityAccess())
         {
             var buffer = SystemAPI.GetBuffer<ResourcePair>(contextEntity);
             var resourcescontextcache = SystemAPI.GetBuffer<ResourcePairCache>(contextEntity);
             bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
-            if (IsResourceChanged(buffer, ref resourcescontextcache)) flowcontrol = RaiseResourceChangeEvent(buffer, playerContext.PlayerId, eventBus);
+            if (IsResourceChanged(buffer, ref resourcescontextcache)) flowcontrol = RaiseResourceChangeEvent(buffer, playerContext.PlayerId, s_CachedEventBus);
             if (!flowcontrol) {
                 Debug.LogError("[PlayerContextSyncSystem] Failed to raise ResourceChangeEvent.");
                 return;
@@ -51,7 +56,7 @@ public partial struct PlayerContextSyncSystem : ISystem
             }
 
             if (changed) {
-                var populationChangeChannel = eventBus.GetChannel("PopulationUpdatedEventChannel") as PopulationUpdatedEventChannel;
+                var populationChangeChannel = s_CachedEventBus.GetChannel("PopulationUpdatedEventChannel") as PopulationUpdatedEventChannel;
                 populationChangeChannel?.RaiseEvent(popevent);
             }
 

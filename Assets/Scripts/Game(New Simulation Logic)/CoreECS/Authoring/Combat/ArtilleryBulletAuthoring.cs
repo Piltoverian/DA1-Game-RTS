@@ -20,7 +20,9 @@ public class ArtilleryBulletAuthoring : MonoBehaviour
                 aoeDamage = authoring.aoeDamage,
                 aoeRadius = authoring.aoeRadius,
                 maxHeight = authoring.maxHeight,
-                distance = 0f 
+                distance = 0f,
+                sourceEntity = Entity.Null,
+                playerID = -1
             });
         }
     }
@@ -36,4 +38,6 @@ public struct ArtilleryBullet : IComponentData
     public float3 targetPosition;
     public float distance;
     public float distanceTraveled;
+    public Entity sourceEntity;
+    public int playerID;
 }

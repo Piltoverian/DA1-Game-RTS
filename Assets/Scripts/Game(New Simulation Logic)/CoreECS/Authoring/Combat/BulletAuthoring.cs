@@ -14,6 +14,8 @@ public class BulletAuthoring : MonoBehaviour
             {
                 speed = authoring.speed,
                 damage = authoring.damage,
+                sourceEntity = Entity.Null,
+                playerID = -1
             });
             foreach (Transform child in authoring.transform)
             {
@@ -26,4 +28,6 @@ public struct Bullet : IComponentData
 {
     public float speed;
     public float damage;
+    public Entity sourceEntity;
+    public int playerID;
 }

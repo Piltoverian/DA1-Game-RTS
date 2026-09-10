@@ -3,12 +3,13 @@ using Unity.Mathematics;
 
 /// <summary>
 /// Dữ liệu kích thước vật cản 2D trên mặt phẳng XZ.
-/// Tọa độ vị trí luôn được đọc từ LocalTransform.Position thời gian thực.
+/// QUY CHUẨN KIẾN TRÚC: Collider phải luôn nằm ở Root GameObject của Prefab
+/// để BlockageData được bake trực tiếp vào Root Entity, làm nguồn chân lý duy nhất cho diện tích công trình.
 /// </summary>
 public struct BlockageData : IComponentData
 {
-    public StartEndRect LocalRect; // Vùng chữ nhật tương đối (offset so với Position của Entity)
-    public int CustomCost;         // Giá trị Cost áp lên Grid (Mặc định = 255: vật cản cứng)
+    public StartEndRect LocalRect;
+    public int CustomCost;
 }
 
 /// <summary>

@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class CommandMenu : MonoBehaviour
 {
     [SerializeField] private GameObject ButtonPrefab;
-    [SerializeField] private BuildingPlacementDatabase buildingPlacementDatabase;
+    [SerializeField] private BuildingDatabase buildingPlacementDatabase;
 
     private Entity lastSelected;
 
@@ -63,9 +63,9 @@ public class CommandMenu : MonoBehaviour
             }
             else
             {
-                if (command.Type== CommandType.Build)
+                if (command.Type == CommandType.Build)
                 {
-                    var buildingdef = buildingPlacementDatabase.GetByCommandIndex(command.indexInUnitCommandList);
+                    var buildingdef = buildingPlacementDatabase.GetByIndex(command.indexInUnitCommandList);
                     var buildingName = buildingdef != null ? buildingdef.DisplayName : "Unknown Building";
 
                     image.sprite = IconMapping.GetIconOfCommand(buildingName);
@@ -119,8 +119,8 @@ public class CommandMenu : MonoBehaviour
         {
             if (buildingPlacementDatabase != null)
             {
-                BuildingPlacementDefinition definition =
-                    buildingPlacementDatabase.GetByCommandIndex(command.indexInUnitCommandList);
+                BuildingDefinition definition =
+                    buildingPlacementDatabase.GetByIndex(command.indexInUnitCommandList);
 
                 if (definition != null && !string.IsNullOrEmpty(definition.DisplayName))
                 {

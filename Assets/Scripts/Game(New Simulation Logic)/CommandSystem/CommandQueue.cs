@@ -1,5 +1,7 @@
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 partial struct CommandQueue : ISystem
 {
@@ -17,6 +19,7 @@ partial struct CommandQueue : ISystem
 
         foreach (var command in commandBuffer)
         {
+            Debug.Log($"Processing command: {command.Command.Type}");
             ProcessCommand(ref state, command);
         }
 
@@ -87,7 +90,7 @@ partial struct CommandQueue : ISystem
             entityManager.HasComponent<ShootAttack>(command.sourceEntity) &&
             entityManager.HasComponent<Target>(command.sourceEntity) &&
             entityManager.HasComponent<Health>(command.targetEntity);
-
+        
         return canGather || canAttack;
     }
 
@@ -158,36 +161,44 @@ partial struct CommandQueue : ISystem
 
     private static void HandleAttack(ref SystemState state, CommandQueueElement command)
     {
-        if (!state.EntityManager.HasComponent<Target>(command.sourceEntity))
+        var em = state.EntityManager;
+
+        if (em.HasComponent<Target>(command.sourceEntity))
         {
-            return;
+            var targetData = em.GetComponentData<Target>(command.sourceEntity);
+            targetData.targetEntity = command.targetEntity;
+            em.SetComponentData(command.sourceEntity, targetData);
         }
 
-        if (state.EntityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
+        if (em.HasComponent<MoveOverride>(command.sourceEntity))
         {
-            var gatherData = state.EntityManager.GetComponentData<WorkerGatherData>(command.sourceEntity);
-            gatherData.TargetNode = Unity.Entities.Entity.Null;
-            gatherData.TargetDepot = Unity.Entities.Entity.Null;
-            gatherData.CarryAmount = 0;
-            gatherData.GatherTimer = 0f;
-            gatherData.State = WorkerGatherState.Idle;
-            state.EntityManager.SetComponentData(command.sourceEntity, gatherData);
+            var moveOverride = em.GetComponentData<MoveOverride>(command.sourceEntity);
+            moveOverride.targetPosition = float3.zero;
+            moveOverride.targetApplied = false;
+            em.SetComponentData(command.sourceEntity, moveOverride);
+            em.SetComponentEnabled<MoveOverride>(command.sourceEntity, false);
         }
 
-        var targetData = state.EntityManager.GetComponentData<Target>(command.sourceEntity);
-        targetData.targetEntity = command.targetEntity;
-        state.EntityManager.SetComponentData(command.sourceEntity, targetData);
-        state.EntityManager.SetComponentEnabled<MoveOverride>(command.sourceEntity, false);
-
-        if (state.EntityManager.HasComponent<TargetCache>(command.sourceEntity))
+        if (em.HasComponent<TargetCache>(command.sourceEntity))
         {
-            var targetCache = state.EntityManager.GetComponentData<TargetCache>(command.sourceEntity);
+            var targetCache = em.GetComponentData<TargetCache>(command.sourceEntity);
             targetCache.targetEntity = command.targetEntity;
-            if (state.EntityManager.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
+            if (em.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
             {
-                targetCache.lastTargetPosition = state.EntityManager.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
+                targetCache.lastTargetPosition = em.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
             }
-            state.EntityManager.SetComponentData(command.sourceEntity, targetCache);
+            em.SetComponentData(command.sourceEntity, targetCache);
+        }
+
+        if (em.HasComponent<WorkerGatherData>(command.sourceEntity))
+        {
+            var gather = em.GetComponentData<WorkerGatherData>(command.sourceEntity);
+            gather.TargetNode = Entity.Null;
+            gather.TargetDepot = Entity.Null;
+            gather.CarryAmount = 0;
+            gather.GatherTimer = 0f;
+            gather.State = WorkerGatherState.Idle;
+            em.SetComponentData(command.sourceEntity, gather);
         }
     }
 

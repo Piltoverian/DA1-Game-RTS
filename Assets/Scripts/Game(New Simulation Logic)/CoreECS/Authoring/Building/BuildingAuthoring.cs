@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Unity.Entities;
 using Unity.Rendering;
 using UnityEngine;
@@ -6,30 +7,14 @@ public enum BuildingType
 {
     Barracks,
     Tower,
-    ResourceDepot
+    ResourceDepot,
+    House
 }
 
 public class BuildingAuthoring : MonoBehaviour
 {
-    [Header("Owner")]
-    public int PlayerID = 0;
-
-    [Header("Building Info")]
-    public BuildingType BuildingType;
-
-    [Header("Cost")]
-    public int GoldCost = 100;
-    public int WoodCost = 50;
-
-    [Header("Construction")]
-    public float ConstructionTime = 10f;
-    public float StartRevealHeight = 0f;
-    public float EndRevealHeight = 15f;
-
-    [Header("Placement Size")]
-    public float FootprintSizeX = 6f;
-    public float FootprintSizeZ = 6f;
-    public float BlockerHeight = 4f;
+    [Header("Data")]
+    public BuildingDefinition buildingDef;
 
     class Baker : Baker<BuildingAuthoring>
     {
@@ -37,68 +22,70 @@ public class BuildingAuthoring : MonoBehaviour
         {
             Entity e = GetEntity(TransformUsageFlags.Dynamic);
 
+            BuildingType type = src.buildingDef != null ? src.buildingDef.BuildingType : BuildingType.Barracks;
+            float totalWork = src.buildingDef != null ? src.buildingDef.TotalWorkLoad : 100f;
+
             AddComponent(e, new BuildingData
             {
-                PlayerID = src.PlayerID,
-                Type = src.BuildingType,
-                ConstructionTime = src.ConstructionTime,
-                FootprintSizeX = src.FootprintSizeX,
-                FootprintSizeZ = src.FootprintSizeZ,
-                BlockerHeight = src.BlockerHeight,
-                GoldCost = src.GoldCost,
-                WoodCost = src.WoodCost,
+                Type = type,
+                TotalWorkLoad = totalWork
             });
 
             AddComponent(e, new ConstructionData
             {
-                TotalTime = src.ConstructionTime,
-                Elapsed = 0f,
-                StartRevealHeight = src.StartRevealHeight,
-                EndRevealHeight = src.EndRevealHeight
+                currentWorkLoad = 0f
             });
 
-            AddComponent(e, new RevealHeightProperty
+            var costBuffer = AddBuffer<BuildingCost>(e);
+            if (src.buildingDef != null && src.buildingDef.Cost != null)
             {
-                Value = src.StartRevealHeight
-            });
+                foreach (var c in src.buildingDef.Cost)
+                {
+                    if (c.Amount <= 0f) continue;
+                    bool isFound = false;
+                    for (int i = 0; i < costBuffer.Length; i++)
+                    {
+                        if (costBuffer[i].Type == c.Type)
+                        {
+                            var existing = costBuffer[i];
+                            existing.Amount += c.Amount;
+                            costBuffer[i] = existing;
+                            isFound = true;
+                            break;
+                        }
+                    }
 
-            if (src.BuildingType == BuildingType.ResourceDepot)
+                    if (!isFound)
+                    {
+                        costBuffer.Add(new BuildingCost
+                        {
+                            Type = c.Type,
+                            Amount = c.Amount
+                        });
+                    }
+                }
+            }
+
+            if (type == BuildingType.ResourceDepot)
             {
                 AddComponent<ResourceDepotTag>(e);
             }
 
             AddComponent<UnderConstructionTag>(e);
+            AddComponent(e, new RevealHeightProperty { Value = -10f });
         }
     }
 }
 
 public struct BuildingData : IComponentData
 {
-    public int PlayerID;
-
     public BuildingType Type;
-    public float ConstructionTime;
-
-    public float FootprintSizeX;
-    public float FootprintSizeZ;
-    public float BlockerHeight;
-
-    public int GoldCost;
-    public int WoodCost;
+    public float TotalWorkLoad;
 }
 
 public struct ConstructionData : IComponentData
 {
-    public float TotalTime;
-    public float Elapsed;
-    public float StartRevealHeight;
-    public float EndRevealHeight;
-}
-
-[MaterialProperty("_RevealHeight")]
-public struct RevealHeightProperty : IComponentData
-{
-    public float Value;
+    public float currentWorkLoad;
 }
 
 public struct UnderConstructionTag : IComponentData
@@ -107,4 +94,10 @@ public struct UnderConstructionTag : IComponentData
 
 public struct ResourceDepotTag : IComponentData
 {
+}
+
+public struct BuildingCost: IBufferElementData
+{
+    public ResourceType Type;
+    public float Amount;
 }

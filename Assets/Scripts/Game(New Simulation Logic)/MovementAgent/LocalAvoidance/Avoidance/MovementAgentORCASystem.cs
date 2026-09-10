@@ -18,7 +18,7 @@ using Unity.Collections.LowLevel.Unsafe;
 ///   - Grid Gradient: Né tường/obstacle trên grid (từ Context Steering cũ)
 /// </summary>
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-[UpdateAfter(typeof(UnitSpatialSystem))]
+[UpdateAfter(typeof(MoveAgentSpatialSystem))]
 [UpdateAfter(typeof(MovementAgentTargetSystem))]
 public partial struct MovementAgentORCASystem : ISystem
 {

@@ -1,8 +1,12 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.LowLevelPhysics2D;
+using UnityEngine.Windows;
 
 public class UnitController : MonoBehaviour
 {
@@ -19,6 +23,11 @@ public class UnitController : MonoBehaviour
             return;
         var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
+        if (TryCommandAttack(entityManager))
+        {
+            return;
+        }
+
         if (TryCommandGather(entityManager))
         {
             return;
@@ -32,8 +41,8 @@ public class UnitController : MonoBehaviour
         if (playerId < 0)
             return false;
 
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (!Physics.Raycast(ray, out RaycastHit hit, 500f))
+        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+        if (!Physics.Raycast(ray, out UnityEngine.RaycastHit hit, 500f))
             return false;
 
         if (hit.collider.GetComponentInParent<ResourceNodeReference>() == null)
@@ -158,5 +167,64 @@ public class UnitController : MonoBehaviour
 
             queuedCount++;
         }
+    }
+
+    private bool TryCommandAttack(EntityManager entityManager)
+    {
+        var physicalQuery = entityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton));
+        if (physicalQuery.IsEmpty)
+        {
+            return false;
+        }
+
+        PhysicsWorldSingleton physicsWorld = physicalQuery.GetSingleton<PhysicsWorldSingleton>();
+
+        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+
+        RaycastInput input = new RaycastInput
+        {
+            Start = ray.origin,
+            End = ray.origin + ray.direction * 2000f,
+            Filter = CollisionFilter.Default
+        };
+
+        if (!physicsWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
+            return false;
+
+        Entity hitEntity = hit.Entity;
+
+        int myPlayerId = GetCurrentPlayerId();
+        
+        if (!entityManager.HasComponent<Unit>(hitEntity))
+        {
+            return false;
+        }
+        
+        int hitEntityPlayerId = entityManager.GetComponentData<Unit>(hitEntity).playerID;
+        if (myPlayerId==hitEntityPlayerId)
+            return false;
+        var selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(myPlayerId);
+        if (selectedEntities.Count == 0)
+            return false;
+        int attackCommandedCount = 0;
+        foreach (Entity unit in selectedEntities)
+        {
+            if (!entityManager.HasComponent<ShootAttack>(unit) ||
+                !entityManager.HasComponent<Target>(unit))
+                continue;
+            CommandDataHelper.AddCommandToQueue(
+                entityManager,
+                myPlayerId,
+                unit,
+                new CommandData
+                {
+                    Type = CommandType.TargetTo,
+                    indexInUnitCommandList = 0
+                },
+                targetEntity: hitEntity
+            );
+            attackCommandedCount++;
+        }
+        return attackCommandedCount > 0;
     }
 }

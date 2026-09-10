@@ -12,7 +12,8 @@ public class HouseAuthoring : UnityEngine.MonoBehaviour
             {
                 maxPopWillIncrease = authoring.maxPopWillIncrease
             });
-            AddComponent(entity,new HouseCleanUp { maxPopWillIncrease = authoring.maxPopWillIncrease });
+            // Population is credited only when construction completes.
+            AddComponent(entity,new HouseCleanUp { maxPopWillIncrease = 0 });
             AddComponent<HouseInitTag>(entity);
         }
     }

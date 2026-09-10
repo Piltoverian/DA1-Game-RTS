@@ -10,7 +10,7 @@ using Unity.Transforms;
 /// Hệ thống này sở hữu SelectableBucketContainer singleton riêng, tách biệt với UnitSpatialSystem.
 /// Chạy sau UnitSpatialSystem và trước SelectSystem.
 /// </summary>
-[UpdateAfter(typeof(UnitSpatialSystem))]
+[UpdateAfter(typeof(MoveAgentSpatialSystem))]
 [UpdateBefore(typeof(SelectSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct SelectableSpatialSystem : ISystem

@@ -70,10 +70,9 @@ public partial struct BlockageGridBakeSystem : ISystem
             StartEndRect area = new StartEndRect(worldMin);
             area.ExpandTo(worldMax);
 
-            // Trả lại đất trống (Cost = 0)
             costChangeBuffer.Add(new CostChangeRequest
             {
-                newCost = 0,
+                newCost = 1,
                 area = area
             });
 

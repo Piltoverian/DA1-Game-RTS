@@ -16,6 +16,11 @@ partial struct HouseCleanUpSystem : ISystem
         EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
         foreach (var (cleanup, entity) in SystemAPI.Query<HouseCleanUp>().WithNone<HouseComponent>().WithEntityAccess())
         {
+            if (cleanup.maxPopWillIncrease == 0)
+            {
+                ecb.RemoveComponent<HouseCleanUp>(entity);
+                continue;
+            }
             PlayerContext playerContext;
             PlayerContextHelper.GetContextData(state.EntityManager, cleanup.playerID, out playerContext);
             playerContext.maxPopulation -= cleanup.maxPopWillIncrease;

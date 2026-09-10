@@ -136,7 +136,8 @@ public partial struct ShootAttackSystem : ISystem
                     localTransform.ValueRO,
                     weapon,
                     targetEntity,
-                    unit.ValueRO.playerID
+                    unit.ValueRO.playerID,
+                    entity
                 );
             }
         }
@@ -169,21 +170,16 @@ public partial struct ShootAttackSystem : ISystem
         if (!SystemAPI.HasComponent<Health>(targetEntity))
             return false;
 
+        Health targetHealth = SystemAPI.GetComponent<Health>(targetEntity);
+        if (targetHealth.healthAmount <= 0f)
+            return false;
+
         if (SystemAPI.HasComponent<Unit>(targetEntity))
         {
             Unit targetUnit =
                 SystemAPI.GetComponent<Unit>(targetEntity);
 
             if (targetUnit.playerID == attackerPlayerID)
-                return false;
-        }
-
-        if (SystemAPI.HasComponent<BuildingData>(targetEntity))
-        {
-            BuildingData targetBuilding =
-                SystemAPI.GetComponent<BuildingData>(targetEntity);
-
-            if (targetBuilding.PlayerID == attackerPlayerID)
                 return false;
         }
 
@@ -254,7 +250,8 @@ public partial struct ShootAttackSystem : ISystem
         LocalTransform shooterTransform,
         UnitWeaponSlot weapon,
         Entity targetEntity,
-        int shooterPlayerID)
+        int shooterPlayerID,
+        Entity shooterEntity)
     {
         Entity projectilePrefab = weapon.bulletPrefab;
 
@@ -301,7 +298,9 @@ public partial struct ShootAttackSystem : ISystem
             ecb,
             projectileEntity,
             projectilePrefab,
-            weapon
+            weapon,
+            shooterEntity,
+            shooterPlayerID
         );
     }
 
@@ -380,7 +379,9 @@ public partial struct ShootAttackSystem : ISystem
         EntityCommandBuffer ecb,
         Entity projectileEntity,
         Entity projectilePrefab,
-        UnitWeaponSlot weapon)
+        UnitWeaponSlot weapon,
+        Entity shooterEntity,
+        int shooterPlayerID)
     {
         /*
          * Loại đạn 1: Bullet thường
@@ -392,6 +393,8 @@ public partial struct ShootAttackSystem : ISystem
 
             bullet.damage = weapon.damage;
             bullet.speed = weapon.bulletSpeed;
+            bullet.sourceEntity = shooterEntity;
+            bullet.playerID = shooterPlayerID;
 
             ecb.SetComponent(projectileEntity, bullet);
         }
@@ -406,6 +409,8 @@ public partial struct ShootAttackSystem : ISystem
 
             artilleryBullet.aoeDamage = weapon.damage;
             artilleryBullet.speed = weapon.bulletSpeed;
+            artilleryBullet.sourceEntity = shooterEntity;
+            artilleryBullet.playerID = shooterPlayerID;
 
             ecb.SetComponent(projectileEntity, artilleryBullet);
         }
