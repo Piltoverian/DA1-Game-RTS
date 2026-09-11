@@ -34,6 +34,8 @@ public class WorkerAuthoring : MonoBehaviour
 
                 CurrentResourceType = ResourceType.Gold
             });
+
+            SetComponentEnabled<WorkerGatherData>(e, false);
         }
     }
 }
@@ -50,7 +52,7 @@ public enum WorkerGatherState
     ReturningDepot
 }
 
-public struct WorkerGatherData : IComponentData
+public struct WorkerGatherData : IComponentData,IEnableableComponent
 {
     public WorkerGatherState State;
 

@@ -69,16 +69,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee27e6338f587b141a7ff150ce88707e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuildingAuthoring
-  PlayerID: 1
-  BuildingType: 2
-  GoldCost: 100
-  WoodCost: 0
-  ConstructionTime: 1
-  StartRevealHeight: 0
-  EndRevealHeight: 20
-  FootprintSizeX: 10
-  FootprintSizeZ: 11.37
-  BlockerHeight: 14.51
+  buildingDef: {fileID: 11400000, guid: 90e3097196d076e4bb964f70a91ebd6f, type: 2}
 --- !u!114 &147496419893297543
 MonoBehaviour:
   m_ObjectHideFlags: 0

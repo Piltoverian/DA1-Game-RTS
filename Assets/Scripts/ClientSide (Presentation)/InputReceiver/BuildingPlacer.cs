@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -87,7 +88,7 @@ public class BuildingPlacer : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0) && currentCanPlace)
         {
-            if (!CanAffordBuilding(currentDefinition))
+            if (!CanAffordBuilding(selectedBuildingPrefab))
                 return;
 
             PlaceBuilding(currentSnappedPosition, localPlayerId);
@@ -211,7 +212,7 @@ public class BuildingPlacer : MonoBehaviour
         currentSnappedPosition = SnapToGrid(hit.point);
         currentGhost.transform.position = currentSnappedPosition;
 
-        currentCanPlace = CanPlace(currentSnappedPosition) && CanAffordBuilding(currentDefinition);
+        currentCanPlace = CanPlace(currentSnappedPosition) && CanAffordBuilding(selectedBuildingPrefab);
         SetGhostMaterial(currentCanPlace);
     }
 
@@ -281,12 +282,16 @@ public class BuildingPlacer : MonoBehaviour
         return true;
     }
 
-    private bool CanAffordBuilding(BuildingDefinition def)
+    private bool CanAffordBuilding(Entity buildingPrefab)
     {
-        if (def == null || def.Cost == null || localPlayerId < 0)
+        if (buildingPrefab == Entity.Null || localPlayerId < 0)
             return false;
 
-        foreach (var cost in def.Cost)
+        if (entityManager == default || !entityManager.HasBuffer<BuildingCost>(buildingPrefab))
+            return true;
+
+        var costBuffer = entityManager.GetBuffer<BuildingCost>(buildingPrefab);
+        foreach (var cost in costBuffer)
         {
             if (PlayerContextHelper.GetPlayerResourceByType(entityManager, localPlayerId, cost.Type, out float currentAmount) != FunctionResult.Success)
                 return false;
@@ -298,54 +303,40 @@ public class BuildingPlacer : MonoBehaviour
         return true;
     }
 
-    private void PayBuildingCost(BuildingDefinition def)
-    {
-        if (def == null || def.Cost == null || localPlayerId < 0)
-            return;
-
-        foreach (var cost in def.Cost)
-        {
-            if (PlayerContextHelper.GetPlayerResourceByType(entityManager, localPlayerId, cost.Type, out float currentAmount) == FunctionResult.Success)
-            {
-                PlayerContextHelper.SetPlayerResource(entityManager, localPlayerId, cost.Type, currentAmount - cost.Amount);
-            }
-        }
-    }
-
     private void PlaceBuilding(Vector3 rootPosition, int playerId)
     {
-        if (selectedBuildingPrefab == Entity.Null)
+        if (selectedBuildingPrefab == Entity.Null || entityManager == default)
             return;
 
-        Entity building = entityManager.Instantiate(selectedBuildingPrefab);
-        if (building == Entity.Null)
-            return;
-
-        PayBuildingCost(currentDefinition);
-
-        if (entityManager.HasComponent<Unit>(building))
+        Entity requestEntity = entityManager.CreateEntity();
+        entityManager.AddComponentData(requestEntity, new PlaceBuildingRequest
         {
-            Unit unit = entityManager.GetComponentData<Unit>(building);
-            unit.playerID = playerId;
-            entityManager.SetComponentData(building, unit);
+            PlayerId = playerId,
+            PrefabEntity = selectedBuildingPrefab,
+            Position = new float3(rootPosition.x, rootPosition.y, rootPosition.z),
+            TotalWorkLoad = currentDefinition != null ? currentDefinition.TotalWorkLoad : 100f
+        });
+
+        DynamicBuffer<PlaceBuildingWorkerElement> workerBuffer = entityManager.AddBuffer<PlaceBuildingWorkerElement>(requestEntity);
+
+        List<Entity> selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
+        bool addedAny = false;
+
+        foreach (Entity worker in selectedEntities)
+        {
+            if (entityManager.HasComponent<BuilderComponent>(worker) && entityManager.HasComponent<MoveOverride>(worker))
+            {
+                workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = worker });
+                addedAny = true;
+            }
         }
 
-        if (currentDefinition != null && entityManager.HasComponent<BuildingData>(building))
+        if (!addedAny && sourceWorkerEntity != Entity.Null && entityManager.Exists(sourceWorkerEntity))
         {
-            BuildingData data = entityManager.GetComponentData<BuildingData>(building);
-            data.TotalWorkLoad = currentDefinition.TotalWorkLoad;
-            entityManager.SetComponentData(building, data);
-        }
-
-        if (entityManager.HasComponent<LocalTransform>(building))
-        {
-            LocalTransform transform = entityManager.GetComponentData<LocalTransform>(building);
-            transform.Position = new float3(rootPosition.x, rootPosition.y, rootPosition.z);
-            entityManager.SetComponentData(building, transform);
-        }
-        else
-        {
-            entityManager.AddComponentData(building, LocalTransform.FromPosition(new float3(rootPosition.x, rootPosition.y, rootPosition.z)));
+            if (entityManager.HasComponent<BuilderComponent>(sourceWorkerEntity) && entityManager.HasComponent<MoveOverride>(sourceWorkerEntity))
+            {
+                workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = sourceWorkerEntity });
+            }
         }
 
         CancelPlacement();

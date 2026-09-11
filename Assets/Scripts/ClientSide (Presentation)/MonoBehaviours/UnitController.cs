@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -32,6 +33,12 @@ public class UnitController : MonoBehaviour
         {
             return;
         }
+
+        if (TryCommandBuild(entityManager))
+        {
+            return;
+        }
+
         CommandMove(entityManager);
     }
 
@@ -226,5 +233,123 @@ public class UnitController : MonoBehaviour
             attackCommandedCount++;
         }
         return attackCommandedCount > 0;
+    }
+
+    private bool TryCommandBuild(EntityManager entityManager)
+    {
+        int playerId = GetCurrentPlayerId();
+        if (playerId < 0)
+            return false;
+
+        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+
+        Entity targetBuilding = FindUnderConstructionBuildingNearHit(entityManager, ray);
+        if (targetBuilding == Entity.Null || !entityManager.HasComponent<UnderConstructionTag>(targetBuilding))
+        {
+            return false;
+        }
+
+        if (entityManager.HasComponent<Unit>(targetBuilding))
+        {
+            if (entityManager.GetComponentData<Unit>(targetBuilding).playerID != playerId)
+            {
+                return false;
+            }
+        }
+
+        var selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
+        if (selectedEntities.Count == 0)
+            return false;
+
+        int queuedCount = 0;
+        foreach (Entity worker in selectedEntities)
+        {
+            if (!entityManager.HasComponent<BuilderComponent>(worker) ||
+                !entityManager.HasComponent<MoveOverride>(worker))
+            {
+                continue;
+            }
+
+            CommandDataHelper.AddCommandToQueue(
+                entityManager,
+                playerId,
+                worker,
+                new CommandData
+                {
+                    Type = CommandType.Build,
+                    indexInUnitCommandList = 0
+                },
+                targetEntity: targetBuilding
+            );
+
+            queuedCount++;
+        }
+
+        return queuedCount > 0;
+    }
+
+    private Entity FindUnderConstructionBuildingNearHit(EntityManager entityManager, UnityEngine.Ray ray)
+    {
+        var physicalQuery = entityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton));
+        if (!physicalQuery.IsEmpty)
+        {
+            PhysicsWorldSingleton physicsWorld = physicalQuery.GetSingleton<PhysicsWorldSingleton>();
+            RaycastInput input = new RaycastInput
+            {
+                Start = ray.origin,
+                End = ray.origin + ray.direction * 2000f,
+                Filter = CollisionFilter.Default
+            };
+
+            if (physicsWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
+            {
+                Entity hitEntity = hit.Entity;
+                if (entityManager.HasComponent<UnderConstructionTag>(hitEntity))
+                {
+                    return hitEntity;
+                }
+            }
+        }
+
+        if (UnityEngine.Physics.Raycast(ray, out UnityEngine.RaycastHit groundHit, 500f))
+        {
+            Vector3 hitPoint = groundHit.point;
+            EntityQuery query = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<UnderConstructionTag, LocalTransform, BlockageData>()
+                .Build(entityManager);
+
+            if (!query.IsEmpty)
+            {
+                NativeArray<Entity> entities = query.ToEntityArray(Allocator.Temp);
+                Entity nearest = Entity.Null;
+
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    Entity bEntity = entities[i];
+                    LocalTransform trans = entityManager.GetComponentData<LocalTransform>(bEntity);
+                    BlockageData blockage = entityManager.GetComponentData<BlockageData>(bEntity);
+
+                    float2 min = trans.Position.xz + blockage.LocalRect.MinPoint;
+                    float2 max = trans.Position.xz + blockage.LocalRect.MaxPoint;
+
+                    if (hitPoint.x >= min.x && hitPoint.x <= max.x &&
+                        hitPoint.z >= min.y && hitPoint.z <= max.y)
+                    {
+                        nearest = bEntity;
+                        break;
+                    }
+                }
+
+                entities.Dispose();
+                query.Dispose();
+                return nearest;
+            }
+            else
+            {
+                query.Dispose();
+            }
+        }
+
+        return Entity.Null;
     }
 }
