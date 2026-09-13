@@ -13,3 +13,9 @@ public struct PlaceBuildingWorkerElement : IBufferElementData
 {
     public Entity WorkerEntity;
 }
+
+public struct CancelBuildingRequest : IComponentData
+{
+    public Entity BuildingEntity;
+    public int PlayerId;
+}

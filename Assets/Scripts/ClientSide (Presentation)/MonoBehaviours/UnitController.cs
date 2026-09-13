@@ -20,6 +20,11 @@ public class UnitController : MonoBehaviour
 
     private void Update()
     {
+        if (Keyboard.current != null && Keyboard.current.deleteKey.wasPressedThisFrame)
+        {
+            TryCancelSelectedBuildings();
+        }
+
         if (!GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.rightButton))
             return;
         var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -40,6 +45,35 @@ public class UnitController : MonoBehaviour
         }
 
         CommandMove(entityManager);
+    }
+
+    private void TryCancelSelectedBuildings()
+    {
+        int playerId = GetCurrentPlayerId();
+        if (playerId < 0)
+            return;
+
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world == null)
+            return;
+
+        var entityManager = world.EntityManager;
+        var selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
+        if (selectedEntities == null || selectedEntities.Count == 0)
+            return;
+
+        foreach (Entity entity in selectedEntities)
+        {
+            if (entityManager.Exists(entity) && entityManager.HasComponent<BuildingStateComponent>(entity))
+            {
+                Entity req = entityManager.CreateEntity();
+                entityManager.AddComponentData(req, new CancelBuildingRequest
+                {
+                    BuildingEntity = entity,
+                    PlayerId = playerId
+                });
+            }
+        }
     }
 
     private bool TryCommandGather(EntityManager entityManager)
@@ -125,7 +159,11 @@ public class UnitController : MonoBehaviour
         {
             Entity node = nodes[i];
             LocalTransform transform = entityManager.GetComponentData<LocalTransform>(node);
-            float distSq = Vector3.SqrMagnitude((Vector3)transform.Position - hitPoint);
+            float3 centerPos = entityManager.HasComponent<BlockageData>(node)
+                ? entityManager.GetComponentData<BlockageData>(node).GetWorldCenter(transform.Position)
+                : transform.Position;
+
+            float distSq = Vector3.SqrMagnitude((Vector3)centerPos - hitPoint);
 
             if (distSq < bestDistSq)
             {
@@ -244,7 +282,7 @@ public class UnitController : MonoBehaviour
         UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
 
         Entity targetBuilding = FindUnderConstructionBuildingNearHit(entityManager, ray);
-        if (targetBuilding == Entity.Null || !entityManager.HasComponent<UnderConstructionTag>(targetBuilding))
+        if (targetBuilding == Entity.Null || !BuildingHelper.CanBuildOrRepair(entityManager, targetBuilding))
         {
             return false;
         }
@@ -304,7 +342,7 @@ public class UnitController : MonoBehaviour
             if (physicsWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
             {
                 Entity hitEntity = hit.Entity;
-                if (entityManager.HasComponent<UnderConstructionTag>(hitEntity))
+                if (BuildingHelper.CanBuildOrRepair(entityManager, hitEntity))
                 {
                     return hitEntity;
                 }
@@ -315,7 +353,7 @@ public class UnitController : MonoBehaviour
         {
             Vector3 hitPoint = groundHit.point;
             EntityQuery query = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<UnderConstructionTag, LocalTransform, BlockageData>()
+                .WithAll<BuildingStateComponent, LocalTransform, BlockageData>()
                 .Build(entityManager);
 
             if (!query.IsEmpty)
@@ -326,6 +364,11 @@ public class UnitController : MonoBehaviour
                 for (int i = 0; i < entities.Length; i++)
                 {
                     Entity bEntity = entities[i];
+                    if (!BuildingHelper.CanBuildOrRepair(entityManager, bEntity))
+                    {
+                        continue;
+                    }
+
                     LocalTransform trans = entityManager.GetComponentData<LocalTransform>(bEntity);
                     BlockageData blockage = entityManager.GetComponentData<BlockageData>(bEntity);
 

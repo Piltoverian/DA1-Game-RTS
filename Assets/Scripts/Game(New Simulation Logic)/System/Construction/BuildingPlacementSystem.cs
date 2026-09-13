@@ -35,123 +35,138 @@ public partial struct BuildingPlacementSystem : ISystem
         var ecb = new EntityCommandBuffer(Allocator.Temp);
         bool gridModified = false;
 
-        using (var entities = query.ToEntityArray(Allocator.Temp))
-        using (var requests = query.ToComponentDataArray<PlaceBuildingRequest>(Allocator.Temp))
+        foreach (var (reqRef, reqEntity) in SystemAPI.Query<RefRO<PlaceBuildingRequest>>().WithEntityAccess())
         {
-            for (int i = 0; i < entities.Length; i++)
+            PlaceBuildingRequest req = reqRef.ValueRO;
+
+            if (req.PrefabEntity == Entity.Null || !em.Exists(req.PrefabEntity))
             {
-                Entity reqEntity = entities[i];
-                PlaceBuildingRequest req = requests[i];
+                ecb.DestroyEntity(reqEntity);
+                continue;
+            }
 
-                if (req.PrefabEntity == Entity.Null || !em.Exists(req.PrefabEntity))
-                {
-                    ecb.DestroyEntity(reqEntity);
-                    continue;
-                }
+            if (!CanAfford(em, req.PlayerId, req.PrefabEntity))
+            {
+                ecb.DestroyEntity(reqEntity);
+                continue;
+            }
 
-                if (!CanAfford(em, req.PlayerId, req.PrefabEntity))
-                {
-                    ecb.DestroyEntity(reqEntity);
-                    continue;
-                }
+            StartEndRect localRect;
+            int customCost = 255;
+            if (em.HasComponent<BlockageData>(req.PrefabEntity))
+            {
+                var blockage = em.GetComponentData<BlockageData>(req.PrefabEntity);
+                localRect = blockage.LocalRect;
+                customCost = blockage.CustomCost;
+            }
+            else
+            {
+                localRect = new StartEndRect(new float2(-1.5f, -1.5f));
+                localRect.ExpandTo(new float2(1.5f, 1.5f));
+            }
 
-                StartEndRect localRect;
-                int customCost = 255;
-                if (em.HasComponent<BlockageData>(req.PrefabEntity))
-                {
-                    var blockage = em.GetComponentData<BlockageData>(req.PrefabEntity);
-                    localRect = blockage.LocalRect;
-                    customCost = blockage.CustomCost;
-                }
-                else
-                {
-                    localRect = new StartEndRect(new float2(-1.5f, -1.5f));
-                    localRect.ExpandTo(new float2(1.5f, 1.5f));
-                }
+            if (!IsAreaFree(grid, gridCostBuffer, req.Position, localRect, hasUnitBucket, unitBucket))
+            {
+                ecb.DestroyEntity(reqEntity);
+                continue;
+            }
 
-                if (!IsAreaFree(grid, gridCostBuffer, req.Position, localRect, hasUnitBucket, unitBucket))
-                {
-                    ecb.DestroyEntity(reqEntity);
-                    continue;
-                }
+            DeductCost(em, req.PlayerId, req.PrefabEntity);
 
-                DeductCost(em, req.PlayerId, req.PrefabEntity);
+            Entity building = em.Instantiate(req.PrefabEntity);
 
-                Entity building = em.Instantiate(req.PrefabEntity);
+            if (em.HasComponent<LocalTransform>(building))
+            {
+                var lt = em.GetComponentData<LocalTransform>(building);
+                lt.Position = req.Position;
+                em.SetComponentData(building, lt);
+            }
+            else
+            {
+                em.AddComponentData(building, LocalTransform.FromPosition(req.Position));
+            }
 
-                if (em.HasComponent<LocalTransform>(building))
-                {
-                    var lt = em.GetComponentData<LocalTransform>(building);
-                    lt.Position = req.Position;
-                    em.SetComponentData(building, lt);
-                }
-                else
-                {
-                    em.AddComponentData(building, LocalTransform.FromPosition(req.Position));
-                }
+            if (em.HasComponent<Unit>(building))
+            {
+                var u = em.GetComponentData<Unit>(building);
+                u.playerID = req.PlayerId;
+                em.SetComponentData(building, u);
+            }
 
-                if (em.HasComponent<Unit>(building))
-                {
-                    var u = em.GetComponentData<Unit>(building);
-                    u.playerID = req.PlayerId;
-                    em.SetComponentData(building, u);
-                }
+            if (em.HasComponent<BuildingData>(building))
+            {
+                var bd = em.GetComponentData<BuildingData>(building);
+                if (req.TotalWorkLoad > 0f)
+                    bd.TotalWorkLoad = req.TotalWorkLoad;
+                em.SetComponentData(building, bd);
+            }
 
-                if (em.HasComponent<BuildingData>(building))
-                {
-                    var bd = em.GetComponentData<BuildingData>(building);
-                    if (req.TotalWorkLoad > 0f)
-                        bd.TotalWorkLoad = req.TotalWorkLoad;
-                    em.SetComponentData(building, bd);
-                }
+            if (em.HasComponent<ConstructionData>(building))
+            {
+                em.SetComponentData(building, new ConstructionData { currentWorkLoad = 0f });
+            }
 
-                if (em.HasComponent<ConstructionData>(building))
-                {
-                    em.SetComponentData(building, new ConstructionData { currentWorkLoad = 0f });
-                }
+            if (em.HasComponent<Health>(building))
+            {
+                var h = em.GetComponentData<Health>(building);
+                h.healthAmount = 1f;
+                h.OnHealthChanged = true;
+                em.SetComponentData(building, h);
+            }
 
-                if (!em.HasComponent<UnderConstructionTag>(building))
+            if (em.HasComponent<BuildingStateComponent>(building))
+            {
+                em.SetComponentData(building, new BuildingStateComponent
                 {
-                    em.AddComponent<UnderConstructionTag>(building);
-                }
+                    Current = BuildingState.StartBuild,
+                    Previous = BuildingState.StartBuild
+                });
+            }
+            else
+            {
+                em.AddComponentData(building, new BuildingStateComponent
+                {
+                    Current = BuildingState.StartBuild,
+                    Previous = BuildingState.StartBuild
+                });
+            }
 
-                if (em.HasComponent<BlockageNeedBakeTag>(building))
-                {
-                    em.SetComponentEnabled<BlockageNeedBakeTag>(building, true);
-                }
-                else
-                {
-                    em.AddComponent<BlockageNeedBakeTag>(building);
-                }
+            if (em.HasComponent<BlockageNeedBakeTag>(building))
+            {
+                em.SetComponentEnabled<BlockageNeedBakeTag>(building, true);
+            }
+            else
+            {
+                em.AddComponent<BlockageNeedBakeTag>(building);
+            }
 
-                ReserveGridArea(grid, gridCostBuffer, req.Position, localRect, customCost);
-                gridModified = true;
+            ReserveGridArea(grid, gridCostBuffer, req.Position, localRect, customCost);
+            gridModified = true;
 
-                if (em.HasBuffer<PlaceBuildingWorkerElement>(reqEntity))
+            if (em.HasBuffer<PlaceBuildingWorkerElement>(reqEntity))
+            {
+                var workerBuffer = em.GetBuffer<PlaceBuildingWorkerElement>(reqEntity);
+                for (int w = 0; w < workerBuffer.Length; w++)
                 {
-                    var workerBuffer = em.GetBuffer<PlaceBuildingWorkerElement>(reqEntity);
-                    for (int w = 0; w < workerBuffer.Length; w++)
+                    Entity worker = workerBuffer[w].WorkerEntity;
+                    if (worker != Entity.Null && em.Exists(worker) && em.HasComponent<BuilderComponent>(worker))
                     {
-                        Entity worker = workerBuffer[w].WorkerEntity;
-                        if (worker != Entity.Null && em.Exists(worker) && em.HasComponent<BuilderComponent>(worker))
-                        {
-                            CommandDataHelper.AddCommandToQueue(
-                                em,
-                                req.PlayerId,
-                                worker,
-                                new CommandData
-                                {
-                                    Type = CommandType.Build,
-                                    indexInUnitCommandList = 0
-                                },
-                                targetEntity: building
-                            );
-                        }
+                        CommandDataHelper.AddCommandToQueue(
+                            em,
+                            req.PlayerId,
+                            worker,
+                            new CommandData
+                            {
+                                Type = CommandType.Build,
+                                indexInUnitCommandList = 0
+                            },
+                            targetEntity: building
+                        );
                     }
                 }
-
-                ecb.DestroyEntity(reqEntity);
             }
+
+            ecb.DestroyEntity(reqEntity);
         }
 
         if (gridModified)

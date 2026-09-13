@@ -9,8 +9,8 @@ public partial struct TowerAttackSystem : ISystem
     {
         float deltaTime = SystemAPI.Time.DeltaTime;
 
-        ComponentLookup<UnderConstructionTag> underConstructionLookup =
-            SystemAPI.GetComponentLookup<UnderConstructionTag>(true);
+        ComponentLookup<BuildingStateComponent> buildingStateLookup =
+            SystemAPI.GetComponentLookup<BuildingStateComponent>(true);
 
         ComponentLookup<Parent> parentLookup =
             SystemAPI.GetComponentLookup<Parent>(true);
@@ -23,7 +23,7 @@ public partial struct TowerAttackSystem : ISystem
                          DynamicBuffer<WeaponSlot>>()
                      .WithEntityAccess())
         {
-            if (IsUnderConstruction(entity, underConstructionLookup, parentLookup))
+            if (IsUnderConstruction(entity, buildingStateLookup, parentLookup))
             {
                 target.ValueRW.targetEntity = Entity.Null;
                 RotateBackToRest(ref localTransform.ValueRW, towerAttack.ValueRO, deltaTime);
@@ -111,11 +111,14 @@ public partial struct TowerAttackSystem : ISystem
 
     private bool IsUnderConstruction(
         Entity entity,
-        ComponentLookup<UnderConstructionTag> underConstructionLookup,
+        ComponentLookup<BuildingStateComponent> buildingStateLookup,
         ComponentLookup<Parent> parentLookup)
     {
-        if (underConstructionLookup.HasComponent(entity))
-            return true;
+        if (buildingStateLookup.HasComponent(entity))
+        {
+            var bState = buildingStateLookup[entity];
+            return bState.Current != BuildingState.Completed;
+        }
 
         Entity current = entity;
 
@@ -126,8 +129,11 @@ public partial struct TowerAttackSystem : ISystem
 
             current = parentLookup[current].Value;
 
-            if (underConstructionLookup.HasComponent(current))
-                return true;
+            if (buildingStateLookup.HasComponent(current))
+            {
+                var bState = buildingStateLookup[current];
+                return bState.Current != BuildingState.Completed;
+            }
         }
 
         return false;

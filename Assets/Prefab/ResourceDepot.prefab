@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 1382016280144667554}
   - component: {fileID: 147496419893297543}
   - component: {fileID: 3786601675032313025}
+  - component: {fileID: -247255496212273975}
+  - component: {fileID: 4595395430017029337}
   m_Layer: 8
   m_Name: ResourceDepot
   m_TagString: Untagged
@@ -109,6 +111,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
   playerID: 1
   unitName: ResourceDepot
+--- !u!114 &-247255496212273975
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
+  healthAmount: 0
+  maxHealthAmount: 100
+--- !u!114 &4595395430017029337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7625297489629590005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e07ae36f88b7f9429b3c3aed4e01610, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SingleSelectable
+  visualGameObject: {fileID: 0}
+  showScale: 1.5
+  playerID: 1
 --- !u!1001 &1376902972682506400
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -27,11 +27,14 @@ public partial struct ProductionSystem : ISystem
         ComponentLookup<Unit> unitLookup = SystemAPI.GetComponentLookup<Unit>(true);
         ComponentLookup<MoveOverride> moveOverrideLookup = SystemAPI.GetComponentLookup<MoveOverride>(true);
 
-        foreach (var (prod, buildingTransform, entity) in
-                 SystemAPI.Query<RefRW<ProductionData>, RefRO<LocalTransform>>()
-                     .WithNone<UnderConstructionTag>()
+        foreach (var (prod, buildingTransform, buildingState, entity) in
+                 SystemAPI.Query<RefRW<ProductionData>, RefRO<LocalTransform>, RefRO<BuildingStateComponent>>()
                      .WithEntityAccess())
         {
+            if (buildingState.ValueRO.Current != BuildingState.Completed)
+            {
+                continue;
+            }
             // 1. Kiểm tra xem nhà có Buffer hàng đợi không
             if (!queueBufferLookup.HasBuffer(entity))
             {

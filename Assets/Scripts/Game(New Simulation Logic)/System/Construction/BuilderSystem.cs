@@ -8,13 +8,11 @@ using Unity.Transforms;
 
 partial struct BuilderSystem : ISystem
 {
-    [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
         
     }
 
-    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         foreach (var (builderData, localTransform, entity) in SystemAPI.Query<RefRW<BuilderComponent>, RefRO<LocalTransform>>().WithEntityAccess())
@@ -87,24 +85,109 @@ partial struct BuilderSystem : ISystem
                         }
                     }
 
-                    var constructionData = state.EntityManager.GetComponentData<ConstructionData>(constructionSite);
-                    var buildingData = state.EntityManager.GetComponentData<BuildingData>(constructionSite);
-
-                    constructionData.currentWorkLoad += builderData.ValueRO.BuildWorkLoadPerSecond * SystemAPI.Time.DeltaTime;
-                    constructionData.currentWorkLoad = math.clamp(constructionData.currentWorkLoad, 0f, buildingData.TotalWorkLoad);
-
-                    if (constructionData.currentWorkLoad >= buildingData.TotalWorkLoad)
+                    if (!state.EntityManager.HasComponent<Health>(constructionSite))
                     {
-                        builderData.ValueRW.State = BuilderState.Idle;
-                        builderData.ValueRW.TargetConstructionSite = Entity.Null;
-                        state.EntityManager.SetComponentEnabled<BuilderComponent>(entity, false);
-                        if (state.EntityManager.HasComponent<MoveOverride>(entity))
-                        {
-                            state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
-                        }
+                        break;
                     }
 
-                    state.EntityManager.SetComponentData(constructionSite, constructionData);
+                    var bState = state.EntityManager.GetComponentData<BuildingStateComponent>(constructionSite);
+                    var health = state.EntityManager.GetComponentData<Health>(constructionSite);
+                    float dt = SystemAPI.Time.DeltaTime;
+                    float deltaHealth = builderData.ValueRO.BuildWorkLoadPerSecond * dt;
+
+                    if (bState.Current == BuildingState.Completed)
+                    {
+                        if (health.healthAmount >= health.maxHealthAmount)
+                        {
+                            builderData.ValueRW.State = BuilderState.Idle;
+                            builderData.ValueRW.TargetConstructionSite = Entity.Null;
+                            state.EntityManager.SetComponentEnabled<BuilderComponent>(entity, false);
+                            if (state.EntityManager.HasComponent<MoveOverride>(entity))
+                            {
+                                state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
+                            }
+                            break;
+                        }
+
+                        int playerId = 0;
+                        if (state.EntityManager.HasComponent<Unit>(entity))
+                        {
+                            playerId = state.EntityManager.GetComponentData<Unit>(entity).playerID;
+                        }
+                        else if (state.EntityManager.HasComponent<Unit>(constructionSite))
+                        {
+                            playerId = state.EntityManager.GetComponentData<Unit>(constructionSite).playerID;
+                        }
+
+                        float repairRatio = deltaHealth / math.max(1f, health.maxHealthAmount);
+                        bool canAfford = true;
+
+                        if (state.EntityManager.HasBuffer<BuildingCost>(constructionSite))
+                        {
+                            var costBuffer = state.EntityManager.GetBuffer<BuildingCost>(constructionSite);
+                            for (int c = 0; c < costBuffer.Length; c++)
+                            {
+                                float costNeeded = costBuffer[c].Amount * repairRatio;
+                                PlayerContextHelper.GetPlayerResourceByType(state.EntityManager, playerId, costBuffer[c].Type, out float playerRes);
+                                if (playerRes < costNeeded)
+                                {
+                                    canAfford = false;
+                                    break;
+                                }
+                            }
+
+                            if (canAfford)
+                            {
+                                for (int c = 0; c < costBuffer.Length; c++)
+                                {
+                                    float costNeeded = costBuffer[c].Amount * repairRatio;
+                                    PlayerContextHelper.AddPlayerResource(state.EntityManager, playerId, costBuffer[c].Type, -costNeeded);
+                                }
+                            }
+                        }
+
+                        if (canAfford)
+                        {
+                            health.healthAmount = math.min(health.maxHealthAmount, health.healthAmount + deltaHealth);
+                            health.OnHealthChanged = true;
+                            state.EntityManager.SetComponentData(constructionSite, health);
+
+                            if (health.healthAmount >= health.maxHealthAmount)
+                            {
+                                builderData.ValueRW.State = BuilderState.Idle;
+                                builderData.ValueRW.TargetConstructionSite = Entity.Null;
+                                state.EntityManager.SetComponentEnabled<BuilderComponent>(entity, false);
+                                if (state.EntityManager.HasComponent<MoveOverride>(entity))
+                                {
+                                    state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        health.healthAmount = math.min(health.maxHealthAmount, health.healthAmount + deltaHealth);
+                        health.OnHealthChanged = true;
+                        state.EntityManager.SetComponentData(constructionSite, health);
+
+                        if (state.EntityManager.HasComponent<ConstructionData>(constructionSite))
+                        {
+                            var cData = state.EntityManager.GetComponentData<ConstructionData>(constructionSite);
+                            cData.currentWorkLoad = health.healthAmount;
+                            state.EntityManager.SetComponentData(constructionSite, cData);
+                        }
+
+                        if (health.healthAmount >= health.maxHealthAmount)
+                        {
+                            builderData.ValueRW.State = BuilderState.Idle;
+                            builderData.ValueRW.TargetConstructionSite = Entity.Null;
+                            state.EntityManager.SetComponentEnabled<BuilderComponent>(entity, false);
+                            if (state.EntityManager.HasComponent<MoveOverride>(entity))
+                            {
+                                state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
+                            }
+                        }
+                    }
                     break;
             }
         }
@@ -123,7 +206,7 @@ partial struct BuilderSystem : ISystem
     private static bool CheckConstructionSiteAndReturnToIdle(ref SystemState state, RefRW<BuilderComponent> builderData, Entity entity)
     {
         Entity site = builderData.ValueRO.TargetConstructionSite;
-        if (site == Entity.Null || !state.EntityManager.Exists(site) || !state.EntityManager.HasComponent<UnderConstructionTag>(site))
+        if (site == Entity.Null || !state.EntityManager.Exists(site) || !state.EntityManager.HasComponent<BuildingStateComponent>(site))
         {
             builderData.ValueRW.State = BuilderState.Idle;
             builderData.ValueRW.TargetConstructionSite = Entity.Null;
@@ -134,11 +217,40 @@ partial struct BuilderSystem : ISystem
             }
             return true;
         }
+
+        var bState = state.EntityManager.GetComponentData<BuildingStateComponent>(site);
+        if (bState.Current == BuildingState.Destroyed)
+        {
+            builderData.ValueRW.State = BuilderState.Idle;
+            builderData.ValueRW.TargetConstructionSite = Entity.Null;
+            state.EntityManager.SetComponentEnabled<BuilderComponent>(entity, false);
+            if (state.EntityManager.HasComponent<MoveOverride>(entity))
+            {
+                state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
+            }
+            return true;
+        }
+
+        if (state.EntityManager.HasComponent<Health>(site))
+        {
+            var h = state.EntityManager.GetComponentData<Health>(site);
+            if (bState.Current == BuildingState.Completed && h.healthAmount >= h.maxHealthAmount)
+            {
+                builderData.ValueRW.State = BuilderState.Idle;
+                builderData.ValueRW.TargetConstructionSite = Entity.Null;
+                state.EntityManager.SetComponentEnabled<BuilderComponent>(entity, false);
+                if (state.EntityManager.HasComponent<MoveOverride>(entity))
+                {
+                    state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
+                }
+                return true;
+            }
+        }
+
         return false;
     }
 
 
-    [BurstCompile]
     public void OnDestroy(ref SystemState state)
     {
         

@@ -11,6 +11,14 @@ public enum BuildingType
     House
 }
 
+public enum BuildingState
+{
+    StartBuild,
+    UnderConstruction,
+    Completed,
+    Destroyed
+}
+
 public class BuildingAuthoring : MonoBehaviour
 {
     [Header("Data")]
@@ -71,10 +79,20 @@ public class BuildingAuthoring : MonoBehaviour
                 AddComponent<ResourceDepotTag>(e);
             }
 
-            AddComponent<UnderConstructionTag>(e);
+            AddComponent(e, new BuildingStateComponent
+            {
+                Current = BuildingState.StartBuild,
+                Previous = BuildingState.StartBuild
+            });
             AddComponent(e, new RevealHeightProperty { Value = -10f });
         }
     }
+}
+
+public struct BuildingStateComponent : IComponentData
+{
+    public BuildingState Current;
+    public BuildingState Previous;
 }
 
 public struct BuildingData : IComponentData
@@ -86,10 +104,6 @@ public struct BuildingData : IComponentData
 public struct ConstructionData : IComponentData
 {
     public float currentWorkLoad;
-}
-
-public struct UnderConstructionTag : IComponentData
-{
 }
 
 public struct ResourceDepotTag : IComponentData

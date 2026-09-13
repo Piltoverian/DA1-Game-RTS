@@ -15,8 +15,10 @@ partial struct HouseInitSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-        foreach (var (unit,house,cleanup,pendingrequest,entity) in SystemAPI.Query<Unit,HouseComponent,HouseCleanUp, HouseInitTag>().WithNone<UnderConstructionTag>().WithEntityAccess())
+        foreach (var (unit, house, cleanup, pendingrequest, bState, entity) in SystemAPI.Query<Unit, HouseComponent, HouseCleanUp, HouseInitTag, BuildingStateComponent>().WithEntityAccess())
         {
+            if (bState.Current != BuildingState.Completed)
+                continue;
             PlayerContext playerContext;
             PlayerContextHelper.GetContextData(state.EntityManager, unit.playerID, out playerContext);
             playerContext.maxPopulation += house.maxPopWillIncrease;

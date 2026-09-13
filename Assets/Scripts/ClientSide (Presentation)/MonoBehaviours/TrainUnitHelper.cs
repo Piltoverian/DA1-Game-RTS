@@ -71,6 +71,26 @@ public static class BuildingHelper
     {
         if (!entityManager.Exists(buildingEntity))
             return false;
-        return entityManager.HasComponent<UnderConstructionTag>(buildingEntity);
+        if (!entityManager.HasComponent<BuildingStateComponent>(buildingEntity))
+            return false;
+        var state = entityManager.GetComponentData<BuildingStateComponent>(buildingEntity);
+        return state.Current != BuildingState.Completed;
+    }
+
+    public static bool CanBuildOrRepair(EntityManager entityManager, Entity buildingEntity)
+    {
+        if (!entityManager.Exists(buildingEntity))
+            return false;
+        if (!entityManager.HasComponent<BuildingStateComponent>(buildingEntity))
+            return false;
+        var state = entityManager.GetComponentData<BuildingStateComponent>(buildingEntity);
+        if (state.Current == BuildingState.StartBuild || state.Current == BuildingState.UnderConstruction)
+            return true;
+        if (state.Current == BuildingState.Completed && entityManager.HasComponent<Health>(buildingEntity))
+        {
+            var h = entityManager.GetComponentData<Health>(buildingEntity);
+            return h.healthAmount < h.maxHealthAmount;
+        }
+        return false;
     }
 }

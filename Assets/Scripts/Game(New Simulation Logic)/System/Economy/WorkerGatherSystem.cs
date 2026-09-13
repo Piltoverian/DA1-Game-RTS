@@ -27,6 +27,7 @@ public partial struct WorkerGatherSystem : ISystem
         var blockageLookup = SystemAPI.GetComponentLookup<BlockageData>(true);
         var agentLookup = SystemAPI.GetComponentLookup<MovementAgentComponent>(false);
         var steeringLookup = SystemAPI.GetComponentLookup<MovementSteeringComponent>(false);
+        var moveOverrideLookup = SystemAPI.GetComponentLookup<MoveOverride>(true);
         var resourceBufferLookup = SystemAPI.GetBufferLookup<ResourcePair>(false);
 
         var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -38,12 +39,17 @@ public partial struct WorkerGatherSystem : ISystem
         }
 
         var depotCache = new NativeParallelMultiHashMap<DepotKey, DepotInfo>(32, Allocator.Temp);
-        foreach (var (transform, unit, entity) in SystemAPI.Query<RefRO<LocalTransform>, RefRO<Unit>>()
+        foreach (var (transform, unit, bState, entity) in SystemAPI.Query<RefRO<LocalTransform>, RefRO<Unit>, RefRO<BuildingStateComponent>>()
                      .WithAll<ResourceDepotTag>()
-                     .WithNone<UnderConstructionTag>()
                      .WithEntityAccess())
         {
+            if (bState.ValueRO.Current != BuildingState.Completed) continue;
+
             float3 pos = transform.ValueRO.Position;
+            if (blockageLookup.HasComponent(entity))
+            {
+                pos = blockageLookup[entity].GetWorldCenter(pos);
+            }
             int islandID = GetIslandID(pos, grid, islandBuffer);
             DepotInfo info = new DepotInfo
             {
@@ -62,6 +68,10 @@ public partial struct WorkerGatherSystem : ISystem
         {
             if (node.ValueRO.Amount <= 0) continue;
             float3 pos = transform.ValueRO.Position;
+            if (blockageLookup.HasComponent(entity))
+            {
+                pos = blockageLookup[entity].GetWorldCenter(pos);
+            }
             int2 gridPos = GridHelper.WorldToGrid(pos, grid);
             if (gridPos.x < 0 || gridPos.x >= grid.width || gridPos.y < 0 || gridPos.y >= grid.height) continue;
             int cellIndex = GridHelper.GetNodeIndex(gridPos, grid);
@@ -102,6 +112,7 @@ public partial struct WorkerGatherSystem : ISystem
                         ref blockageLookup,
                         ref agentLookup,
                         ref steeringLookup,
+                        ref moveOverrideLookup,
                         grid,
                         ref nodeSpatialCache,
                         ref ecb);
@@ -138,6 +149,7 @@ public partial struct WorkerGatherSystem : ISystem
                         ref blockageLookup,
                         ref agentLookup,
                         ref steeringLookup,
+                        ref moveOverrideLookup,
                         ref resourceBufferLookup,
                         ref playerEntityMap,
                         grid,
@@ -167,6 +179,7 @@ public partial struct WorkerGatherSystem : ISystem
         ref ComponentLookup<BlockageData> blockageLookup,
         ref ComponentLookup<MovementAgentComponent> agentLookup,
         ref ComponentLookup<MovementSteeringComponent> steeringLookup,
+        ref ComponentLookup<MoveOverride> moveOverrideLookup,
         in GridComponent grid,
         ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache,
         ref EntityCommandBuffer ecb)
@@ -209,11 +222,15 @@ public partial struct WorkerGatherSystem : ISystem
             return;
         }
 
-        float3 nodePos = transformLookup[targetNode].Position;
+        float3 rawNodePos = transformLookup[targetNode].Position;
+        float3 nodePos = blockageLookup.HasComponent(targetNode)
+            ? blockageLookup[targetNode].GetWorldCenter(rawNodePos)
+            : rawNodePos;
+
         targetCache.ValueRW.lastTargetPosition = nodePos;
         targetCache.ValueRW.targetEntity = targetNode;
 
-        if (HasReachedTarget(workerPos, targetNode, nodePos, gather.ValueRO.StopDistanceSq, ref blockageLookup))
+        if (HasReachedTarget(workerPos, targetNode, rawNodePos, gather.ValueRO.StopDistanceSq, ref blockageLookup))
         {
             StopMoving(ref ecb, workerEntity, ref agentLookup, ref steeringLookup);
             gather.ValueRW.State = WorkerGatherState.Gathering;
@@ -221,7 +238,7 @@ public partial struct WorkerGatherSystem : ISystem
         }
         else
         {
-            MoveTo(ref ecb, workerEntity, nodePos);
+            MoveTo(ref ecb, workerEntity, nodePos, ref moveOverrideLookup);
         }
     }
 
@@ -259,7 +276,10 @@ public partial struct WorkerGatherSystem : ISystem
                     targetCache.ValueRW.targetEntity = altNode;
                     if (transformLookup.HasComponent(altNode))
                     {
-                        targetCache.ValueRW.lastTargetPosition = transformLookup[altNode].Position;
+                        float3 altRaw = transformLookup[altNode].Position;
+                        targetCache.ValueRW.lastTargetPosition = blockageLookup.HasComponent(altNode)
+                            ? blockageLookup[altNode].GetWorldCenter(altRaw)
+                            : altRaw;
                     }
                     gather.ValueRW.State = WorkerGatherState.GoingToNode;
                 }
@@ -276,7 +296,10 @@ public partial struct WorkerGatherSystem : ISystem
 
         if (transformLookup.HasComponent(targetNode))
         {
-            targetCache.ValueRW.lastTargetPosition = transformLookup[targetNode].Position;
+            float3 rawPos = transformLookup[targetNode].Position;
+            targetCache.ValueRW.lastTargetPosition = blockageLookup.HasComponent(targetNode)
+                ? blockageLookup[targetNode].GetWorldCenter(rawPos)
+                : rawPos;
             targetCache.ValueRW.targetEntity = targetNode;
         }
 
@@ -316,6 +339,7 @@ public partial struct WorkerGatherSystem : ISystem
         ref ComponentLookup<BlockageData> blockageLookup,
         ref ComponentLookup<MovementAgentComponent> agentLookup,
         ref ComponentLookup<MovementSteeringComponent> steeringLookup,
+        ref ComponentLookup<MoveOverride> moveOverrideLookup,
         ref BufferLookup<ResourcePair> resourceBufferLookup,
         ref NativeHashMap<int, Entity> playerEntityMap,
         in GridComponent grid,
@@ -340,9 +364,12 @@ public partial struct WorkerGatherSystem : ISystem
             }
         }
 
-        float3 depotPos = transformLookup[targetDepot].Position;
+        float3 rawDepotPos = transformLookup[targetDepot].Position;
+        float3 depotPos = blockageLookup.HasComponent(targetDepot)
+            ? blockageLookup[targetDepot].GetWorldCenter(rawDepotPos)
+            : rawDepotPos;
 
-        if (HasReachedTarget(workerPos, targetDepot, depotPos, gather.ValueRO.StopDistanceSq, ref blockageLookup))
+        if (HasReachedTarget(workerPos, targetDepot, rawDepotPos, gather.ValueRO.StopDistanceSq, ref blockageLookup))
         {
             StopMoving(ref ecb, workerEntity, ref agentLookup, ref steeringLookup);
 
@@ -376,7 +403,10 @@ public partial struct WorkerGatherSystem : ISystem
                     targetCache.ValueRW.targetEntity = altNode;
                     if (transformLookup.HasComponent(altNode))
                     {
-                        targetCache.ValueRW.lastTargetPosition = transformLookup[altNode].Position;
+                        float3 altRaw = transformLookup[altNode].Position;
+                        targetCache.ValueRW.lastTargetPosition = blockageLookup.HasComponent(altNode)
+                            ? blockageLookup[altNode].GetWorldCenter(altRaw)
+                            : altRaw;
                     }
                     gather.ValueRW.State = WorkerGatherState.GoingToNode;
                 }
@@ -391,7 +421,7 @@ public partial struct WorkerGatherSystem : ISystem
         }
         else
         {
-            MoveTo(ref ecb, workerEntity, depotPos);
+            MoveTo(ref ecb, workerEntity, depotPos, ref moveOverrideLookup);
         }
     }
 
@@ -417,8 +447,21 @@ public partial struct WorkerGatherSystem : ISystem
         return math.distancesq(workerPos.xz, targetPos.xz) <= reachDistSq;
     }
 
-    private static void MoveTo(ref EntityCommandBuffer ecb, Entity entity, float3 target)
+    private static void MoveTo(
+        ref EntityCommandBuffer ecb, 
+        Entity entity, 
+        float3 target, 
+        ref ComponentLookup<MoveOverride> moveOverrideLookup)
     {
+        if (moveOverrideLookup.HasComponent(entity) && moveOverrideLookup.IsComponentEnabled(entity))
+        {
+            var current = moveOverrideLookup[entity];
+            if (math.distancesq(current.targetPosition.xz, target.xz) < 0.01f)
+            {
+                return;
+            }
+        }
+
         ecb.SetComponent(entity, new MoveOverride
         {
             targetPosition = target,

@@ -99,7 +99,7 @@ partial struct CommandQueue : ISystem
 
         bool canBuild =
             entityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
-            entityManager.HasComponent<UnderConstructionTag>(command.targetEntity);
+            BuildingHelper.CanBuildOrRepair(entityManager, command.targetEntity);
         
         return canGather || canAttack || canBuild;
     }
@@ -155,7 +155,8 @@ partial struct CommandQueue : ISystem
         {
             HandleAttack(ref state, command);
         }
-        else if (state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity) && state.EntityManager.HasComponent<UnderConstructionTag>(command.targetEntity))
+        else if (state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
+                 BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
         {
             HandleBuild(ref state, command);
         }
@@ -244,7 +245,10 @@ partial struct CommandQueue : ISystem
             targetCache.targetEntity = command.targetEntity;
             if (state.EntityManager.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
             {
-                targetCache.lastTargetPosition = state.EntityManager.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
+                float3 rawPos = state.EntityManager.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
+                targetCache.lastTargetPosition = state.EntityManager.HasComponent<BlockageData>(command.targetEntity)
+                    ? state.EntityManager.GetComponentData<BlockageData>(command.targetEntity).GetWorldCenter(rawPos)
+                    : rawPos;
             }
             state.EntityManager.SetComponentData(command.sourceEntity, targetCache);
         }

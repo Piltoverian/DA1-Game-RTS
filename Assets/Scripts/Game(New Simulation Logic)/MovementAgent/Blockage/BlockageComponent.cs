@@ -10,6 +10,12 @@ public struct BlockageData : IComponentData
 {
     public StartEndRect LocalRect;
     public int CustomCost;
+
+    public readonly float3 GetWorldCenter(in float3 entityPos)
+    {
+        float2 centerOffset = (LocalRect.MinPoint + LocalRect.MaxPoint) * 0.5f;
+        return new float3(entityPos.x + centerOffset.x, entityPos.y, entityPos.z + centerOffset.y);
+    }
 }
 
 /// <summary>

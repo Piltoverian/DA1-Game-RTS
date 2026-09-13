@@ -39,14 +39,11 @@ public partial struct ConstructionSystem : ISystem
         BufferLookup<LinkedEntityGroup> linkedEntityLookup =
             SystemAPI.GetBufferLookup<LinkedEntityGroup>(true);
 
-        foreach (var (construction, building, entity) in
-                 SystemAPI.Query<RefRW<ConstructionData>, RefRO<BuildingData>>()
-                     .WithAll<UnderConstructionTag>()
+        foreach (var (construction, building, buildingState, health, entity) in
+                 SystemAPI.Query<RefRW<ConstructionData>, RefRO<BuildingData>, RefRW<BuildingStateComponent>, RefRO<Health>>()
                      .WithEntityAccess())
         {
-            float totalWork = math.max(0.001f, building.ValueRO.TotalWorkLoad);
-
-            float progress = math.saturate(construction.ValueRO.currentWorkLoad / totalWork);
+            float progress = math.saturate(health.ValueRO.healthAmount / math.max(1f, health.ValueRO.maxHealthAmount));
             float baseHeight = transformLookup.HasComponent(entity) ? transformLookup[entity].Position.y : 0f;
             float revealValue = baseHeight + math.lerp(-10f, 10f, progress);
 
@@ -73,8 +70,29 @@ public partial struct ConstructionSystem : ISystem
 
             if (progress >= 1f)
             {
-                ecb.RemoveComponent<UnderConstructionTag>(entity);
+                if (buildingState.ValueRO.Current != BuildingState.Completed)
+                {
+                    buildingState.ValueRW.Previous = buildingState.ValueRO.Current;
+                    buildingState.ValueRW.Current = BuildingState.Completed;
+                }
+
                 ecb.RemoveComponent<ConstructionData>(entity);
+            }
+            else if (progress >= 0.1f)
+            {
+                if (buildingState.ValueRO.Current != BuildingState.UnderConstruction)
+                {
+                    buildingState.ValueRW.Previous = buildingState.ValueRO.Current;
+                    buildingState.ValueRW.Current = BuildingState.UnderConstruction;
+                }
+            }
+            else
+            {
+                if (buildingState.ValueRO.Current != BuildingState.StartBuild)
+                {
+                    buildingState.ValueRW.Previous = buildingState.ValueRO.Current;
+                    buildingState.ValueRW.Current = BuildingState.StartBuild;
+                }
             }
         }
     }

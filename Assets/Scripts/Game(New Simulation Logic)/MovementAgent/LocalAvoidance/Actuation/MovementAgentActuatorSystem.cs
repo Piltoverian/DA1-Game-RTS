@@ -122,22 +122,29 @@ public partial struct MovementAgentActuatorSystem : ISystem
             // --- 4. ROTATION ---
             if (math.lengthsq(move.velocity) > 0.01f)
             {
-                // Xoay theo hướng di chuyển
                 float3 moveDir = math.normalizesafe(move.velocity);
                 quaternion targetRot = quaternion.LookRotationSafe(moveDir, math.up());
                 transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
             }
-            else if (steering.isSettled)
+            else if (move.FieldEntity != Entity.Null)
             {
-                // Khi đã dừng lại, xoay mặt về đích (lookAtPoint hoặc currentworldtarget)
-                float3 lookTarget = math.lengthsq(move.lookAtPoint) > 0.01f ? move.lookAtPoint : move.currentworldtarget;
-                float3 lookDir = lookTarget - transform.Position;
+                float3 lookDir = move.currentworldtarget - transform.Position;
                 lookDir.y = 0;
-                
+
                 if (math.lengthsq(lookDir) > 0.01f)
                 {
-                    quaternion targetRot = quaternion.LookRotationSafe(math.normalizesafe(lookDir), math.up());
-                    transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed * 0.5f);
+                    float3 desiredDir = math.normalizesafe(lookDir);
+                    float3 forward = math.mul(transform.Rotation, math.forward());
+                    forward.y = 0;
+                    forward = math.normalizesafe(forward);
+
+                    float dot = math.clamp(math.dot(forward, desiredDir), -1f, 1f);
+
+                    if (dot < 0.9659258f)
+                    {
+                        quaternion targetRot = quaternion.LookRotationSafe(desiredDir, math.up());
+                        transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
+                    }
                 }
             }
         }
