@@ -18,7 +18,7 @@ public class WorkerAuthoring : MonoBehaviour
 
             AddComponent(e, new WorkerGatherData
             {
-                State = WorkerGatherState.GoingToNode,
+                State = WorkerGatherState.Idle,
 
                 TargetNode = Entity.Null,
                 TargetDepot = Entity.Null,
@@ -34,6 +34,8 @@ public class WorkerAuthoring : MonoBehaviour
 
                 CurrentResourceType = ResourceType.Gold
             });
+
+            SetComponentEnabled<WorkerGatherData>(e, false);
         }
     }
 }
@@ -44,12 +46,13 @@ public struct WorkerTag : IComponentData
 
 public enum WorkerGatherState
 {
+    Idle,
     GoingToNode,
     Gathering,
     ReturningDepot
 }
 
-public struct WorkerGatherData : IComponentData
+public struct WorkerGatherData : IComponentData,IEnableableComponent
 {
     public WorkerGatherState State;
 

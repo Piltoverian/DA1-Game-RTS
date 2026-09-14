@@ -6,17 +6,20 @@ using UnityEngine;
 /// Không truy cập ECS trực tiếp — event được phát từ PlayerContextSyncSystem (ECS side).
 /// Kết nối qua ResourceChangeListener component trên cùng GameObject.
 /// </summary>
-public class ResourceGroup : MonoBehaviour
+public class ResourceGroup : UIComponent
 {
     public GameObject resourceInfoPrefab;
 
     public void OnResourceChange(ResourceChangeEvent eventData)
     {
-        ClearInfo();
-        foreach (var resource in eventData.value)
+        if (eventData.playerId == playerId)
         {
-            var info = Instantiate(resourceInfoPrefab, transform).GetComponent<InfoPanel>();
-            info.SetInfoValue(resource.Amount);
+            ClearInfo();
+            foreach (var resource in eventData.value)
+            {
+                var info = Instantiate(resourceInfoPrefab, transform).GetComponent<InfoPanel>();
+                info.SetInfoValue(resource.Amount);
+            }
         }
     }
 

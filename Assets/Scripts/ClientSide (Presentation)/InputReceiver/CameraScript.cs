@@ -23,13 +23,11 @@ public class CameraScript : MonoBehaviour
 
     Vector3 ConvertCamToWorld(Vector2 vector)
     {
-        Debug.Log(LayerMask.GetMask("Ground"));
         Ray ray= Camera.main.ScreenPointToRay(vector);
         if (Physics.Raycast(ray, out RaycastHit hitInfo,Mathf.Infinity, LayerMask.GetMask("Ground")))
         {
             return hitInfo.point;
         }
-        Debug.Log("Cannot hit");
         return Vector3.zero;    
     }
 }

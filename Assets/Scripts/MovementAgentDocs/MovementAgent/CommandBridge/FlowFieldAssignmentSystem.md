@@ -24,8 +24,10 @@ Gọi `FlowFieldHelper.AssignFieldToMoveComponent` để:
 
 ---
 
-## 2. Dọn dẹp (Cleanup)
-Sau khi đã gán đường đi thành công, hệ thống sẽ xóa `TargetChangeRequest` khỏi Unit để tránh việc tính toán lặp lại ở khung hình tiếp theo.
+## 2. Lưu ý về Dọn dẹp (Cleanup)
+Khác với phiên bản cũ, hệ thống này **KHÔNG CÒN** tự tay xóa component `TargetChangeRequest` sau khi gán đường đi xong.
+- **Lý do**: Component này phải được giữ lại để `MovementAgentGroupFormationSystem` (chạy sau đó) có thể nhận diện và tính toán Slot xếp đội hình.
+- Việc dọn dẹp được giao lại cho `TargetRequestCleanupSystem` chạy ở `LateSimulationSystemGroup`.
 
 ---
 

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using Unity.Entities;
 using UnityEngine;
 
@@ -15,72 +14,58 @@ using UnityEngine;
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 public partial struct PlayerContextSyncSystem : ISystem
 {
+     private static EventBus s_CachedEventBus;
+
     public void OnCreate(ref SystemState state)
     {
-        
-        state.RequireForUpdate<PlayerResourceData>();
         state.RequireForUpdate<PlayerContext>();
     }
 
     public void OnUpdate(ref SystemState state)
     {
-        foreach (var playerContextEntity in SystemAPI.Query<PlayerContext>())
+        if(s_CachedEventBus==null)
         {
+            s_CachedEventBus = Resources.Load<EventBus>("EventBus");
+            if (s_CachedEventBus == null) return;
+        }
 
-            PlayerResourceData res = SystemAPI.GetSingleton<PlayerResourceData>();
-
-            Entity contextEntity = SystemAPI.GetSingletonEntity<PlayerContext>();
+        foreach (var (playerContext,playerContextCache, contextEntity) in SystemAPI.Query<PlayerContext, PlayerContextCache>().WithEntityAccess())
+        {
             var buffer = SystemAPI.GetBuffer<ResourcePair>(contextEntity);
-
-            EventBus eventBus = Resources.Load<EventBus>("EventBus");
-            if (eventBus == null) return;
+            var resourcescontextcache = SystemAPI.GetBuffer<ResourcePairCache>(contextEntity);
             bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
-            if (IsResourceChanged(buffer, res)) flowcontrol = RaiseResourceChangeEvent(buffer, eventBus);
+            if (IsResourceChanged(buffer, ref resourcescontextcache)) flowcontrol = RaiseResourceChangeEvent(buffer, playerContext.PlayerId, s_CachedEventBus);
             if (!flowcontrol) {
-                Debug.Log("Something went wrong.");
+                Debug.LogError("[PlayerContextSyncSystem] Failed to raise ResourceChangeEvent.");
                 return;
             }
-            var contextcache = SystemAPI.GetSingletonBuffer<PlayerContextCache>();
-            PlayerContextCache cache = default(PlayerContextCache);
-            bool found = false;
-            for (int i = 0; i < contextcache.Length; i++)
-            {
-                if (contextcache[i].PlayerId == playerContextEntity.PlayerId)
-                {
-                    cache = contextcache[i];
-                    found = true;
-                    break;
 
-                }
-            }
-            if (!found) { Debug.LogWarning("PlayerContextCache not found for player: " + playerContextEntity.PlayerId); }
-
-           
-
-            if (cache.age != playerContextEntity.age)
+            if (playerContextCache.age != playerContext.age)
             {
                 // Handle age change logic here
-
             }
 
-            PopulationUpdatedEvent popevent=new PopulationUpdatedEvent();
+            PopulationUpdatedEvent popevent = new PopulationUpdatedEvent();
             bool changed = false;
-            if (cache.currentPopulation != playerContextEntity.currentPopulation|| cache.maxPopulation != playerContextEntity.maxPopulation)
+            if (playerContextCache.currentPopulation != playerContext.currentPopulation || playerContextCache.maxPopulation != playerContext.maxPopulation)
             {
-                popevent.CurrentPopulation = playerContextEntity.currentPopulation;
-                popevent.MaxPopulation = playerContextEntity.maxPopulation;
+                popevent.PlayerId = playerContext.PlayerId;
+                popevent.CurrentPopulation = playerContext.currentPopulation;
+                popevent.MaxPopulation = playerContext.maxPopulation;
                 changed = true;
             }
 
             if (changed) {
-                var populationChangeChannel = eventBus.GetChannel("PopulationUpdatedEventChannel") as PopulationUpdatedEventChannel;
-                populationChangeChannel.RaiseEvent(popevent);
+                var populationChangeChannel = s_CachedEventBus.GetChannel("PopulationUpdatedEventChannel") as PopulationUpdatedEventChannel;
+                populationChangeChannel?.RaiseEvent(popevent);
             }
-            cache.UpdateFromContext(playerContextEntity);
+
+            playerContextCache.UpdateFromContext(playerContext);
+            SystemAPI.SetComponent(contextEntity, playerContextCache);
         }
     }
 
-    private static bool RaiseResourceChangeEvent(DynamicBuffer<ResourcePair> buffer, EventBus eventBus)
+    private static bool RaiseResourceChangeEvent(DynamicBuffer<ResourcePair> buffer, int playerId,EventBus eventBus)
     {
         ResourceChangeChannel channel =
             eventBus.GetChannel("ResourceChangeChannel") as ResourceChangeChannel;
@@ -92,40 +77,34 @@ public partial struct PlayerContextSyncSystem : ISystem
             resources.Add(buffer[i]);
         }
 
-        channel.RaiseEvent(new ResourceChangeEvent { value = resources });
+        channel.RaiseEvent(new ResourceChangeEvent { playerId = playerId, value = resources });
         return true;
     }
 
-    private static bool SyncResource(
-        ref DynamicBuffer<ResourcePair> buffer,
-        ResourceType type,
-        int newAmount)
+    private static void SyncResource(
+        ref DynamicBuffer<ResourcePairCache> buffer,DynamicBuffer<ResourcePair> resourceBuffer,int index
+       )
     {
-        for (int i = 0; i < buffer.Length; i++)
+        buffer[index] = new ResourcePairCache
         {
-            if (buffer[i].Type == type)
-            {
-                if ((int)buffer[i].Amount == newAmount)
-                    return false;
-
-                buffer[i] = new ResourcePair(type, newAmount);
-                return true;
-            }
-        }
-
-        buffer.Add(new ResourcePair(type, newAmount));
-        return true;
+            Type = resourceBuffer[index].Type,
+            Amount = resourceBuffer[index].Amount
+        };
     }
     
-
     private static bool IsResourceChanged(
         DynamicBuffer<ResourcePair> buffer,
-        PlayerResourceData res)
+        ref DynamicBuffer<ResourcePairCache> cacheBuffer)
     {
         bool changed = false;
-        changed |= SyncResource(ref buffer, ResourceType.Gold, res.Gold);
-        changed |= SyncResource(ref buffer, ResourceType.Wood, res.Wood);
-        changed |= SyncResource(ref buffer, ResourceType.Food, res.Food);
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            if (i >= cacheBuffer.Length || buffer[i].Amount != cacheBuffer[i].Amount)
+            {
+                changed = true;
+                SyncResource(ref cacheBuffer, buffer, i);
+            }
+        }
         return changed;
     }
 }

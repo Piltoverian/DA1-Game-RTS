@@ -14,6 +14,7 @@ public partial struct ProductionSystem : ISystem
         state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
     }
 
+    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         float dt = SystemAPI.Time.DeltaTime;
@@ -26,15 +27,17 @@ public partial struct ProductionSystem : ISystem
         ComponentLookup<Unit> unitLookup = SystemAPI.GetComponentLookup<Unit>(true);
         ComponentLookup<MoveOverride> moveOverrideLookup = SystemAPI.GetComponentLookup<MoveOverride>(true);
 
-        foreach (var (prod, buildingTransform, entity) in
-                 SystemAPI.Query<RefRW<ProductionData>, RefRO<LocalTransform>>()
-                     .WithNone<UnderConstructionTag>()
+        foreach (var (prod, buildingTransform, buildingState, entity) in
+                 SystemAPI.Query<RefRW<ProductionData>, RefRO<LocalTransform>, RefRO<BuildingStateComponent>>()
                      .WithEntityAccess())
         {
+            if (buildingState.ValueRO.Current != BuildingState.Completed)
+            {
+                continue;
+            }
             // 1. Kiểm tra xem nhà có Buffer hàng đợi không
             if (!queueBufferLookup.HasBuffer(entity))
             {
-                UnityEngine.Debug.Log("ProductionSystem: Building does not have ProductionQueueElement buffer.");
                 continue;
             }
 
@@ -43,8 +46,6 @@ public partial struct ProductionSystem : ISystem
             // 2. Kiểm tra hàng đợi có trống không
             if (queueBuffer.IsEmpty)
             {
-                // Dòng này log ra sẽ rất nhiều khi nhà không sản xuất gì, bạn có thể comment lại nếu bị rác Console
-                // UnityEngine.Debug.Log("ProductionSystem: Production queue is empty.");
                 continue;
             }
 
@@ -85,16 +86,13 @@ public partial struct ProductionSystem : ISystem
 
             if (playerContextEntity.currentPopulation >= playerContextEntity.maxPopulation)
             {
-                UnityEngine.Debug.LogWarning($"ProductionSystem: Max population reached ({playerContextEntity.currentPopulation}/{playerContextEntity.maxPopulation}). Production paused.");
                 continue;
             }
 
             // --- BẮT ĐẦU INSTANTIATE UNIT KHI CÁC ĐIỀU KIỆN TRÊN ĐỀU THỎA MÃN ---
-            UnityEngine.Debug.Log($"ProductionSystem: Spawning unit from prefab Index 0 for Player {untiComponentOfBuilding.playerID}");
-
             Entity unit = ecb.Instantiate(unitPrefab);
 
-            PlayerContextHelper.UpdatePlayerContext(state.EntityManager, playerContextEntity.PlayerId, PlayerContextDataType.currentPopulation, playerContextEntity.currentPopulation + 1);
+            PlayerContextHelper.SetCurrentPopulation(state.EntityManager, playerContextEntity.PlayerId, playerContextEntity.currentPopulation + 1);
 
             float3 spawnPos = buildingTransform.ValueRO.TransformPoint(prod.ValueRO.SpawnOffset);
             float3 rallyPos = buildingTransform.ValueRO.TransformPoint(prod.ValueRO.RallyOffset);
@@ -142,7 +140,6 @@ public partial struct ProductionSystem : ISystem
     {
         if (!moveOverrideLookup.HasComponent(unitPrefab))
         {
-            UnityEngine.Debug.LogWarning("ProductionSystem: Produced unit prefab is missing MoveOverride component.");
             return;
         }
 

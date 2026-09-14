@@ -58,11 +58,13 @@ public class ShootAttackAuthoring : MonoBehaviour
                     damage = config.damage,
                     bulletSpeed = config.bulletSpeed
                 });
+
+                SetComponentEnabled<ShootAttack>(entity, false);
             }
         }
     }
 }
-public struct ShootAttack : IComponentData
+public struct ShootAttack : IComponentData,IEnableableComponent
 {
     public float attackDistance;
 }

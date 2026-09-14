@@ -4,60 +4,69 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-/// <summary>
-/// [_SpatialGrid] Sub-layer: Unit Spatial Index
-/// Cập nhật vị trí của các Unit có UnitAvoidanceComponent vào MovementAgentBucket (HashMap<cell, Entity>).
-/// Hệ thống này sở hữu MovementAgentBucket singleton chuyên biệt cho tránh né và di chuyển.
-/// </summary>
-[UpdateAfter(typeof(FlowDirectionSystem))]
-[UpdateBefore(typeof(MovementAgentTargetSystem))]
+public struct UnitSpatialBucket : IComponentData
+{
+    public NativeParallelMultiHashMap<int, Entity> Bucket;
+}
+
+[UpdateAfter(typeof(SelectableSpatialSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct UnitSpatialSystem : ISystem
 {
+    private ComponentLookup<Health> healthLookup;
+
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        if (!SystemAPI.HasSingleton<MovementAgentBucket>())
+        if (!SystemAPI.HasSingleton<UnitSpatialBucket>())
         {
             var bucket = new NativeParallelMultiHashMap<int, Entity>(10000, Allocator.Persistent);
-            state.EntityManager.CreateSingleton(new MovementAgentBucket { Bucket = bucket });
+            state.EntityManager.CreateSingleton(new UnitSpatialBucket { Bucket = bucket });
         }
         state.RequireForUpdate<GridComponent>();
+        healthLookup = state.GetComponentLookup<Health>(true);
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        var container = SystemAPI.GetSingletonRW<MovementAgentBucket>();
+        healthLookup.Update(ref state);
+
+        var container = SystemAPI.GetSingletonRW<UnitSpatialBucket>();
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var bucketMap = container.ValueRW.Bucket;
 
         bucketMap.Clear();
 
-        foreach (var (transform, avoidance, entity)
-            in SystemAPI.Query<RefRO<LocalTransform>, RefRW<MovementAgentAvoidanceComponent>>()
+        foreach (var (transform, unit, entity)
+            in SystemAPI.Query<RefRO<LocalTransform>, RefRO<Unit>>()
             .WithEntityAccess())
         {
-            float3 pos = transform.ValueRO.Position;
+            if (healthLookup.HasComponent(entity) && healthLookup[entity].healthAmount <= 0f)
+            {
+                continue;
+            }
 
+            float3 pos = transform.ValueRO.Position;
             int newIndex = GridHelper.GetNodeIndex(
                 GridHelper.WorldToGrid(pos, grid),
                 grid
             );
 
             bucketMap.Add(newIndex, entity);
-            avoidance.ValueRW.gridIndex = newIndex; 
         }
     }
 
     [BurstCompile]
     public void OnDestroy(ref SystemState state)
     {
-        if (SystemAPI.HasSingleton<MovementAgentBucket>())
+        if (SystemAPI.HasSingleton<UnitSpatialBucket>())
         {
-            var container = SystemAPI.GetSingleton<MovementAgentBucket>();
+            var container = SystemAPI.GetSingleton<UnitSpatialBucket>();
             if (container.Bucket.IsCreated)
+            {
                 container.Bucket.Dispose();
+            }
         }
     }
 }

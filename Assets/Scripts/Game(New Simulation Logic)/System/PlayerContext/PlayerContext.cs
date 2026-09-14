@@ -4,19 +4,14 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
-public enum PlayerContextUpdateType
+public struct PlayerContextCachePendingTag : IComponentData
 {
-   ResourceUpdate,
-   All
 }
 
-public struct PlayerContextCachePendingTag: IComponentData
-{}
-
-public struct PlayerContextCache : IBufferElementData
+public struct PlayerContextCache : IComponentData
 {
     public int PlayerId;
-    public int CIVILIZATION_ID;
+    public int civilizationId;
     public Age age;
     public int currentPopulation;
     public int maxPopulation;
@@ -24,7 +19,7 @@ public struct PlayerContextCache : IBufferElementData
     public PlayerContextCache(PlayerContext context)
     {
         PlayerId = context.PlayerId;
-        CIVILIZATION_ID = context.CIVILIZATION_ID;
+        civilizationId = context.civilizationId;
         this.age = context.age;
         currentPopulation = context.currentPopulation;
         maxPopulation = context.maxPopulation;
@@ -33,7 +28,7 @@ public struct PlayerContextCache : IBufferElementData
     public void UpdateFromContext(PlayerContext context)
     {
         PlayerId = context.PlayerId;
-        CIVILIZATION_ID = context.CIVILIZATION_ID;
+        civilizationId = context.civilizationId;
         age = context.age;
         currentPopulation = context.currentPopulation;
         maxPopulation = context.maxPopulation;
@@ -46,193 +41,127 @@ public enum Age
     Modern,
     Future
 }
+
 [System.Serializable]
-public struct ResourcePair:IBufferElementData
+public struct ResourcePair : IBufferElementData
 {
     public ResourceType Type;
     public float Amount;
-   public ResourcePair(ResourceType type, float amount)
-   {
-      Type = type;
-      Amount = amount;
-   }
+
+    public ResourcePair(ResourceType type, float amount)
+    {
+        Type = type;
+        Amount = amount;
+    }
 }
 
-public enum PlayerContextDataType
+public struct ResourcePairCache : IBufferElementData
 {
-   PlayerId,
-   CivilizationId,
-   Resources,
-   Age,
-   currentPopulation,
-   maxPopulation,
-   All
+    public ResourceType Type;
+    public float Amount;
+
+    public ResourcePairCache(ResourcePair resourcePair)
+    {
+        Type = resourcePair.Type;
+        Amount = resourcePair.Amount;
+    }
 }
 
 [System.Serializable]
-public struct PlayerContext:IComponentData
+public struct PlayerContext : IComponentData
 {
-   public int PlayerId;
-   public int CIVILIZATION_ID;
-   public Age age;
-   public int currentPopulation;
-   public int maxPopulation;
-   public PlayerContext(int playerId, int civilizationId, Age age)
-   {
-      PlayerId = playerId;
-      CIVILIZATION_ID = civilizationId;
-      this.age = age;
-      currentPopulation = 3;
-      maxPopulation = 8;
-   }
+    public int PlayerId;
+    public int civilizationId;
+    public Age age;
+    public int currentPopulation;
+    public int maxPopulation;
+
+    public PlayerContext(int playerId, int civilizationId, Age age)
+    {
+        PlayerId = playerId;
+        this.civilizationId = civilizationId;
+        this.age = age;
+        currentPopulation = 3;
+        maxPopulation = 8;
+    }
 }
 
 public static class PlayerContextHelper
 {
-    public static FunctionResult GetContextData(EntityManager entityManager,int playerId ,out PlayerContext playerContext)
+    public static FunctionResult GetContextData(EntityManager entityManager, int playerId, out PlayerContext playerContext)
     {
-        var query = entityManager.CreateEntityQuery(typeof(PlayerContext));
-        playerContext = new PlayerContext();
+        return GetPlayerContextEntity(entityManager, playerId, out _, out playerContext);
+    }
 
-        if (query.IsEmpty)
+    private static FunctionResult GetPlayerContextEntity(EntityManager entityManager, int playerId, out Entity targetEntity, out PlayerContext playerContext)
+    {
+        targetEntity = Entity.Null;
+        playerContext = default;
+
+        using (var builder = new EntityQueryBuilder(Allocator.Temp).WithAll<PlayerContext>())
         {
-            return FunctionResult.Failure; // Return false if no entities found
-        }
-        var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
-        for (int i = 0; i < entities.Length; i++)
-        {
-            PlayerContext context = entityManager.GetComponentData<PlayerContext>(entities[i]);
-            if (context.PlayerId == playerId)
+            var query = entityManager.CreateEntityQuery(builder);
+            using (var entities = query.ToEntityArray(Allocator.Temp))
             {
-                playerContext = context;
-                return FunctionResult.Success;
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    PlayerContext context = entityManager.GetComponentData<PlayerContext>(entities[i]);
+                    if (context.PlayerId == playerId)
+                    {
+                        targetEntity = entities[i];
+                        playerContext = context;
+                        return FunctionResult.Success;
+                    }
+                }
             }
         }
-        playerContext = new PlayerContext();
+
         return FunctionResult.Failure;
     }
 
-    public static FunctionResult CreatePlayerContext(EntityManager entityManager, int playerId, int civilizationId, NativeList<ResourcePair> resources, Age age)
+    public static FunctionResult SetCurrentPopulation(EntityManager entityManager, int playerId, int currentPopulation)
     {
-        var entity = entityManager.CreateEntity();
-        PlayerContext playerContext = new PlayerContext(playerId, civilizationId, age);
-        entityManager.AddComponentData(entity, playerContext);
-        entityManager.AddBuffer<ResourcePair>(entity).ResizeUninitialized(Enum.GetNames(typeof(ResourceType)).Length);
-        
-        return FunctionResult.Success;
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity entity, out PlayerContext context) == FunctionResult.Success)
+        {
+            context.currentPopulation = currentPopulation;
+            entityManager.SetComponentData(entity, context);
+            return FunctionResult.Success;
+        }
+        return FunctionResult.Failure;
     }
 
-    public static FunctionResult UpdatePlayerContext(EntityManager entityManager, int playerId, PlayerContextDataType dataType, object value)
+    public static FunctionResult SetMaxPopulation(EntityManager entityManager, int playerId, int maxPopulation)
     {
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity entity, out PlayerContext context) == FunctionResult.Success)
+        {
+            context.maxPopulation = maxPopulation;
+            entityManager.SetComponentData(entity, context);
+            return FunctionResult.Success;
+        }
+        return FunctionResult.Failure;
+    }
 
-        var query = entityManager.CreateEntityQuery(typeof(PlayerContext));
-        var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
-        Entity targetEntity = Entity.Null;
-        for (int i = 0; i < entities.Length; i++)
+    public static FunctionResult SetAge(EntityManager entityManager, int playerId, Age age)
+    {
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity entity, out PlayerContext context) == FunctionResult.Success)
         {
-            PlayerContext context = entityManager.GetComponentData<PlayerContext>(entities[i]);
-            if (context.PlayerId == playerId)
-            {
-                targetEntity = entities[i];
-                break;
-            }
+            context.age = age;
+            entityManager.SetComponentData(entity, context);
+            return FunctionResult.Success;
         }
-        if (targetEntity == Entity.Null)
-        {
-            return FunctionResult.Failure; // Return false if player context not found
-        }
-        PlayerContext playerContext = entityManager.GetComponentData<PlayerContext>(targetEntity);
-        switch (dataType)
-        {
-            case PlayerContextDataType.PlayerId:
-                if (value is int newPlayerId)
-                {
-                    playerContext.PlayerId = (int)value;
-                }
-                else
-                {
-                    return FunctionResult.Failure; // Return false if value type is incorrect
-                }
-                break;
-            case PlayerContextDataType.CivilizationId:
-                if (value is int newCivilizationId)
-                {
-                    playerContext.CIVILIZATION_ID = (int)value;
-                }
-                else
-                {
-                    return FunctionResult.Failure; // Return false if value type is incorrect
-                }
-                break;
-            case PlayerContextDataType.Age:
-                if (value is Age newAge)
-                {
-                    playerContext.age = (Age)value;
-                }
-                else
-                {
-                    return FunctionResult.Failure; // Return false if value type is incorrect
-                }
-                break;
-            case PlayerContextDataType.currentPopulation:
-                if (value is int currentPopulation)
-                {
-                    playerContext.currentPopulation = (int)value;
-                }
-                else
-                {
-                    return FunctionResult.Failure; // Return false if value type is incorrect
-                }
-                break;
-            case PlayerContextDataType.maxPopulation:
-                if (value is int maxPopulation)
-                {
-                    playerContext.maxPopulation = (int)value;
-                }
-                else
-                {
-                    return FunctionResult.Failure; // Return false if value type is incorrect
-                }   
-                break;
-            case PlayerContextDataType.All:
-                if (value is PlayerContext newContext)
-                {
-                    playerContext.PlayerId = newContext.PlayerId;
-                    playerContext.CIVILIZATION_ID = newContext.CIVILIZATION_ID;
-                    playerContext.age = newContext.age;
-                    playerContext.currentPopulation = newContext.currentPopulation;
-                    playerContext.maxPopulation = newContext.maxPopulation;
-                }
-                else
-                {
-                    return FunctionResult.Failure; // Return false if value type is incorrect
-                }
-                break;
-            default:
-                return FunctionResult.Failure; // Return false for unsupported data types
-        }
-
-        entityManager.SetComponentData(targetEntity, playerContext);
-        return FunctionResult.Success;
+        return FunctionResult.Failure;
     }
 
     public static FunctionResult DeletePlayerContext(EntityManager entityManager, int playerId)
     {
-        var query = entityManager.CreateEntityQuery(typeof(PlayerContext));
-        var unitquery = entityManager.CreateEntityQuery(typeof(PlayerContext));
-        if (query.IsEmpty)
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity contextEntity, out _) == FunctionResult.Success)
         {
-            return FunctionResult.Failure; // Return false if no entities found
-        }
-        var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
-        for (int i = 0; i < entities.Length; i++)
-        {
-            PlayerContext context = entityManager.GetComponentData<PlayerContext>(entities[i]);
-            if (context.PlayerId == playerId)
+            using (var builder = new EntityQueryBuilder(Allocator.Temp).WithAll<Unit>())
             {
-                foreach (var unit in unitquery.ToEntityArray(Unity.Collections.Allocator.Temp))
+                var unitquery = entityManager.CreateEntityQuery(builder);
+                using (var units = unitquery.ToEntityArray(Allocator.Temp))
                 {
-                    if (entityManager.HasComponent<Unit>(unit))
+                    foreach (var unit in units)
                     {
                         Unit unitComponent = entityManager.GetComponentData<Unit>(unit);
                         if (unitComponent.playerID == playerId)
@@ -241,9 +170,64 @@ public static class PlayerContextHelper
                         }
                     }
                 }
-                entityManager.DestroyEntity(entities[i]);
-                return FunctionResult.Success;
             }
+            entityManager.DestroyEntity(contextEntity);
+            return FunctionResult.Success;
+        }
+        return FunctionResult.Failure;
+    }
+
+    public static FunctionResult SetPlayerResource(EntityManager entityManager, int playerId, ResourceType resourceType, float amount)
+    {
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity contextEntity, out _) == FunctionResult.Success)
+        {
+            var buffer = entityManager.GetBuffer<ResourcePair>(contextEntity);
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                if (buffer[i].Type == resourceType)
+                {
+                    buffer[i] = new ResourcePair(resourceType, amount);
+                    return FunctionResult.Success;
+                }
+            }
+            return FunctionResult.Failure;
+        }
+        return FunctionResult.Failure;
+    }
+
+    public static FunctionResult GetPlayerResourceByType(EntityManager entityManager, int playerId, ResourceType resourceType, out float amount)
+    {
+        amount = 0;
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity contextEntity, out _) == FunctionResult.Success)
+        {
+            var buffer = entityManager.GetBuffer<ResourcePair>(contextEntity);
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                if (buffer[i].Type == resourceType)
+                {
+                    amount = buffer[i].Amount;
+                    return FunctionResult.Success;
+                }
+            }
+            return FunctionResult.Failure;
+        }
+        return FunctionResult.Failure;
+    }
+
+    public static FunctionResult AddPlayerResource(EntityManager entityManager, int playerId, ResourceType resourceType, float amount)
+    {
+        if (GetPlayerContextEntity(entityManager, playerId, out Entity contextEntity, out _) == FunctionResult.Success)
+        {
+            var buffer = entityManager.GetBuffer<ResourcePair>(contextEntity);
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                if (buffer[i].Type == resourceType)
+                {
+                    buffer[i] = new ResourcePair(resourceType, buffer[i].Amount + amount);
+                    return FunctionResult.Success;
+                }
+            }
+            return FunctionResult.Failure;
         }
         return FunctionResult.Failure;
     }

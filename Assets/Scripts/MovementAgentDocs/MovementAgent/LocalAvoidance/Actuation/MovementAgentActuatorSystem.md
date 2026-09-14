@@ -1,37 +1,33 @@
 # MovementAgentActuatorSystem.cs
 
-Đây là hệ thống cuối cùng trong chuỗi xử lý di chuyển, chịu trách nhiệm áp dụng vận tốc đã tính toán vào vị trí thực tế của Unit và xử lý các tình huống bị kẹt (Stuck).
+Đây là hệ thống cuối cùng trong chuỗi xử lý di chuyển (chạy sau ORCA), chịu trách nhiệm tổng hợp các lực, cập nhật vị trí thực tế của Unit và xử lý các tình huống bị kẹt (Stuck).
 
 ---
 
-## 1. Hòa trộn Trọng số (Weighted Blending)
-Thay vì chỉ cộng các vector hướng, hệ thống sử dụng trọng số để cân bằng giữa mục tiêu và né tránh:
-- **`avoidWeight`**: Tỉ lệ thuận với số lượng hàng xóm xung quanh. Càng đông đúc, Unit càng ưu tiên hướng né tránh (`avoidDir`) hơn là hướng đích (`goalDir`).
-- Kết quả là hướng di chuyển tự nhiên, không bị khựng lại khi gặp vật cản.
+## 1. Safety Net: Lực đẩy vật lý (Separation Force)
+Dù hệ thống có ORCA để né tránh trong tương lai, đôi khi các Unit vẫn bị chồng lấn (Hard Overlap) do chênh lệch vận tốc hoặc không gian hẹp. Lớp Separation Force giải quyết triệt để việc này:
+- Lực này lấy trực tiếp từ `avoidance.separationForce` (tính toán ở ORCASystem).
+- Nó đẩy dạt các Unit ra xa nhau ngay lập tức ở cấp độ Positional (Vị trí) trước cả khi áp dụng vận tốc mới, đảm bảo 100% không bao giờ đè lên nhau.
 
 ---
 
-## 2. Xử lý kẹt (Anti-Deadlock)
-Hệ thống có 2 cơ chế để giải quyết việc Unit bị kẹt:
-
-### Cơ chế 1: Early Settle (Dừng sớm)
-Nếu Unit không thể tiến gần đích hơn trong một khoảng thời gian (vượt quá `stuckThreshold`), hệ thống sẽ coi như Unit đã "đến đích" và buộc nó dừng lại. Việc này giúp giải tỏa các nút thắt cổ chai nơi Unit cứ cố chen lấn vô ích.
-
-### Cơ chế 2: Nudge (Đẩy nhẹ)
-Nếu Unit bị kẹt hơn 0.5 giây, một lực đẩy ngẫu nhiên nhỏ sẽ được áp dụng. Điều này giống như việc Unit "nhích" sang một bên để tìm khe hở thoát ra.
-
----
-
-## 3. Lực đẩy vật lý (Separation Force)
-Áp dụng lực `separationForce` từ hệ thống né tránh. Lực này mạnh hơn vận tốc thông thường và có tác dụng đẩy các Unit đang chồng lấn nhau ra xa ngay lập tức, đảm bảo tính thẩm mỹ và logic vật lý.
+## 2. Xử lý kẹt vật lý (Anti-Deadlock / Stuck Detection)
+Hệ thống sử dụng cơ chế đếm thời gian kẹt (Stuck Time) tinh vi dựa trên độ dời vật lý thực tế:
+- **Theo dõi vị trí:** So sánh vị trí hiện tại so với `lastPosition` ở frame trước.
+- **Tính toán quãng đường:** Nếu quãng đường di chuyển thực tế nhỏ hơn 10% so với lý thuyết (`move.speed * DeltaTime`), hệ thống nhận diện Unit đang bị chặn cứng bởi vật thể/tòa nhà, và tăng nhanh `stuckTime`. Nếu đang lách qua được, thời gian này tăng rất chậm.
+- **Ngưỡng chịu đựng (Threshold):**
+  - Bị bao vây bởi neighbor: 1.0 giây.
+  - Đã vào tầm dàn đội hình (gần đích): 1.5 giây.
+  - Còn ở xa đích: 2.5 giây.
+- **Early Settle:** Khi vượt quá ngưỡng, Unit tự động bị neo lại (`isSettled = true`), triệt tiêu vận tốc thành 0. Động thái này báo cho hệ thống bên trên (ví dụ: `MoveOverrideSystem`, `WorkerGatherSystem`) biết rằng Unit không thể đi tiếp được nữa để xử lý logic tiếp theo.
 
 ---
 
-## 4. Cập nhật Vị trí & Quay mặt (Motion & Rotation)
-- **Làm mượt vận tốc**: Sử dụng `math.lerp` với `lerpFactor` tùy biến (nhanh hơn khi ở xa, chậm hơn khi gần đích) để Unit tăng tốc và hãm phanh êm ái.
-- **Quay mặt**: Sử dụng `math.slerp` để Unit xoay hướng nhìn dần dần về phía vector vận tốc, tránh hiện tượng Unit xoay 180 độ tức thời gây đau mắt.
+## 3. Cập nhật Vị trí & Quay mặt (Motion & Rotation)
+- **Vận tốc (Velocity):** Lấy trực tiếp từ `move.velocity` do ORCA tính toán.
+- **Quay mặt:** Sử dụng `math.slerp` để xoay dần theo hướng vận tốc hiện tại. Chỉ xoay khi vận tốc đủ lớn (để tránh hiện tượng xoay mòng mòng khi đứng im).
 
 ---
 
-## 5. Thứ tự thực thi
-Hệ thống này chạy **SAU** `MovementAgentTargetSystem` và `MovementAgentAvoidanceSystem` để đảm bảo nó có dữ liệu vận tốc và né tránh mới nhất cho khung hình hiện tại.
+## 4. Thứ tự thực thi
+Chạy **SAU** `MovementAgentORCASystem` để lấy được vận tốc an toàn cuối cùng. Khâu này "chốt" mọi thông số xuống `LocalTransform` cho Unity render.

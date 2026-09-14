@@ -43,7 +43,6 @@ public class TrainButtonScript : MonoBehaviour
 
         if (selectedEntities.Length == 0)
         {
-            Debug.LogWarning("No entity selected!");
             return;
         }
 
@@ -51,7 +50,6 @@ public class TrainButtonScript : MonoBehaviour
 
         if (!entityManager.Exists(entity))
         {
-            Debug.LogWarning("Selected entity no longer exists!");
             return;
         }
 

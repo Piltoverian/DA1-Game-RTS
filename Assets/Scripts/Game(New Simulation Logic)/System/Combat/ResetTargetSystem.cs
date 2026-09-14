@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[DisableAutoCreation]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [BurstCompile]
 public partial struct ResetTargetSystem : ISystem

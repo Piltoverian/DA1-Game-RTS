@@ -11,10 +11,13 @@ Nếu người chơi ra lệnh di chuyển sang một hòn đảo khác:
 
 ---
 
-## 2. Quản lý Đội hình (Slot Formation)
+## 2. Quản lý Đội hình (Slot Formation) - Có kiểm tra hướng tiếp cận
 Khi Unit tiến vào phạm vi `formationRange` (mặc định 25m):
-- Hệ thống bắt đầu so sánh giữa việc đi theo Flow Field và đi thẳng tới `slotTarget`.
-- Nếu khoảng cách đường đi (`pathDist`) không quá lơn so với đường chim bay tới Slot, Unit sẽ chuyển sang chế độ lái trực tiếp (`useSlotTarget = true`).
+- **Trước tiên, kiểm tra hướng FlowField:** Lấy `direction` (hướng đi tối ưu) tại ô lưới của Agent và so sánh với hướng từ Agent tới `slotTarget` bằng dot product.
+  - **Dot > -0.2** (slot cùng chiều hoặc hơi lệch): Slot nằm trên đường tiếp cận tự nhiên → chấp nhận.
+  - **Dot < -0.2** (slot ngược chiều): Slot nằm phía bên kia tòa nhà/chướng ngại vật → **bỏ qua slot**, tiếp tục đi theo FlowField tới cạnh gần nhất.
+  - **Ngoại lệ:** Nếu Agent đã rất gần slot (< 3x `stoppingDistance`) thì luôn chấp nhận.
+- Nếu qua được bước kiểm tra trên, mới so sánh `pathDist` vs `directDistToSlot` (đường đi vs đường chim bay) để quyết định chuyển sang lái trực tiếp tới slot.
 
 ---
 

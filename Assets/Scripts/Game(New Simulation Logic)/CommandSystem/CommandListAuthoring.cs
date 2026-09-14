@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
-using UnityEditor;
 using UnityEngine;
 
 public class CommandListAuthoring : MonoBehaviour

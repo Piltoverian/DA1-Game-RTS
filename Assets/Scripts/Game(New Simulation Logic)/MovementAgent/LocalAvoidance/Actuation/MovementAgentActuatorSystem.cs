@@ -47,25 +47,31 @@ public partial struct MovementAgentActuatorSystem : ISystem
             // --- 1. ANTI-DEADLOCK: Stuck Detection ---
             if (move.hastarget)
             {
-                steering.stuckTime += DeltaTime;
+                // Tính khoảng cách THỰC TẾ di chuyển được so với frame trước
+                float actualDistMoved = math.distance(pos, steering.lastPosition);
+                float expectedDist = move.speed * DeltaTime;
+                
+                // Cập nhật lastPosition cho frame tiếp theo
+                steering.lastPosition = pos;
+
+                // Nếu đi được < 10% so với lý thuyết (bị chặn vật lý)
+                if (actualDistMoved < expectedDist * 0.1f)
+                    steering.stuckTime += DeltaTime;
+                else
+                    steering.stuckTime += DeltaTime * 0.2f; // Vẫn đang lách -> tăng chậm
 
                 float distToGlobal = math.distance(pos, move.currentworldtarget);
 
-                // Stuck threshold phụ thuộc vào MÔI TRƯỜNG:
-                // - Bị chặn bởi neighbor gần → settle RẤT NHANH (0.25s)
-                //   → "first come, settle first" → tạo tường → unit sau dồn ra rìa
-                // - Gần target nhưng không bị chặn → settle trung bình (1.0s)
-                // - Xa target → settle chậm (2.0s) → cho thời gian tìm đường
                 float stuckThreshold;
                 bool blockedByNeighbor = avoidance.closestDistance < avoidance.radius * 2.5f
                                          && avoidance.neighborCount > 0;
 
                 if (blockedByNeighbor)
-                    stuckThreshold = 0.25f; // ~12 frames → settle nhanh khi bị chặn
-                else if (distToGlobal < steering.formationRange)
                     stuckThreshold = 1.0f;
+                else if (distToGlobal < steering.arrivalRadius)
+                    stuckThreshold = 1.5f;
                 else
-                    stuckThreshold = 2.0f;
+                    stuckThreshold = 2.5f;
 
                 if (steering.stuckTime > stuckThreshold)
                 {
@@ -83,16 +89,21 @@ public partial struct MovementAgentActuatorSystem : ISystem
 
             // --- 2. APPLY VELOCITY (từ ORCA) ---
             // --- 2. SAFETY NET: Position Correction (chạy TRƯỚC velocity) ---
-            // Push ra từ TẤT CẢ overlapping neighbors (cumulative từ ORCASystem)
-            // Giải overlap từ frame trước TRƯỚC KHI apply velocity mới
-            // Position-based → đảm bảo 100% không overlap, KHÔNG phụ thuộc ORCA/stuck
             if (math.lengthsq(avoidance.separationForce) > 0.001f)
             {
                 float3 pushDir = math.normalizesafe(avoidance.separationForce);
                 float pushMag = math.length(avoidance.separationForce);
-                // pushMag = sum of (1-dist/combined) cho mỗi neighbor overlap
-                // Scale với radius để correction tương ứng kích thước agent
+                
                 float3 correction = pushDir * pushMag * avoidance.radius;
+                
+                // GIỚI HẠN LỰC ĐẨY: Không cho phép Unit bị teleport đi quá xa trong 1 frame
+                // Tối đa trượt đi 1 khoảng bằng 1.5 lần bán kính của nó mỗi frame
+                float maxCorrection = avoidance.radius * 1.5f;
+                if (math.length(correction) > maxCorrection)
+                {
+                    correction = math.normalizesafe(correction) * maxCorrection;
+                }
+                
                 correction.y = 0;
                 transform.Position += correction;
             }
@@ -114,6 +125,27 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 float3 moveDir = math.normalizesafe(move.velocity);
                 quaternion targetRot = quaternion.LookRotationSafe(moveDir, math.up());
                 transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
+            }
+            else if (move.FieldEntity != Entity.Null)
+            {
+                float3 lookDir = move.currentworldtarget - transform.Position;
+                lookDir.y = 0;
+
+                if (math.lengthsq(lookDir) > 0.01f)
+                {
+                    float3 desiredDir = math.normalizesafe(lookDir);
+                    float3 forward = math.normalizesafe(transform.Forward());
+                    forward.y = 0;
+                    forward = math.normalizesafe(forward);
+
+                    float dot = math.clamp(math.dot(forward, desiredDir), -1f, 1f);
+
+                    if (dot < 0.9659258f)
+                    {
+                        quaternion targetRot = quaternion.LookRotationSafe(desiredDir, math.up());
+                        transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
+                    }
+                }
             }
         }
     }

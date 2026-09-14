@@ -9,6 +9,7 @@ public struct MovementAgentDebugConfig : IComponentData
     public bool ShowContextSteer;
     public bool ShowTargetLines;
     public bool ShowProximity;
+    public bool ShowSlotDebug;
 }
 
 public class MovementAgentDebugAuthoring : MonoBehaviour
@@ -18,6 +19,7 @@ public class MovementAgentDebugAuthoring : MonoBehaviour
     public bool showContextSteer = true;
     public bool showTargetLines = true;
     public bool showProximity = true;
+    public bool showSlotDebug = true;
 
     class Baker : Baker<MovementAgentDebugAuthoring>
     {
@@ -30,7 +32,8 @@ public class MovementAgentDebugAuthoring : MonoBehaviour
                 ShowDesiredVelocity = authoring.showDesiredVelocity,
                 ShowContextSteer = authoring.showContextSteer,
                 ShowTargetLines = authoring.showTargetLines,
-                ShowProximity = authoring.showProximity
+                ShowProximity = authoring.showProximity,
+                ShowSlotDebug = authoring.showSlotDebug
             });
         }
     }

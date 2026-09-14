@@ -372,7 +372,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82284fc1dad91984aac6fc63acec54dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlowFieldDebugDrawer
-  mode: 1
+  mode: 0
   drawStep: 1
   arrowScale: 0.5
   showLabel: 0
@@ -715,7 +715,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7614685774906641763, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1783192356}
   m_SourcePrefab: {fileID: 100100000, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
 --- !u!1 &851872939
 GameObject:
@@ -849,7 +852,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1549605983}
-  - component: {fileID: 1549605982}
+  - component: {fileID: 1549605984}
   m_Layer: 0
   m_Name: UnitSelectionManager
   m_TagString: Untagged
@@ -857,18 +860,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1549605982
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1549605981}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f73dbc6e8d7e84438c9c7c2a729e7fa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnitSelectionManager
 --- !u!4 &1549605983
 Transform:
   m_ObjectHideFlags: 0
@@ -884,6 +875,36 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1549605984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1549605981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f73dbc6e8d7e84438c9c7c2a729e7fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnitController
+--- !u!1 &1783192351 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7614685774906641763, guid: 0b424bf7e632f2b40b9820a2c8c36764, type: 3}
+  m_PrefabInstance: {fileID: 730808905}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1783192356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1783192351}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26b0574f3dfd06245956cb479aa59284, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIManager
+  playerId: 1
 --- !u!1001 &1827138465
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1010,24 +1031,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0762a5eabb40ba34b923508e2c6ede4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacer
-  placementDatabase: {fileID: 11400000, guid: 5a98b62091ad4cf43a50ed388a1f428b, type: 2}
+  buildingDatabase: {fileID: 11400000, guid: 5a98b62091ad4cf43a50ed388a1f428b, type: 2}
   validGhostMaterial: {fileID: 2100000, guid: b4768b00b7fc05e4f90c0703efa494e2, type: 2}
   invalidGhostMaterial: {fileID: 2100000, guid: 633ef79ccc92a8b43af6bf3ccbf12f1d, type: 2}
-  gridSize: 1
-  defaultHalfExtents: {x: 3, y: 2, z: 3}
   groundMask:
     serializedVersion: 2
     m_Bits: 8
-  placementBlockMask:
-    serializedVersion: 2
-    m_Bits: 1280
-  placementCheckPadding: 0.05
-  logPlacementBlocking: 0
-  buildingObstacleCost: 2147483647
-  buildingCostPadding: 0.01
-  preferPlacementNamedCollider: 1
-  useLargestBoxColliderWhenNoPlacementCollider: 1
-  logConstructionDebug: 1
 --- !u!4 &1872836186
 Transform:
   m_ObjectHideFlags: 0

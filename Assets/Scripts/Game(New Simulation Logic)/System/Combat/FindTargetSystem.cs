@@ -4,17 +4,16 @@ using Unity.Entities;
 using Unity.Physics;
 using Unity.Transforms;
 
+[DisableAutoCreation]
 [BurstCompile]
 public partial struct FindTargetSystem : ISystem
 {
     private ComponentLookup<Unit> unitLookup;
-    private ComponentLookup<BuildingData> buildingLookup;
     private ComponentLookup<Health> healthLookup;
 
     public void OnCreate(ref SystemState state)
     {
         unitLookup = state.GetComponentLookup<Unit>(true);
-        buildingLookup = state.GetComponentLookup<BuildingData>(true);
         healthLookup = state.GetComponentLookup<Health>(true);
 
         state.RequireForUpdate<PhysicsWorldSingleton>();
@@ -30,7 +29,6 @@ public partial struct FindTargetSystem : ISystem
             physicsWorld.CollisionWorld;
 
         unitLookup.Update(ref state);
-        buildingLookup.Update(ref state);
         healthLookup.Update(ref state);
 
         NativeList<DistanceHit> distanceHitList =
@@ -111,16 +109,7 @@ public partial struct FindTargetSystem : ISystem
     {
         if (unitLookup.HasComponent(entity))
         {
-            Unit unit = unitLookup[entity];
-
-            return unit.playerID == wantedPlayerID;
-        }
-
-        if (buildingLookup.HasComponent(entity))
-        {
-            BuildingData building = buildingLookup[entity];
-
-            return building.PlayerID == wantedPlayerID;
+            return unitLookup[entity].playerID == wantedPlayerID;
         }
 
         return false;

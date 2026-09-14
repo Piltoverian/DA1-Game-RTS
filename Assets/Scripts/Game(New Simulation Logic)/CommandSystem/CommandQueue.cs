@@ -1,5 +1,7 @@
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 partial struct CommandQueue : ISystem
 {
@@ -29,6 +31,14 @@ partial struct CommandQueue : ISystem
         {
             return;
         }
+        
+        if (command.Command.Type == CommandType.Build)
+        {
+            HandleBuild(ref state, command);
+            return;
+        }
+
+        DeactiveAllAbility(state.EntityManager, command.sourceEntity);
 
         switch (command.Command.Type)
         {
@@ -59,7 +69,8 @@ partial struct CommandQueue : ISystem
                 return entityManager.HasComponent<ProductionData>(command.sourceEntity);
 
             case CommandType.Build:
-                return entityManager.HasComponent<WorkerTag>(command.sourceEntity) ||
+                return entityManager.HasComponent<BuilderComponent>(command.sourceEntity) ||
+                       entityManager.HasComponent<WorkerTag>(command.sourceEntity) ||
                        entityManager.HasComponent<ProductionData>(command.sourceEntity);
 
             case CommandType.TargetTo:
@@ -88,7 +99,11 @@ partial struct CommandQueue : ISystem
             entityManager.HasComponent<Target>(command.sourceEntity) &&
             entityManager.HasComponent<Health>(command.targetEntity);
 
-        return canGather || canAttack;
+        bool canBuild =
+            entityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
+            BuildingHelper.CanBuildOrRepair(entityManager, command.targetEntity);
+        
+        return canGather || canAttack || canBuild;
     }
 
     private static void HandleMove(ref SystemState state, CommandQueueElement command)
@@ -102,15 +117,12 @@ partial struct CommandQueue : ISystem
             state.EntityManager.SetComponentEnabled<MoveOverride>(command.sourceEntity, true);
         }
 
-        if (state.EntityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
+        if (state.EntityManager.HasComponent<TargetCache>(command.sourceEntity))
         {
-            var gatherData = state.EntityManager.GetComponentData<WorkerGatherData>(command.sourceEntity);
-            gatherData.TargetNode = Entity.Null;
-            gatherData.TargetDepot = Entity.Null;
-            gatherData.CarryAmount = 0;
-            gatherData.GatherTimer = 0f;
-            gatherData.State = WorkerGatherState.GoingToNode;
-            state.EntityManager.SetComponentData(command.sourceEntity, gatherData);
+            var targetCache = state.EntityManager.GetComponentData<TargetCache>(command.sourceEntity);
+            targetCache.targetEntity = Entity.Null;
+            targetCache.lastTargetPosition = command.position;
+            state.EntityManager.SetComponentData(command.sourceEntity, targetCache);
         }
     }
 
@@ -145,32 +157,146 @@ partial struct CommandQueue : ISystem
         {
             HandleAttack(ref state, command);
         }
-       
+        else if (state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
+                 BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
+        {
+            HandleBuild(ref state, command);
+        }   
     }
 
-    private static void HandleAttack(ref SystemState state, CommandQueueElement command)
+    private static void HandleBuild(ref SystemState state, CommandQueueElement command)
     {
-        if (!state.EntityManager.HasComponent<Target>(command.sourceEntity))
+        var em = state.EntityManager;
+        if (!em.HasComponent<BuilderComponent>(command.sourceEntity))
         {
             return;
         }
 
-        var targetData = state.EntityManager.GetComponentData<Target>(command.sourceEntity);
-        targetData.targetEntity = command.targetEntity;
-        state.EntityManager.SetComponentData(command.sourceEntity, targetData);
-        state.EntityManager.SetComponentEnabled<MoveOverride>(command.sourceEntity, false);
+        if (command.targetEntity == Entity.Null || !em.Exists(command.targetEntity))
+        {
+            return;
+        }
+
+        if (!BuildingHelper.CanBuildOrRepair(em, command.targetEntity))
+            return;
+
+        var builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
+        if (command.Command.Type == CommandType.Build &&
+            em.IsComponentEnabled<BuilderComponent>(command.sourceEntity) &&
+            builder.State != BuilderState.Idle &&
+            em.HasBuffer<BuilderQueueElement>(command.sourceEntity))
+        {
+            if (builder.TargetConstructionSite == command.targetEntity)
+                return;
+            var pending = em.GetBuffer<BuilderQueueElement>(command.sourceEntity);
+            for (int i = 0; i < pending.Length; i++)
+                if (pending[i].BuildingEntity == command.targetEntity)
+                    return;
+            pending.Add(new BuilderQueueElement { BuildingEntity = command.targetEntity });
+            return;
+        }
+
+        DeactiveAllAbility(em, command.sourceEntity);
+        builder.TargetConstructionSite = command.targetEntity;
+        builder.State = BuilderState.GoingToSite;
+        em.SetComponentData(command.sourceEntity, builder);
+        em.SetComponentEnabled<BuilderComponent>(command.sourceEntity, true);
+
+        if (em.HasComponent<TargetCache>(command.sourceEntity))
+        {
+            var targetCache = em.GetComponentData<TargetCache>(command.sourceEntity);
+            targetCache.targetEntity = command.targetEntity;
+            if (em.HasComponent<LocalTransform>(command.targetEntity))
+            {
+                targetCache.lastTargetPosition = em.GetComponentData<LocalTransform>(command.targetEntity).Position;
+            }
+            em.SetComponentData(command.sourceEntity, targetCache);
+        }
+    }
+
+    private static void HandleAttack(ref SystemState state, CommandQueueElement command)
+    {
+        var em = state.EntityManager;
+
+        if (em.HasComponent<ShootAttack>(command.sourceEntity))
+        {
+            em.SetComponentEnabled<ShootAttack>(command.sourceEntity, true);
+        }
+
+        if (em.HasComponent<Target>(command.sourceEntity))
+        {
+            var targetData = em.GetComponentData<Target>(command.sourceEntity);
+            targetData.targetEntity = command.targetEntity;
+            em.SetComponentData(command.sourceEntity, targetData);
+        }
+
+        if (em.HasComponent<TargetCache>(command.sourceEntity))
+        {
+            var targetCache = em.GetComponentData<TargetCache>(command.sourceEntity);
+            targetCache.targetEntity = command.targetEntity;
+            if (em.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
+            {
+                targetCache.lastTargetPosition = em.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
+            }
+            em.SetComponentData(command.sourceEntity, targetCache);
+        }
     }
 
     private static void HandleGather(ref SystemState state, CommandQueueElement command)
     {
         var gatherData = state.EntityManager.GetComponentData<WorkerGatherData>(command.sourceEntity);
+        var nodeData = state.EntityManager.GetComponentData<ResourceNodeData>(command.targetEntity);
+
+        if (gatherData.CurrentResourceType != nodeData.Type)
+        {
+            gatherData.CarryAmount = 0;
+            gatherData.CurrentResourceType = nodeData.Type;
+        }
+
         gatherData.TargetNode = command.targetEntity;
         gatherData.TargetDepot = Entity.Null;
-        gatherData.CarryAmount = 0;
         gatherData.GatherTimer = 0f;
         gatherData.State = WorkerGatherState.GoingToNode;
         state.EntityManager.SetComponentData(command.sourceEntity, gatherData);
-        state.EntityManager.SetComponentEnabled<MoveOverride>(command.sourceEntity, false);
+        state.EntityManager.SetComponentEnabled<WorkerGatherData>(command.sourceEntity, true);
+
+        if (state.EntityManager.HasComponent<TargetCache>(command.sourceEntity))
+        {
+            var targetCache = state.EntityManager.GetComponentData<TargetCache>(command.sourceEntity);
+            targetCache.targetEntity = command.targetEntity;
+            if (state.EntityManager.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
+            {
+                float3 rawPos = state.EntityManager.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
+                targetCache.lastTargetPosition = state.EntityManager.HasComponent<BlockageData>(command.targetEntity)
+                    ? state.EntityManager.GetComponentData<BlockageData>(command.targetEntity).GetWorldCenter(rawPos)
+                    : rawPos;
+            }
+            state.EntityManager.SetComponentData(command.sourceEntity, targetCache);
+        }
+    }
+    
+    public static void DeactiveAllAbility(EntityManager em,Entity entity)
+    {
+        // A direct move/gather/attack/target order replaces the scheduled construction work.
+        if (em.HasBuffer<BuilderQueueElement>(entity))
+            em.GetBuffer<BuilderQueueElement>(entity).Clear();
+        if (em.HasComponent<MoveOverride>(entity))
+            em.SetComponentEnabled<MoveOverride>(entity, false);
+        
+        if (em.HasComponent<WorkerGatherData>(entity))
+        {
+            em.SetComponentEnabled<WorkerGatherData>(entity, false);
+        }
+
+        if (em.HasComponent<ShootAttack>(entity))
+        {
+            em.SetComponentEnabled<ShootAttack>(entity, false);
+        }   
+
+        if (em.HasComponent<BuilderComponent>(entity))
+        {
+            em.SetComponentEnabled<BuilderComponent>(entity, false);
+        }
     }
 
     [BurstCompile]
@@ -178,4 +304,5 @@ partial struct CommandQueue : ISystem
     {
         
     }
+
 }

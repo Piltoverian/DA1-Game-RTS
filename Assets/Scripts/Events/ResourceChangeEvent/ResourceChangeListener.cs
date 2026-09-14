@@ -8,5 +8,6 @@ public class ResourceChangeListener : EventListener<ResourceChangeChannel,Resour
 
 public class ResourceChangeEvent :IEvent
 {
+    public int playerId;
     public List<ResourcePair> value=new List<ResourcePair>();
 }

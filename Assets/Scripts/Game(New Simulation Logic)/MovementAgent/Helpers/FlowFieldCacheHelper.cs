@@ -2,7 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 public static class FlowFieldCacheHelper
 {
-    public const int MAX_FLOWFIELDS = 160;
+    public const int MAX_FLOWFIELDS = 20;
 
     public static Entity TryGetFieldFromCache(
         ref DynamicBuffer<FlowFieldCacheEntry> cache,

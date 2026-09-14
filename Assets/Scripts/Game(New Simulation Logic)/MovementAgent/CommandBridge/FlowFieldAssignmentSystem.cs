@@ -24,6 +24,8 @@ public partial struct FlowFieldAssignmentSystem : ISystem
         var fixedFrameCount = SystemAPI.GetSingleton<FixedFrameCount>();
         
         var ecb = new EntityCommandBuffer(Allocator.Temp);
+        var refCountDeltas = new NativeHashMap<Entity, int>(16, Allocator.Temp);
+        var newFields = new NativeHashSet<Entity>(16, Allocator.Temp);
 
         foreach (var (request, move, steering, entity) in 
                  SystemAPI.Query<RefRO<TargetChangeRequest>, RefRW<MovementAgentComponent>, RefRW<MovementSteeringComponent>>().WithEntityAccess())
@@ -54,6 +56,8 @@ public partial struct FlowFieldAssignmentSystem : ISystem
                     state.EntityManager,
                     ref cacheBuffer, 
                     targetCell);
+                
+                newFields.Add(newField);
             }
 
             FlowFieldHelper.AssignFieldToMoveComponent(
@@ -63,16 +67,37 @@ public partial struct FlowFieldAssignmentSystem : ISystem
                 request.ValueRO.newWorldTarget, // TRUYỀN TỌA ĐỘ ĐÍCH VÀO ĐÂY
                 entity,
                 ecb, 
-                state.EntityManager);
+                state.EntityManager,
+                ref refCountDeltas);
 
             // Reset trạng thái stuck khi nhận lệnh mới
             steering.ValueRW.stuckTime = 0;
             steering.ValueRW.lastPosition = SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position;
 
-            ecb.RemoveComponent<TargetChangeRequest>(entity);
+
+        }
+
+        foreach (var kvp in refCountDeltas)
+        {
+            Entity field = kvp.Key;
+            int delta = kvp.Value;
+            if (delta == 0) continue;
+
+            if (newFields.Contains(field))
+            {
+                ecb.SetComponent(field, new FlowFieldRefCount { value = delta });
+            }
+            else if (state.EntityManager.Exists(field) && state.EntityManager.HasComponent<FlowFieldRefCount>(field))
+            {
+                var refCount = state.EntityManager.GetComponentData<FlowFieldRefCount>(field);
+                refCount.value += delta;
+                ecb.SetComponent(field, refCount);
+            }
         }
 
         ecb.Playback(state.EntityManager);
         ecb.Dispose();
+        refCountDeltas.Dispose();
+        newFields.Dispose();
     }
 }

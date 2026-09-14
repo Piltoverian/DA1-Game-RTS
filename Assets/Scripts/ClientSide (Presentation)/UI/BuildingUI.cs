@@ -63,7 +63,7 @@ using UnityEngine.UI;
 //        panel.SetActive(true);
 
 //        bool underConstruction =
-//            entityManager.HasComponent<UnderConstructionTag>(selected);
+//            BuildingHelper.IsUnderConstruction(entityManager, selected);
 
 //        ProductionData prod =
 //            entityManager.GetComponentData<ProductionData>(selected);

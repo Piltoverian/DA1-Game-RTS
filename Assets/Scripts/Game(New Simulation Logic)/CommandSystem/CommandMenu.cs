@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class CommandMenu : MonoBehaviour
 {
     [SerializeField] private GameObject ButtonPrefab;
-    [SerializeField] private BuildingPlacementDatabase buildingPlacementDatabase;
+    [SerializeField] private BuildingDatabase buildingPlacementDatabase;
 
     private Entity lastSelected;
 
@@ -44,7 +44,6 @@ public class CommandMenu : MonoBehaviour
 
         if (!entityManager.HasBuffer<CommandElement>(selectedEntity))
         {
-            Debug.Log($"Selected entity {selectedEntity} has no CommandElement buffer.");
             return;
         }
 
@@ -55,24 +54,18 @@ public class CommandMenu : MonoBehaviour
         {
             GameObject buttonObject = Instantiate(ButtonPrefab, transform);
 
-            //TMP_Text text = buttonObject.GetComponentInChildren<TMP_Text>();
-
-            //if (text != null)
-            //{
-            //    text.text = GetCommandLabel(command);
-            //}
             Image image = GetButtonImageComponent(buttonObject);
             var IconMapping= Resources.Load<IconMapping>("IconMapping");
             if (IconMapping == null)
             {
-                Debug.LogWarning("IconMapping asset not found in Resources folder.");
+                Debug.LogError("IconMapping asset not found in Resources folder.");
                 continue;
             }
             else
             {
-                if (command.Type== CommandType.Build)
+                if (command.Type == CommandType.Build)
                 {
-                    var buildingdef = buildingPlacementDatabase.GetByCommandIndex(command.indexInUnitCommandList);
+                    var buildingdef = buildingPlacementDatabase.GetByIndex(command.indexInUnitCommandList);
                     var buildingName = buildingdef != null ? buildingdef.DisplayName : "Unknown Building";
 
                     image.sprite = IconMapping.GetIconOfCommand(buildingName);
@@ -80,30 +73,15 @@ public class CommandMenu : MonoBehaviour
 
                 if (command.Type == CommandType.Progression)
                 {
-                   
                     var productlist=entityManager.GetBuffer<ProductionElement>(selectedEntity);
                     var commandprefab= productlist[command.indexInUnitCommandList].UnitPrefab;
                     if (entityManager.HasComponent<Unit>(commandprefab))
                     {
                         var unitName = entityManager.GetComponentData<Unit>(commandprefab);
-                        Debug.Log($"Setting icon for Progression command with index {command.indexInUnitCommandList}." + "UnitName: " + unitName.GetValueNormalizedString());
-                        if (image == null)
-                        {
-                            Debug.LogWarning("ButtonPrefab does not have an Image component.");
-                        }
                         if (IconMapping.GetIconOfCommand(unitName.GetValueNormalizedString()) != null)
                         {
                             image.sprite = IconMapping.GetIconOfCommand(unitName.GetValueNormalizedString());
-                            Debug.Log($"Icon set for unit {unitName.GetValueNormalizedString()}.");
                         }
-                        else
-                        {
-                            Debug.LogWarning($"No icon found for unit {unitName.GetValueNormalizedString()} in CommandIconMapping.");
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Command prefab {commandprefab} does not have UnitName component.");
                     }
                 }
             }
@@ -123,13 +101,7 @@ public class CommandMenu : MonoBehaviour
                 button.onClick.RemoveAllListeners();
                 button.onClick.AddListener(commandButton.OnClick);
             }
-            else
-            {
-                Debug.LogWarning("ButtonPrefab does not have UnityEngine.UI.Button component.");
-            }
         }
-
-        Debug.Log($"Entity {selectedEntity} selected, displaying {commands.Length} commands.");
 
         commands.Dispose();
     }
@@ -147,8 +119,8 @@ public class CommandMenu : MonoBehaviour
         {
             if (buildingPlacementDatabase != null)
             {
-                BuildingPlacementDefinition definition =
-                    buildingPlacementDatabase.GetByCommandIndex(command.indexInUnitCommandList);
+                BuildingDefinition definition =
+                    buildingPlacementDatabase.GetByIndex(command.indexInUnitCommandList);
 
                 if (definition != null && !string.IsNullOrEmpty(definition.DisplayName))
                 {
@@ -179,7 +151,6 @@ public class CommandMenu : MonoBehaviour
                 return image;
             }
         }
-        Debug.LogWarning("ButtonPrefab does not have an Image component.");
         return null;
     }
 }

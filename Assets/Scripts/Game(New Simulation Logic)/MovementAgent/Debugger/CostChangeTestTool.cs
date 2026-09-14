@@ -81,7 +81,6 @@ public class CostChangeTestTool : MonoBehaviour
 
         _gridEntity = query.GetSingletonEntity();
         _initialized = true;
-        Debug.Log("[CostChangeTestTool] Initialized. T+Click=Obstacle, Y+Click=Clear");
     }
 
     void TrySendCostChange(int newCost)
@@ -92,7 +91,6 @@ public class CostChangeTestTool : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(new Vector3(mousePos.x, mousePos.y, 0));
         if (!Physics.Raycast(ray, out RaycastHit hit, 1000f, groundLayer))
         {
-            Debug.LogWarning("[CostChangeTestTool] Raycast miss! Kiểm tra groundLayer mask.");
             return;
         }
 
@@ -109,9 +107,6 @@ public class CostChangeTestTool : MonoBehaviour
             newCost = newCost,
             area = area
         });
-
-        string action = newCost >= 255 ? "OBSTACLE" : "CLEAR";
-        Debug.Log($"[CostChangeTestTool] {action} at world({hit.point.x:F1}, {hit.point.z:F1})");
     }
 
     void OnGUI()
