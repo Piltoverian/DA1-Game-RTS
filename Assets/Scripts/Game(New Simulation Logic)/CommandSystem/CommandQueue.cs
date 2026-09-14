@@ -19,7 +19,6 @@ partial struct CommandQueue : ISystem
 
         foreach (var command in commandBuffer)
         {
-            Debug.Log($"Processing command: {command.Command.Type}");
             ProcessCommand(ref state, command);
         }
 
@@ -30,6 +29,12 @@ partial struct CommandQueue : ISystem
     {
         if (!IsValidSourceEntity(state.EntityManager, command))
         {
+            return;
+        }
+        
+        if (command.Command.Type == CommandType.Build)
+        {
+            HandleBuild(ref state, command);
             return;
         }
 
@@ -45,9 +50,6 @@ partial struct CommandQueue : ISystem
                 break;
             case CommandType.TargetTo:
                 HandleTargetTo(ref state, command);
-                break;
-            case CommandType.Build:
-                HandleBuild(ref state, command);
                 break;
         }
     }
@@ -159,7 +161,7 @@ partial struct CommandQueue : ISystem
                  BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
         {
             HandleBuild(ref state, command);
-        }
+        }   
     }
 
     private static void HandleBuild(ref SystemState state, CommandQueueElement command)
@@ -175,7 +177,26 @@ partial struct CommandQueue : ISystem
             return;
         }
 
+        if (!BuildingHelper.CanBuildOrRepair(em, command.targetEntity))
+            return;
+
         var builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
+        if (command.Command.Type == CommandType.Build &&
+            em.IsComponentEnabled<BuilderComponent>(command.sourceEntity) &&
+            builder.State != BuilderState.Idle &&
+            em.HasBuffer<BuilderQueueElement>(command.sourceEntity))
+        {
+            if (builder.TargetConstructionSite == command.targetEntity)
+                return;
+            var pending = em.GetBuffer<BuilderQueueElement>(command.sourceEntity);
+            for (int i = 0; i < pending.Length; i++)
+                if (pending[i].BuildingEntity == command.targetEntity)
+                    return;
+            pending.Add(new BuilderQueueElement { BuildingEntity = command.targetEntity });
+            return;
+        }
+
+        DeactiveAllAbility(em, command.sourceEntity);
         builder.TargetConstructionSite = command.targetEntity;
         builder.State = BuilderState.GoingToSite;
         em.SetComponentData(command.sourceEntity, builder);
@@ -256,6 +277,9 @@ partial struct CommandQueue : ISystem
     
     public static void DeactiveAllAbility(EntityManager em,Entity entity)
     {
+        // A direct move/gather/attack/target order replaces the scheduled construction work.
+        if (em.HasBuffer<BuilderQueueElement>(entity))
+            em.GetBuffer<BuilderQueueElement>(entity).Clear();
         if (em.HasComponent<MoveOverride>(entity))
             em.SetComponentEnabled<MoveOverride>(entity, false);
         

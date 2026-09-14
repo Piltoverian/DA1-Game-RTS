@@ -14,3 +14,9 @@ public struct BuilderComponent : IComponentData,IEnableableComponent
     public float BuildWorkLoadPerSecond;
     public float BuildRange;
 }
+
+// Pending buildings, in placement order. The active target remains in BuilderComponent.
+public struct BuilderQueueElement : IBufferElementData
+{
+    public Entity BuildingEntity;
+}

@@ -17,6 +17,7 @@ public class BuilderAuthoring : MonoBehaviour
                 State = BuilderState.Idle,
                 TargetConstructionSite = Entity.Null
             });
+            AddBuffer<BuilderQueueElement>(entity);
             SetComponentEnabled<BuilderComponent>(entity, false);
         }
     }

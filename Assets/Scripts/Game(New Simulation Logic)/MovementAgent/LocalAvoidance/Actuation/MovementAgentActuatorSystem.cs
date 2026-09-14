@@ -134,7 +134,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 if (math.lengthsq(lookDir) > 0.01f)
                 {
                     float3 desiredDir = math.normalizesafe(lookDir);
-                    float3 forward = math.mul(transform.Rotation, math.forward());
+                    float3 forward = math.normalizesafe(transform.Forward());
                     forward.y = 0;
                     forward = math.normalizesafe(forward);
 

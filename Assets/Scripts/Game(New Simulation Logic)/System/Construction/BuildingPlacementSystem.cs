@@ -20,7 +20,6 @@ public partial struct BuildingPlacementSystem : ISystem
             return;
 
         var grid = em.GetComponentData<GridComponent>(gridEntity);
-        var gridCostBuffer = em.GetBuffer<GridNodeCost>(gridEntity);
 
         var query = em.CreateEntityQuery(typeof(PlaceBuildingRequest));
         if (query.IsEmpty)
@@ -35,11 +34,24 @@ public partial struct BuildingPlacementSystem : ISystem
         var ecb = new EntityCommandBuffer(Allocator.Temp);
         bool gridModified = false;
 
-        foreach (var (reqRef, reqEntity) in SystemAPI.Query<RefRO<PlaceBuildingRequest>>().WithEntityAccess())
+        using var requests = query.ToEntityArray(Allocator.Temp);
+        foreach (Entity reqEntity in requests)
         {
-            PlaceBuildingRequest req = reqRef.ValueRO;
+            PlaceBuildingRequest req = em.GetComponentData<PlaceBuildingRequest>(reqEntity);
 
             if (req.PrefabEntity == Entity.Null || !em.Exists(req.PrefabEntity))
+            {
+                ecb.DestroyEntity(reqEntity);
+                continue;
+            }
+
+            if (!em.HasComponent<BuildingData>(req.PrefabEntity) ||
+                !em.HasComponent<ConstructionData>(req.PrefabEntity) ||
+                !em.HasComponent<BuildingStateComponent>(req.PrefabEntity) ||
+                !em.HasComponent<Health>(req.PrefabEntity) ||
+                !em.HasBuffer<BuildingCost>(req.PrefabEntity) ||
+                !math.isfinite(em.GetComponentData<BuildingData>(req.PrefabEntity).TotalWorkLoad) ||
+                em.GetComponentData<BuildingData>(req.PrefabEntity).TotalWorkLoad <= 0f)
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
@@ -65,7 +77,7 @@ public partial struct BuildingPlacementSystem : ISystem
                 localRect.ExpandTo(new float2(1.5f, 1.5f));
             }
 
-            if (!IsAreaFree(grid, gridCostBuffer, req.Position, localRect, hasUnitBucket, unitBucket))
+            if (!IsAreaFree(grid, em.GetBuffer<GridNodeCost>(gridEntity), req.Position, localRect, hasUnitBucket, unitBucket))
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
@@ -93,42 +105,12 @@ public partial struct BuildingPlacementSystem : ISystem
                 em.SetComponentData(building, u);
             }
 
-            if (em.HasComponent<BuildingData>(building))
-            {
-                var bd = em.GetComponentData<BuildingData>(building);
-                if (req.TotalWorkLoad > 0f)
-                    bd.TotalWorkLoad = req.TotalWorkLoad;
-                em.SetComponentData(building, bd);
-            }
-
-            if (em.HasComponent<ConstructionData>(building))
-            {
-                em.SetComponentData(building, new ConstructionData { currentWorkLoad = 0f });
-            }
-
             if (em.HasComponent<Health>(building))
             {
                 var h = em.GetComponentData<Health>(building);
-                h.healthAmount = 1f;
+                h.healthAmount = math.min(1f, h.maxHealthAmount);
                 h.OnHealthChanged = true;
                 em.SetComponentData(building, h);
-            }
-
-            if (em.HasComponent<BuildingStateComponent>(building))
-            {
-                em.SetComponentData(building, new BuildingStateComponent
-                {
-                    Current = BuildingState.StartBuild,
-                    Previous = BuildingState.StartBuild
-                });
-            }
-            else
-            {
-                em.AddComponentData(building, new BuildingStateComponent
-                {
-                    Current = BuildingState.StartBuild,
-                    Previous = BuildingState.StartBuild
-                });
             }
 
             if (em.HasComponent<BlockageNeedBakeTag>(building))
@@ -140,7 +122,7 @@ public partial struct BuildingPlacementSystem : ISystem
                 em.AddComponent<BlockageNeedBakeTag>(building);
             }
 
-            ReserveGridArea(grid, gridCostBuffer, req.Position, localRect, customCost);
+            ReserveGridArea(grid, em.GetBuffer<GridNodeCost>(gridEntity), req.Position, localRect, customCost);
             gridModified = true;
 
             if (em.HasBuffer<PlaceBuildingWorkerElement>(reqEntity))

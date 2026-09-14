@@ -314,7 +314,6 @@ public class BuildingPlacer : MonoBehaviour
             PlayerId = playerId,
             PrefabEntity = selectedBuildingPrefab,
             Position = new float3(rootPosition.x, rootPosition.y, rootPosition.z),
-            TotalWorkLoad = currentDefinition != null ? currentDefinition.TotalWorkLoad : 100f
         });
 
         DynamicBuffer<PlaceBuildingWorkerElement> workerBuffer = entityManager.AddBuffer<PlaceBuildingWorkerElement>(requestEntity);

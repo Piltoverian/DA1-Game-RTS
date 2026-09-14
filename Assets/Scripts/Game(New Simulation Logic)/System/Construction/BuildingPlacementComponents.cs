@@ -6,7 +6,6 @@ public struct PlaceBuildingRequest : IComponentData
     public int PlayerId;
     public Entity PrefabEntity;
     public float3 Position;
-    public float TotalWorkLoad;
 }
 
 public struct PlaceBuildingWorkerElement : IBufferElementData

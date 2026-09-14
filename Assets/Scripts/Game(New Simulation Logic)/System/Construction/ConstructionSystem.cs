@@ -21,8 +21,6 @@ public partial struct ConstructionSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        float dt = SystemAPI.Time.DeltaTime;
-
         EntityCommandBuffer ecb = SystemAPI
             .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
             .CreateCommandBuffer(state.WorldUnmanaged);
@@ -39,18 +37,16 @@ public partial struct ConstructionSystem : ISystem
         BufferLookup<LinkedEntityGroup> linkedEntityLookup =
             SystemAPI.GetBufferLookup<LinkedEntityGroup>(true);
 
-        foreach (var (construction, building, buildingState, health, entity) in
-                 SystemAPI.Query<RefRW<ConstructionData>, RefRO<BuildingData>, RefRW<BuildingStateComponent>, RefRO<Health>>()
+        foreach (var (construction, building, buildingState, entity) in
+                 SystemAPI.Query<RefRO<ConstructionData>, RefRO<BuildingData>, RefRW<BuildingStateComponent>>()
                      .WithEntityAccess())
         {
-            float progress = math.saturate(health.ValueRO.healthAmount / math.max(1f, health.ValueRO.maxHealthAmount));
+            float totalWork = building.ValueRO.TotalWorkLoad;
+            if (!math.isfinite(totalWork) || totalWork <= 0f || buildingState.ValueRO.Current == BuildingState.Destroyed)
+                continue;
+            float progress = math.saturate(construction.ValueRO.currentWorkLoad / totalWork);
             float baseHeight = transformLookup.HasComponent(entity) ? transformLookup[entity].Position.y : 0f;
             float revealValue = baseHeight + math.lerp(-10f, 10f, progress);
-
-            if (progress >= 1f)
-            {
-                revealValue = baseHeight + 10f;
-            }
 
             SetRevealHeight(entity, revealValue, ref revealLookup, ecb);
 
