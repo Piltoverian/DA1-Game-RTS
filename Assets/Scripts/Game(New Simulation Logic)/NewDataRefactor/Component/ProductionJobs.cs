@@ -34,7 +34,7 @@ public static class ProductionJobs
             var unit = registry.GetBlobByID<UnitBlob>(job.Value.OutputUnitID, out found);
             if (found != FunctionResult.Success || !em.Exists(offer.UnitPrefab) || !em.HasComponent<UnitComponent>(offer.UnitPrefab)
                 || em.GetComponentData<UnitComponent>(offer.UnitPrefab).DefinitionID != job.Value.OutputUnitID) return;
-            if (TechUnlockHelper.CheckUnitUnlockStatus(em, owner, job.Value.OutputUnitID) != UnitUnlockStatus.Available) return;
+            if (TechUnlockHelper.CheckUnitUnlockStatus(em, player, job.Value.OutputUnitID) != UnitUnlockStatus.Available) return;
             work = job.Value.Job.WorkLoad;
             for (int i = 0; i < unit.Value.ResourceCosts.Length; i++) costs.Add(unit.Value.ResourceCosts[i]);
         }
@@ -43,7 +43,7 @@ public static class ProductionJobs
             var job = registry.GetBlobByID<ResearchBlob>(offer.JobID, out var found);
             if (found != FunctionResult.Success || !em.HasBuffer<PlayerTechnology>(player) || !em.HasBuffer<PlayerPendingTech>(player)) return;
             techID = job.Value.Tech.ID;
-            if (TechUnlockHelper.CheckTechUnlockStatus(em, owner, techID) != TechUnlockStatus.Available) return;
+            if (TechUnlockHelper.CheckTechUnlockStatus(em, player, techID) != TechUnlockStatus.Available) return;
             work = job.Value.Job.WorkLoad;
             for (int i = 0; i < job.Value.Tech.Cost.Length; i++) costs.Add(job.Value.Tech.Cost[i]);
         }
@@ -71,19 +71,22 @@ public static class ProductionJobs
         em.SetComponentData(producer, data);
     }
 
-    public static void RemoveFirst(EntityManager em, Entity producer, bool refund)
+    public static void RemoveAt(EntityManager em, Entity producer, int index, bool refund = true)
     {
+        if (!em.Exists(producer) || !em.HasBuffer<ProductionQueueElement>(producer)) return;
         var queue = em.GetBuffer<ProductionQueueElement>(producer);
-        if (queue.IsEmpty) return;
-        var item = queue[0];
+        if (index < 0 || index >= queue.Length) return;
+        var item = queue[index];
         bool isResearch = item.Offer.Kind == ProductionKind.Research;
-        bool shouldRefund = refund || isResearch;
-        var payments = em.GetBuffer<ProductionPayment>(producer);
-        for (int i = payments.Length - 1; i >= 0; i--)
+        if (em.HasBuffer<ProductionPayment>(producer))
         {
-            if (payments[i].ItemID != item.ItemID) continue;
-            if (shouldRefund) PlayerContextHelper.AddPlayerResource(em, item.PlayerID, payments[i].Type, payments[i].Amount);
-            payments.RemoveAt(i);
+            var payments = em.GetBuffer<ProductionPayment>(producer);
+            for (int i = payments.Length - 1; i >= 0; i--)
+            {
+                if (payments[i].ItemID != item.ItemID) continue;
+                if (refund) PlayerContextHelper.AddPlayerResource(em, item.PlayerID, payments[i].Type, payments[i].Amount);
+                payments.RemoveAt(i);
+            }
         }
         if (isResearch && PlayerContextHelper.GetPlayerContextEntity(em, item.PlayerID, out var player, out _) == FunctionResult.Success)
         {
@@ -100,13 +103,19 @@ public static class ProductionJobs
                 }
             }
         }
-        queue.RemoveAt(0);
+        queue.RemoveAt(index);
+    }
+
+    public static void RemoveFirst(EntityManager em, Entity producer, bool refund)
+    {
+        RemoveAt(em, producer, 0, refund);
     }
 
     public static void CancelAll(EntityManager em, Entity producer, bool refund = true)
     {
-        if (!em.HasBuffer<ProductionQueueElement>(producer)) return;
-        while (em.GetBuffer<ProductionQueueElement>(producer).Length > 0) RemoveFirst(em, producer, refund);
+        if (!em.Exists(producer) || !em.HasBuffer<ProductionQueueElement>(producer)) return;
+        var queue = em.GetBuffer<ProductionQueueElement>(producer);
+        for (int i = queue.Length - 1; i >= 0; i--) RemoveAt(em, producer, i, refund);
     }
 }
 

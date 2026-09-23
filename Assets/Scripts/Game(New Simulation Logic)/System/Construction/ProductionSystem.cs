@@ -22,7 +22,7 @@ public partial struct ProductionSystem : ISystem
         foreach (var (production, transform, owner, work, health, entity) in
             SystemAPI.Query<RefRO<ProductionData>, RefRO<LocalTransform>, RefRO<EntityOwner>, RefRO<EntityWork>, RefRO<EntityHealth>>().WithEntityAccess())
         {
-            if (health.ValueRO.CurrentHP <= 0f) { ProductionJobs.CancelAll(em, entity, false); continue; }
+            if (health.ValueRO.CurrentHP <= 0f) { ProductionJobs.CancelAll(em, entity, true); continue; }
             if (em.HasComponent<BuildingConstruction>(entity) && em.GetComponentData<BuildingConstruction>(entity).Phase != ConstructionPhase.Completed) continue;
             var queue = em.GetBuffer<ProductionQueueElement>(entity);
             if (queue.IsEmpty) continue;
@@ -56,11 +56,11 @@ public partial struct ProductionSystem : ISystem
                 Entity prefab = item.Offer.UnitPrefab;
                 if (!em.Exists(prefab) || !em.HasComponent<UnitComponent>(prefab)) { ProductionJobs.RemoveFirst(em, entity, true); continue; }
                 int cost = em.GetComponentData<UnitComponent>(prefab).PopulationCost;
-                if (cost <= 0 || (long)context.currentPopulation + cost > context.maxPopulation) continue; // Ready: do not restart work.
+                if (cost > 0 && (long)context.currentPopulation + cost > context.maxPopulation) continue; // Ready: do not restart work.
                 Entity unit = ecb.Instantiate(prefab);
                 ecb.SetComponent(unit, new EntityOwner { PlayerID = item.PlayerID });
-                ecb.AddComponent(unit, new PopulationAccount { PlayerID = item.PlayerID, Used = cost });
-                PopulationSystem.Adjust(em, item.PlayerID, cost, 0);
+                ecb.AddComponent(unit, new PopulationAccount { PlayerID = item.PlayerID, Used = math.max(0, cost) });
+                if (cost > 0) PopulationSystem.Adjust(em, item.PlayerID, cost, 0);
                 var local = em.GetComponentData<LocalTransform>(prefab);
                 local.Position = transform.ValueRO.TransformPoint(production.ValueRO.SpawnOffset);
                 ecb.SetComponent(unit, local);
