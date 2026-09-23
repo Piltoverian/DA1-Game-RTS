@@ -11,6 +11,8 @@ partial struct BuilderSystem : ISystem
     {
         foreach (var (builderData, localTransform, entity) in SystemAPI.Query<RefRW<BuilderComponent>, RefRO<LocalTransform>>().WithEntityAccess())
         {
+            if (state.EntityManager.HasComponent<EntityWork>(entity))
+                builderData.ValueRW.BuildWorkLoadPerSecond = state.EntityManager.GetComponentData<EntityWork>(entity).Rate;
             switch (builderData.ValueRO.State)
             {
                 case BuilderState.Idle:
@@ -81,20 +83,20 @@ partial struct BuilderSystem : ISystem
                     }
 
                     var em = state.EntityManager;
-                    var health = em.GetComponentData<Health>(constructionSite);
-                    var building = em.GetComponentData<BuildingData>(constructionSite);
+                    var health = em.GetComponentData<EntityHealth>(constructionSite);
+                    var building = em.GetComponentData<BuildingComponent>(constructionSite);
                     float work = math.max(0f, builderData.ValueRO.BuildWorkLoadPerSecond * SystemAPI.Time.DeltaTime);
-                    float hpPerWork = health.maxHealthAmount / building.TotalWorkLoad;
+                    float hpPerWork = health.MaxHP / building.WorkLoad;
 
-                    if (em.GetComponentData<BuildingStateComponent>(constructionSite).Current == BuildingState.Completed)
+                    if (em.GetComponentData<BuildingConstruction>(constructionSite).Phase == ConstructionPhase.Completed)
                     {
-                        float restoredHp = math.min(work * hpPerWork, health.maxHealthAmount - health.healthAmount);
+                        float restoredHp = math.min(work * hpPerWork, health.MaxHP - health.CurrentHP);
                         if (restoredHp <= 0f)
                             break;
 
-                        int playerId = em.GetComponentData<Unit>(constructionSite).playerID;
-                        float repairRatio = restoredHp / health.maxHealthAmount;
-                        var costs = em.GetBuffer<BuildingCost>(constructionSite);
+                        int playerId = em.GetComponentData<EntityOwner>(constructionSite).PlayerID;
+                        float repairRatio = restoredHp / health.MaxHP;
+                        var costs = em.GetBuffer<EntityResourceCost>(constructionSite);
                         bool canAfford = true;
                         for (int c = 0; c < costs.Length; c++)
                         {
@@ -111,22 +113,22 @@ partial struct BuilderSystem : ISystem
                         for (int c = 0; c < costs.Length; c++)
                             PlayerContextHelper.AddPlayerResource(em, playerId, costs[c].Type, -costs[c].Amount * repairRatio);
 
-                        health.healthAmount = math.min(health.maxHealthAmount, health.healthAmount + restoredHp);
-                        health.OnHealthChanged = true;
+                        health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + restoredHp);
+                        health.Changed = true;
                         em.SetComponentData(constructionSite, health);
-                        if (health.healthAmount >= health.maxHealthAmount)
+                        if (health.CurrentHP >= health.MaxHP)
                             StopBuilder(em, builderData, entity);
                     }
                     else
                     {
-                        var construction = em.GetComponentData<ConstructionData>(constructionSite);
-                        work = math.min(work, math.max(0f, building.TotalWorkLoad - construction.currentWorkLoad));
-                        construction.currentWorkLoad = math.min(building.TotalWorkLoad, construction.currentWorkLoad + work);
-                        health.healthAmount = math.min(health.maxHealthAmount, health.healthAmount + work * hpPerWork);
-                        health.OnHealthChanged = true;
+                        var construction = em.GetComponentData<BuildingConstruction>(constructionSite);
+                        work = math.min(work, math.max(0f, building.WorkLoad - construction.CompletedWork));
+                        construction.CompletedWork = math.min(building.WorkLoad, construction.CompletedWork + work);
+                        health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + work * hpPerWork);
+                        health.Changed = true;
                         em.SetComponentData(constructionSite, construction);
                         em.SetComponentData(constructionSite, health);
-                        if (construction.currentWorkLoad >= building.TotalWorkLoad)
+                        if (construction.CompletedWork >= building.WorkLoad)
                             TryStartNextBuilding(em, builderData, entity);
                     }
                     break;
@@ -153,17 +155,17 @@ partial struct BuilderSystem : ISystem
         {
             Entity site = pending[0].BuildingEntity;
             pending.RemoveAt(0);
-            if (!em.Exists(site) || !em.HasComponent<BuildingStateComponent>(site) ||
-                !em.HasComponent<BuildingData>(site) || !em.HasComponent<ConstructionData>(site) ||
-                !em.HasComponent<Health>(site) || !em.HasComponent<LocalTransform>(site) ||
+            if (!EntityCapabilities.CanBuild(em, entity, site) || !em.HasComponent<BuildingConstruction>(site) ||
+                !em.HasComponent<BuildingComponent>(site) || !em.HasComponent<BuildingConstruction>(site) ||
+                !em.HasComponent<EntityHealth>(site) || !em.HasComponent<LocalTransform>(site) ||
                 !em.HasComponent<BlockageData>(site))
                 continue;
-            var status = em.GetComponentData<BuildingStateComponent>(site).Current;
-            float total = em.GetComponentData<BuildingData>(site).TotalWorkLoad;
-            if ((status != BuildingState.StartBuild && status != BuildingState.UnderConstruction) ||
+            var status = em.GetComponentData<BuildingConstruction>(site).Phase;
+            float total = em.GetComponentData<BuildingComponent>(site).WorkLoad;
+            if ((status != ConstructionPhase.Planned && status != ConstructionPhase.UnderConstruction) ||
                 !math.isfinite(total) || total <= 0f ||
-                em.GetComponentData<ConstructionData>(site).currentWorkLoad >= total ||
-                em.GetComponentData<Health>(site).healthAmount <= 0f)
+                em.GetComponentData<BuildingConstruction>(site).CompletedWork >= total ||
+                em.GetComponentData<EntityHealth>(site).CurrentHP <= 0f)
                 continue;
 
             builder.ValueRW.TargetConstructionSite = site;
@@ -204,22 +206,22 @@ partial struct BuilderSystem : ISystem
     {
         var em = state.EntityManager;
         Entity site = builder.ValueRO.TargetConstructionSite;
-        bool valid = em.Exists(site) && em.HasComponent<BuildingStateComponent>(site) &&
-                     em.HasComponent<Health>(site) && em.HasComponent<BuildingData>(site);
+        bool valid = EntityCapabilities.CanBuild(em, entity, site) && em.HasComponent<BuildingConstruction>(site) &&
+                     em.HasComponent<EntityHealth>(site) && em.HasComponent<BuildingComponent>(site);
         if (valid)
         {
-            var status = em.GetComponentData<BuildingStateComponent>(site).Current;
-            var health = em.GetComponentData<Health>(site);
-            float total = em.GetComponentData<BuildingData>(site).TotalWorkLoad;
-            valid = math.isfinite(total) && total > 0f && health.healthAmount > 0f && health.maxHealthAmount > 0f;
-            if (status == BuildingState.Completed && TryStartNextBuilding(em, builder, entity))
+            var status = em.GetComponentData<BuildingConstruction>(site).Phase;
+            var health = em.GetComponentData<EntityHealth>(site);
+            float total = em.GetComponentData<BuildingComponent>(site).WorkLoad;
+            valid = math.isfinite(total) && total > 0f && health.CurrentHP > 0f && health.MaxHP > 0f;
+            if (status == ConstructionPhase.Completed && TryStartNextBuilding(em, builder, entity))
                 return true;
-            if (status == BuildingState.Completed)
-                valid &= health.healthAmount < health.maxHealthAmount &&
-                         em.HasComponent<Unit>(site) && em.HasBuffer<BuildingCost>(site);
+            if (status == ConstructionPhase.Completed)
+                valid &= health.CurrentHP < health.MaxHP &&
+                         em.HasComponent<EntityOwner>(site) && em.HasBuffer<EntityResourceCost>(site);
             else
-                valid &= (status == BuildingState.StartBuild || status == BuildingState.UnderConstruction) &&
-                         em.HasComponent<ConstructionData>(site);
+                valid &= (status == ConstructionPhase.Planned || status == ConstructionPhase.UnderConstruction) &&
+                         em.HasComponent<BuildingConstruction>(site);
         }
         if (valid)
             return false;
@@ -227,3 +229,4 @@ partial struct BuilderSystem : ISystem
         return true;
     }
 }
+

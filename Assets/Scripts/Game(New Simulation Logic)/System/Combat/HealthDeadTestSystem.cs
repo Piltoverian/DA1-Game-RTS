@@ -23,20 +23,20 @@ public partial struct HealthDeadTestSystem : ISystem
         ComponentLookup<Parent> parentLookup =
             SystemAPI.GetComponentLookup<Parent>(true);
 
-        ComponentLookup<Unit> unitLookup =
-            SystemAPI.GetComponentLookup<Unit>(true);
+        ComponentLookup<EntityOwner> unitLookup =
+            SystemAPI.GetComponentLookup<EntityOwner>(true);
 
-        ComponentLookup<BuildingData> buildingLookup =
-            SystemAPI.GetComponentLookup<BuildingData>(true);
+        ComponentLookup<BuildingComponent> buildingLookup =
+            SystemAPI.GetComponentLookup<BuildingComponent>(true);
 
         NativeHashSet<Entity> destroyedRoots =
             new NativeHashSet<Entity>(32, Allocator.Temp);
 
         foreach (var (health, entity) in
-                 SystemAPI.Query<RefRO<Health>>()
+                 SystemAPI.Query<RefRO<EntityHealth>>()
                      .WithEntityAccess())
         {
-            if (health.ValueRO.healthAmount > 0f)
+            if (health.ValueRO.CurrentHP > 0f)
                 continue;
 
             Entity rootEntity = GetDestroyRoot(
@@ -50,15 +50,6 @@ public partial struct HealthDeadTestSystem : ISystem
 
             destroyedRoots.Add(rootEntity);
 
-            TryDecreasePopulationOnDeath(
-                state.EntityManager,
-                entity,
-                rootEntity,
-                unitLookup,
-                buildingLookup,
-                linkedGroupLookup
-            );
-
             DestroyEntityWithLinkedGroup(
                 rootEntity,
                 linkedGroupLookup,
@@ -67,106 +58,6 @@ public partial struct HealthDeadTestSystem : ISystem
         }
 
         destroyedRoots.Dispose();
-    }
-
-    private static void TryDecreasePopulationOnDeath(
-        EntityManager entityManager,
-        Entity deadEntity,
-        Entity rootEntity,
-        ComponentLookup<Unit> unitLookup,
-        ComponentLookup<BuildingData> buildingLookup,
-        BufferLookup<LinkedEntityGroup> linkedGroupLookup)
-    {
-        if (!TryGetPopulationUnit(
-                deadEntity,
-                rootEntity,
-                unitLookup,
-                buildingLookup,
-                linkedGroupLookup,
-                out Unit unit))
-        {
-            return;
-        }
-
-        PlayerContext playerContext;
-
-        FunctionResult result = PlayerContextHelper.GetContextData(
-            entityManager,
-            unit.playerID,
-            out playerContext
-        );
-
-        if (result == FunctionResult.Failure)
-            return;
-
-        int newPopulation = math.max(0, playerContext.currentPopulation - 1);
-
-        PlayerContextHelper.SetCurrentPopulation(
-            entityManager,
-            playerContext.PlayerId,
-            newPopulation
-        );
-    }
-
-    private static bool TryGetPopulationUnit(
-        Entity deadEntity,
-        Entity rootEntity,
-        ComponentLookup<Unit> unitLookup,
-        ComponentLookup<BuildingData> buildingLookup,
-        BufferLookup<LinkedEntityGroup> linkedGroupLookup,
-        out Unit unit)
-    {
-        unit = default;
-
-        if (IsValidPopulationUnit(rootEntity, unitLookup, buildingLookup))
-        {
-            unit = unitLookup[rootEntity];
-            return true;
-        }
-
-        if (IsValidPopulationUnit(deadEntity, unitLookup, buildingLookup))
-        {
-            unit = unitLookup[deadEntity];
-            return true;
-        }
-
-        if (linkedGroupLookup.HasBuffer(rootEntity))
-        {
-            DynamicBuffer<LinkedEntityGroup> linkedEntities =
-                linkedGroupLookup[rootEntity];
-
-            for (int i = 0; i < linkedEntities.Length; i++)
-            {
-                Entity linkedEntity = linkedEntities[i].Value;
-
-                if (IsValidPopulationUnit(linkedEntity, unitLookup, buildingLookup))
-                {
-                    unit = unitLookup[linkedEntity];
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsValidPopulationUnit(
-        Entity entity,
-        ComponentLookup<Unit> unitLookup,
-        ComponentLookup<BuildingData> buildingLookup)
-    {
-        if (entity == Entity.Null)
-            return false;
-
-        if (!unitLookup.HasComponent(entity))
-            return false;
-
-        // Building có thể cũng dùng Unit/playerID để biết chủ sở hữu.
-        // Không trừ population khi building chết.
-        if (buildingLookup.HasComponent(entity))
-            return false;
-
-        return true;
     }
 
     private static Entity GetDestroyRoot(
@@ -222,3 +113,4 @@ public partial struct HealthDeadTestSystem : ISystem
         ecb.DestroyEntity(rootEntity);
     }
 }
+

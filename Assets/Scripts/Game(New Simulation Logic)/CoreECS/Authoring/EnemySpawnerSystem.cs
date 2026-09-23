@@ -62,14 +62,14 @@ public partial struct EnemySpawnerSystem : ISystem
             new NativeList<SpawnPostPlaybackCheck>(Allocator.Temp);
 
         foreach (var (unit, transform, entity) in
-                 SystemAPI.Query<RefRO<Unit>, RefRO<LocalTransform>>()
+                 SystemAPI.Query<RefRO<EntityOwner>, RefRO<LocalTransform>>()
                      .WithAll<MainBaseTag>()
                      .WithEntityAccess())
         {
             mainBases.Add(new MainBaseInfo
             {
                 entity = entity,
-                playerID = unit.ValueRO.playerID,
+                playerID = unit.ValueRO.PlayerID,
                 position = transform.ValueRO.Position
             });
         }
@@ -397,7 +397,7 @@ public partial struct EnemySpawnerSystem : ISystem
         {
             Debug.LogError(
                 $"[EnemySpawner][MissingMainBase] Cannot find an entity with MainBaseTag and " +
-                $"Unit.playerID={spawner.targetPlayerID}. Attach MainBaseAuthoring and " +
+                $"EntityOwner.playerID={spawner.targetPlayerID}. Attach MainBaseAuthoring and " +
                 "UnitAuthoring to the SAME main-base GameObject, or enable Use Fallback Target.");
         }
 

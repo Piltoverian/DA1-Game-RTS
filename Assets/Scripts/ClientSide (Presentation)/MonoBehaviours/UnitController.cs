@@ -64,7 +64,7 @@ public class UnitController : MonoBehaviour
 
         foreach (Entity entity in selectedEntities)
         {
-            if (entityManager.Exists(entity) && entityManager.HasComponent<BuildingStateComponent>(entity))
+            if (entityManager.Exists(entity) && entityManager.HasComponent<BuildingConstruction>(entity))
             {
                 Entity req = entityManager.CreateEntity();
                 entityManager.AddComponentData(req, new CancelBuildingRequest
@@ -240,12 +240,12 @@ public class UnitController : MonoBehaviour
 
         int myPlayerId = GetCurrentPlayerId();
         
-        if (!entityManager.HasComponent<Unit>(hitEntity))
+        if (!entityManager.HasComponent<EntityOwner>(hitEntity))
         {
             return false;
         }
         
-        int hitEntityPlayerId = entityManager.GetComponentData<Unit>(hitEntity).playerID;
+        int hitEntityPlayerId = entityManager.GetComponentData<EntityOwner>(hitEntity).PlayerID;
         if (myPlayerId==hitEntityPlayerId)
             return false;
         var selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(myPlayerId);
@@ -287,9 +287,9 @@ public class UnitController : MonoBehaviour
             return false;
         }
 
-        if (entityManager.HasComponent<Unit>(targetBuilding))
+        if (entityManager.HasComponent<EntityOwner>(targetBuilding))
         {
-            if (entityManager.GetComponentData<Unit>(targetBuilding).playerID != playerId)
+            if (entityManager.GetComponentData<EntityOwner>(targetBuilding).PlayerID != playerId)
             {
                 return false;
             }
@@ -353,7 +353,7 @@ public class UnitController : MonoBehaviour
         {
             Vector3 hitPoint = groundHit.point;
             EntityQuery query = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<BuildingStateComponent, LocalTransform, BlockageData>()
+                .WithAll<BuildingConstruction, LocalTransform, BlockageData>()
                 .Build(entityManager);
 
             if (!query.IsEmpty)

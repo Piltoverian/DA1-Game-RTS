@@ -8,8 +8,8 @@ using Unity.Transforms;
 partial struct ArtilleryBulletSystem : ISystem
 {
     private ComponentLookup<LocalTransform> transformLookup;
-    private ComponentLookup<Health> healthLookup;
-    private ComponentLookup<Unit> unitLookup;
+    private ComponentLookup<EntityHealth> healthLookup;
+    private ComponentLookup<EntityOwner> unitLookup;
     private ComponentLookup<Target> targetLookup;
     private ComponentLookup<MoveOverride> moveOverrideLookup;
     private ComponentLookup<ShootAttack> shootAttackLookup;
@@ -22,8 +22,8 @@ partial struct ArtilleryBulletSystem : ISystem
         state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
         transformLookup = state.GetComponentLookup<LocalTransform>(true);
-        healthLookup = state.GetComponentLookup<Health>(false);
-        unitLookup = state.GetComponentLookup<Unit>(true);
+        healthLookup = state.GetComponentLookup<EntityHealth>(false);
+        unitLookup = state.GetComponentLookup<EntityOwner>(true);
         targetLookup = state.GetComponentLookup<Target>(false);
         moveOverrideLookup = state.GetComponentLookup<MoveOverride>(true);
         shootAttackLookup = state.GetComponentLookup<ShootAttack>(true);
@@ -50,7 +50,7 @@ partial struct ArtilleryBulletSystem : ISystem
         int2 gridMax = new int2(gridComponent.width - 1, gridComponent.height - 1);
 
         foreach (var (localTransform, bullet, target, unit, entity) in
-                 SystemAPI.Query<RefRW<LocalTransform>, RefRW<ArtilleryBullet>, RefRO<Target>, RefRO<Unit>>().WithEntityAccess())
+                 SystemAPI.Query<RefRW<LocalTransform>, RefRW<ArtilleryBullet>, RefRO<Target>, RefRO<EntityOwner>>().WithEntityAccess())
         {
             if (bullet.ValueRO.distance == 0)
             {
@@ -84,7 +84,7 @@ partial struct ArtilleryBulletSystem : ISystem
                 float aoeRadius = bullet.ValueRO.aoeRadius;
                 float aoeRadiusSq = aoeRadius * aoeRadius;
                 float aoeDamage = bullet.ValueRO.aoeDamage;
-                int shooterPID = bullet.ValueRO.playerID != -1 ? bullet.ValueRO.playerID : unit.ValueRO.playerID;
+                int shooterPID = bullet.ValueRO.playerID != -1 ? bullet.ValueRO.playerID : unit.ValueRO.PlayerID;
                 Entity attacker = bullet.ValueRO.sourceEntity;
 
                 int2 centerCell = GridHelper.WorldToGrid(explosionPos, gridComponent);
@@ -102,7 +102,7 @@ partial struct ArtilleryBulletSystem : ISystem
                         {
                             do
                             {
-                                if (unitLookup.HasComponent(victim) && unitLookup[victim].playerID != shooterPID)
+                                if (unitLookup.HasComponent(victim) && unitLookup[victim].PlayerID != shooterPID)
                                 {
                                     if (healthLookup.HasComponent(victim) && transformLookup.HasComponent(victim))
                                     {
@@ -110,10 +110,10 @@ partial struct ArtilleryBulletSystem : ISystem
                                         if (distSq <= aoeRadiusSq)
                                         {
                                             var hp = healthLookup.GetRefRW(victim);
-                                            if (hp.ValueRO.healthAmount > 0f)
+                                            if (hp.ValueRO.CurrentHP > 0f)
                                             {
-                                                hp.ValueRW.healthAmount -= aoeDamage;
-                                                hp.ValueRW.OnHealthChanged = true;
+                                                hp.ValueRW.CurrentHP -= aoeDamage;
+                                                hp.ValueRW.Changed = true;
                                             }
                                         }
                                     }
@@ -125,7 +125,7 @@ partial struct ArtilleryBulletSystem : ISystem
 
                 bool isAttackerAlive = attacker != Entity.Null &&
                                        healthLookup.HasComponent(attacker) &&
-                                       healthLookup[attacker].healthAmount > 0f;
+                                       healthLookup[attacker].CurrentHP > 0f;
 
                 if (isAttackerAlive)
                 {
@@ -141,7 +141,7 @@ partial struct ArtilleryBulletSystem : ISystem
                             {
                                 do
                                 {
-                                    if (unitLookup.HasComponent(ally) && unitLookup[ally].playerID != shooterPID)
+                                    if (unitLookup.HasComponent(ally) && unitLookup[ally].PlayerID != shooterPID)
                                     {
                                         bool allyIdle = targetLookup.HasComponent(ally) &&
                                                         targetLookup[ally].targetEntity == Entity.Null &&

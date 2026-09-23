@@ -97,7 +97,7 @@ partial struct CommandQueue : ISystem
             entityManager.HasComponent<MoveOverride>(command.sourceEntity) &&
             entityManager.HasComponent<ShootAttack>(command.sourceEntity) &&
             entityManager.HasComponent<Target>(command.sourceEntity) &&
-            entityManager.HasComponent<Health>(command.targetEntity);
+            entityManager.HasComponent<EntityHealth>(command.targetEntity);
 
         bool canBuild =
             entityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
@@ -133,12 +133,6 @@ partial struct CommandQueue : ISystem
             return;
         }
 
-        PlayerContext playerContext = new PlayerContext();
-        PlayerContextHelper.GetContextData(state.EntityManager, command.PlayerId, out playerContext);
-        if (playerContext.currentPopulation >= playerContext.maxPopulation)
-        {
-            return;
-        }
         TrainUnitHelper.TrainUnit(
             entityManager: state.EntityManager,
             buildingEntity: command.sourceEntity,
@@ -153,7 +147,7 @@ partial struct CommandQueue : ISystem
         {
             HandleGather(ref state, command);
         }
-        else if (state.EntityManager.HasComponent<ShootAttack>(command.sourceEntity) && state.EntityManager.HasComponent<Health>(command.targetEntity))
+        else if (state.EntityManager.HasComponent<ShootAttack>(command.sourceEntity) && state.EntityManager.HasComponent<EntityHealth>(command.targetEntity))
         {
             HandleAttack(ref state, command);
         }
@@ -177,7 +171,7 @@ partial struct CommandQueue : ISystem
             return;
         }
 
-        if (!BuildingHelper.CanBuildOrRepair(em, command.targetEntity))
+        if (!EntityCapabilities.CanBuild(em, command.sourceEntity, command.targetEntity) || !BuildingHelper.CanBuildOrRepair(em, command.targetEntity))
             return;
 
         var builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
@@ -306,3 +300,5 @@ partial struct CommandQueue : ISystem
     }
 
 }
+
+

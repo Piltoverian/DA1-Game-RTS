@@ -84,16 +84,16 @@ public class TrainButtonScript : MonoBehaviour
             return;
         }
 
-        if (!entityManager.HasComponent<BuildingData>(entity))
+        if (!entityManager.HasComponent<BuildingComponent>(entity))
         {
             button.interactable = false;
             return;
         }
 
         var buildingData =
-            entityManager.GetComponentData<BuildingData>(entity);
+            entityManager.GetComponentData<BuildingComponent>(entity);
 
         button.interactable =
-            buildingData.Type == BuildingType.Barracks;
+            entityManager.HasBuffer<ProductionElement>(entity) && entityManager.GetBuffer<ProductionElement>(entity).Length > buttonIndexInPrefabList && !BuildingHelper.IsUnderConstruction(entityManager, entity);
     }
 }

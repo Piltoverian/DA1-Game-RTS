@@ -12,6 +12,7 @@ public struct PlayerContextCache : IComponentData
 {
     public int PlayerId;
     public int civilizationId;
+    public FixedString64Bytes CivID;
     public Age age;
     public int currentPopulation;
     public int maxPopulation;
@@ -20,6 +21,7 @@ public struct PlayerContextCache : IComponentData
     {
         PlayerId = context.PlayerId;
         civilizationId = context.civilizationId;
+        CivID = context.CivID;
         this.age = context.age;
         currentPopulation = context.currentPopulation;
         maxPopulation = context.maxPopulation;
@@ -29,6 +31,7 @@ public struct PlayerContextCache : IComponentData
     {
         PlayerId = context.PlayerId;
         civilizationId = context.civilizationId;
+        CivID = context.CivID;
         age = context.age;
         currentPopulation = context.currentPopulation;
         maxPopulation = context.maxPopulation;
@@ -72,17 +75,19 @@ public struct PlayerContext : IComponentData
 {
     public int PlayerId;
     public int civilizationId;
+    public FixedString64Bytes CivID;
     public Age age;
     public int currentPopulation;
     public int maxPopulation;
 
-    public PlayerContext(int playerId, int civilizationId, Age age)
+    public PlayerContext(int playerId, int civilizationId, Age age, FixedString64Bytes civId = default)
     {
         PlayerId = playerId;
         this.civilizationId = civilizationId;
+        CivID = civId;
         this.age = age;
-        currentPopulation = 3;
-        maxPopulation = 8;
+        currentPopulation = 0;
+        maxPopulation = 0;
     }
 }
 
@@ -93,7 +98,7 @@ public static class PlayerContextHelper
         return GetPlayerContextEntity(entityManager, playerId, out _, out playerContext);
     }
 
-    private static FunctionResult GetPlayerContextEntity(EntityManager entityManager, int playerId, out Entity targetEntity, out PlayerContext playerContext)
+    public static FunctionResult GetPlayerContextEntity(EntityManager entityManager, int playerId, out Entity targetEntity, out PlayerContext playerContext)
     {
         targetEntity = Entity.Null;
         playerContext = default;
@@ -156,15 +161,15 @@ public static class PlayerContextHelper
     {
         if (GetPlayerContextEntity(entityManager, playerId, out Entity contextEntity, out _) == FunctionResult.Success)
         {
-            using (var builder = new EntityQueryBuilder(Allocator.Temp).WithAll<Unit>())
+            using (var builder = new EntityQueryBuilder(Allocator.Temp).WithAll<EntityOwner>())
             {
                 var unitquery = entityManager.CreateEntityQuery(builder);
                 using (var units = unitquery.ToEntityArray(Allocator.Temp))
                 {
                     foreach (var unit in units)
                     {
-                        Unit unitComponent = entityManager.GetComponentData<Unit>(unit);
-                        if (unitComponent.playerID == playerId)
+                        EntityOwner unitComponent = entityManager.GetComponentData<EntityOwner>(unit);
+                        if (unitComponent.PlayerID == playerId)
                         {
                             entityManager.DestroyEntity(unit);
                         }
@@ -232,3 +237,4 @@ public static class PlayerContextHelper
         return FunctionResult.Failure;
     }
 }
+

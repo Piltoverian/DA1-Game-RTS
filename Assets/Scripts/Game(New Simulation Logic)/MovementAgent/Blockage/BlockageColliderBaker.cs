@@ -31,7 +31,7 @@ public static class BlockageBakerHelper
 {
     public static void BakeBlockage<T>(Baker<T> baker, Collider collider) where T : Component
     {
-        // 1. Bỏ qua nếu là Unit di chuyển HOẶC là mặt sàn Grid bản đồ
+        // 1. Bỏ qua nếu là EntityOwner di chuyển HOẶC là mặt sàn Grid bản đồ
         if (baker.GetComponent<MovementAgentAuthoring>() != null || baker.GetComponent<GridAuthoring>() != null)
             return;
 

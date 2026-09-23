@@ -39,11 +39,11 @@ public partial struct WorkerGatherSystem : ISystem
         }
 
         var depotCache = new NativeParallelMultiHashMap<DepotKey, DepotInfo>(32, Allocator.Temp);
-        foreach (var (transform, unit, bState, entity) in SystemAPI.Query<RefRO<LocalTransform>, RefRO<Unit>, RefRO<BuildingStateComponent>>()
-                     .WithAll<ResourceDepotTag>()
+        foreach (var (transform, unit, bState, entity) in SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityOwner>, RefRO<BuildingConstruction>>()
+                     .WithAll<StorageResource>()
                      .WithEntityAccess())
         {
-            if (bState.ValueRO.Current != BuildingState.Completed) continue;
+            if (bState.ValueRO.Phase != ConstructionPhase.Completed) continue;
 
             float3 pos = transform.ValueRO.Position;
             if (blockageLookup.HasComponent(entity))
@@ -58,9 +58,8 @@ public partial struct WorkerGatherSystem : ISystem
                 IslandID = islandID
             };
 
-            depotCache.Add(new DepotKey { PlayerId = unit.ValueRO.playerID, ResourceType = ResourceType.Gold }, info);
-            depotCache.Add(new DepotKey { PlayerId = unit.ValueRO.playerID, ResourceType = ResourceType.Wood }, info);
-            depotCache.Add(new DepotKey { PlayerId = unit.ValueRO.playerID, ResourceType = ResourceType.Food }, info);
+            foreach (var resource in SystemAPI.GetBuffer<StorageResource>(entity))
+                depotCache.Add(new DepotKey { PlayerId = unit.ValueRO.PlayerID, ResourceType = resource.Type }, info);
         }
 
         var nodeSpatialCache = new NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo>(1024, Allocator.Temp);
@@ -88,10 +87,11 @@ public partial struct WorkerGatherSystem : ISystem
         }
 
         foreach (var (workerTransform, unit, gather, targetCache, workerEntity) in
-                 SystemAPI.Query<RefRO<LocalTransform>, RefRO<Unit>, RefRW<WorkerGatherData>, RefRW<TargetCache>>()
+                 SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityOwner>, RefRW<WorkerGatherData>, RefRW<TargetCache>>()
                      .WithAll<WorkerTag>()
                      .WithEntityAccess())
         {
+            if (SystemAPI.HasComponent<EntityWork>(workerEntity)) gather.ValueRW.WorkRate = SystemAPI.GetComponent<EntityWork>(workerEntity).Rate;
             float3 workerPos = workerTransform.ValueRO.Position;
             int workerIsland = GetIslandID(workerPos, grid, islandBuffer);
 
@@ -141,7 +141,7 @@ public partial struct WorkerGatherSystem : ISystem
                         gather,
                         targetCache,
                         workerEntity,
-                        unit.ValueRO.playerID,
+                        unit.ValueRO.PlayerID,
                         workerPos,
                         workerIsland,
                         ref nodeLookup,
@@ -303,13 +303,15 @@ public partial struct WorkerGatherSystem : ISystem
             targetCache.ValueRW.targetEntity = targetNode;
         }
 
-        gather.ValueRW.GatherTimer -= dt;
+        gather.ValueRW.GatherTimer -= dt * gather.ValueRO.WorkRate;
         if (gather.ValueRO.GatherTimer > 0f)
             return;
 
         var node = nodeLookup[targetNode];
         int spaceLeft = gather.ValueRO.Capacity - gather.ValueRO.CarryAmount;
-        int amount = math.min(spaceLeft, node.Amount);
+        float gathered = gather.ValueRO.GatherFraction + gather.ValueRO.GatherRate;
+        int amount = math.min(math.min(spaceLeft, node.Amount), (int)math.floor(gathered));
+        gather.ValueRW.GatherFraction = gathered - math.floor(gathered);
 
         node.Amount -= amount;
         nodeLookup[targetNode] = node;
@@ -349,7 +351,11 @@ public partial struct WorkerGatherSystem : ISystem
     {
         Entity targetDepot = gather.ValueRO.TargetDepot;
 
-        if (targetDepot == Entity.Null || !transformLookup.HasComponent(targetDepot))
+        bool depotValid = false;
+        var depotKey = new DepotKey { PlayerId = playerId, ResourceType = gather.ValueRO.CurrentResourceType };
+        if (depotCache.TryGetFirstValue(depotKey, out var candidateDepot, out var depotIterator))
+            do { if (candidateDepot.Entity == targetDepot) depotValid = true; } while (depotCache.TryGetNextValue(out candidateDepot, ref depotIterator));
+        if (!depotValid || targetDepot == Entity.Null || !transformLookup.HasComponent(targetDepot))
         {
             targetDepot = FindNearestDepot(workerPos, playerId, gather.ValueRO.CurrentResourceType, workerIsland, ref depotCache);
             gather.ValueRW.TargetDepot = targetDepot;
@@ -373,6 +379,7 @@ public partial struct WorkerGatherSystem : ISystem
         {
             StopMoving(ref ecb, workerEntity, ref agentLookup, ref steeringLookup);
 
+            bool deposited = false;
             if (playerEntityMap.TryGetValue(playerId, out Entity playerEntity) && resourceBufferLookup.HasBuffer(playerEntity))
             {
                 var buffer = resourceBufferLookup[playerEntity];
@@ -381,11 +388,13 @@ public partial struct WorkerGatherSystem : ISystem
                     if (buffer[i].Type == gather.ValueRO.CurrentResourceType)
                     {
                         buffer[i] = new ResourcePair(buffer[i].Type, buffer[i].Amount + gather.ValueRO.CarryAmount);
+                        deposited = true;
                         break;
                     }
                 }
             }
 
+            if (!deposited) return;
             gather.ValueRW.CarryAmount = 0;
 
             Entity oldNode = gather.ValueRO.TargetNode;
@@ -587,3 +596,5 @@ public partial struct WorkerGatherSystem : ISystem
         return 0;
     }
 }
+
+

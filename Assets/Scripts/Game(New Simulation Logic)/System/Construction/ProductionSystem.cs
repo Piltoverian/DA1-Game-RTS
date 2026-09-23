@@ -1,153 +1,82 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
-[BurstCompile]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
+[UpdateAfter(typeof(PopulationSystem))]
 public partial struct ProductionSystem : ISystem
 {
-    public void OnCreate(ref SystemState state)
-    {
-        state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
-    }
-
-    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        float dt = SystemAPI.Time.DeltaTime;
-
-        EntityCommandBuffer ecb = SystemAPI
-            .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
-            .CreateCommandBuffer(state.WorldUnmanaged);
-
-        BufferLookup<ProductionQueueElement> queueBufferLookup = SystemAPI.GetBufferLookup<ProductionQueueElement>(false);
-        ComponentLookup<Unit> unitLookup = SystemAPI.GetComponentLookup<Unit>(true);
-        ComponentLookup<MoveOverride> moveOverrideLookup = SystemAPI.GetComponentLookup<MoveOverride>(true);
-
-        foreach (var (prod, buildingTransform, buildingState, entity) in
-                 SystemAPI.Query<RefRW<ProductionData>, RefRO<LocalTransform>, RefRO<BuildingStateComponent>>()
-                     .WithEntityAccess())
+        var em = state.EntityManager;
+        var ecb = new EntityCommandBuffer(Allocator.Temp);
+        foreach (var pending in SystemAPI.Query<DynamicBuffer<PlayerPendingTech>>())
         {
-            if (buildingState.ValueRO.Current != BuildingState.Completed)
+            for (int i = pending.Length - 1; i >= 0; i--)
             {
-                continue;
+                if (!em.Exists(pending[i].Producer) || !em.HasComponent<ProductionData>(pending[i].Producer))
+                    pending.RemoveAt(i);
             }
-            // 1. Kiểm tra xem nhà có Buffer hàng đợi không
-            if (!queueBufferLookup.HasBuffer(entity))
-            {
-                continue;
-            }
-
-            DynamicBuffer<ProductionQueueElement> queueBuffer = queueBufferLookup[entity];
-
-            // 2. Kiểm tra hàng đợi có trống không
-            if (queueBuffer.IsEmpty)
-            {
-                continue;
-            }
-
-            if (prod.ValueRO.TimeRemaining <= 0f)
-            {
-                prod.ValueRW.TimeRemaining = prod.ValueRO.ProductionTime;
-            }
-
-            prod.ValueRW.TimeRemaining -= dt;
-
-            // 3. Kiểm tra thời gian sản xuất còn lại
-            if (prod.ValueRO.TimeRemaining > 0f)
-            {
-                continue;
-            }
-
-            Entity unitPrefab = queueBuffer[0].UnitPrefab;
-
-            // 4. Kiểm tra Prefab trong hàng đợi có bị Null không
-            if (unitPrefab == Entity.Null)
-            {
-                UnityEngine.Debug.LogError("ProductionSystem: UnitPrefab in queue is NULL. Removing from queue.");
-                queueBuffer.RemoveAt(0);
-                continue;
-            }
-
-            // 5. Kiểm tra xem nhà này có dữ liệu Component Unit không (để biết ai là chủ sở hữu)
-            if (!unitLookup.HasComponent(entity))
-            {
-                UnityEngine.Debug.LogError("ProductionSystem: Building entity missing Unit component (Cannot determine playerID).");
-                continue;
-            }
-            var untiComponentOfBuilding = unitLookup[entity];
-
-            // 6. Kiểm tra giới hạn dân số (Population)
-            PlayerContext playerContextEntity = new PlayerContext();
-            PlayerContextHelper.GetContextData(state.EntityManager, untiComponentOfBuilding.playerID, out playerContextEntity);
-
-            if (playerContextEntity.currentPopulation >= playerContextEntity.maxPopulation)
-            {
-                continue;
-            }
-
-            // --- BẮT ĐẦU INSTANTIATE UNIT KHI CÁC ĐIỀU KIỆN TRÊN ĐỀU THỎA MÃN ---
-            Entity unit = ecb.Instantiate(unitPrefab);
-
-            PlayerContextHelper.SetCurrentPopulation(state.EntityManager, playerContextEntity.PlayerId, playerContextEntity.currentPopulation + 1);
-
-            float3 spawnPos = buildingTransform.ValueRO.TransformPoint(prod.ValueRO.SpawnOffset);
-            float3 rallyPos = buildingTransform.ValueRO.TransformPoint(prod.ValueRO.RallyOffset);
-
-            var unitComponentOfPrefab = unitLookup[unitPrefab];
-
-            ecb.SetComponent(unit, new Unit
-            {
-                playerID = untiComponentOfBuilding.playerID,
-                unitName = unitComponentOfPrefab.unitName
-            });
-
-            ecb.SetComponent(unit, new Selectable { playerID = untiComponentOfBuilding.playerID });
-
-            ecb.SetComponent(
-                unit,
-                LocalTransform.FromPositionRotationScale(
-                    spawnPos,
-                    quaternion.identity,
-                    1f
-                )
-            );
-
-            ApplyRallyMoveOverride(
-                moveOverrideLookup,
-                ecb,
-                unit,
-                unitPrefab,
-                rallyPos
-            );
-
-            queueBuffer.RemoveAt(0);
-
-            prod.ValueRW.TimeRemaining = queueBuffer.IsEmpty ? 0f : prod.ValueRO.ProductionTime;
         }
-    }
-
-    [BurstCompile]
-    private void ApplyRallyMoveOverride(
-        ComponentLookup<MoveOverride> moveOverrideLookup,
-        EntityCommandBuffer ecb,
-        Entity unit,
-        Entity unitPrefab,
-        float3 rallyPos)
-    {
-        if (!moveOverrideLookup.HasComponent(unitPrefab))
+        foreach (var (production, transform, owner, work, health, entity) in
+            SystemAPI.Query<RefRO<ProductionData>, RefRO<LocalTransform>, RefRO<EntityOwner>, RefRO<EntityWork>, RefRO<EntityHealth>>().WithEntityAccess())
         {
-            return;
+            if (health.ValueRO.CurrentHP <= 0f) { ProductionJobs.CancelAll(em, entity, true); continue; }
+            if (em.HasComponent<BuildingConstruction>(entity) && em.GetComponentData<BuildingConstruction>(entity).Phase != ConstructionPhase.Completed) continue;
+            var queue = em.GetBuffer<ProductionQueueElement>(entity);
+            if (queue.IsEmpty) continue;
+            var item = queue[0];
+            if (item.PlayerID != owner.ValueRO.PlayerID) { ProductionJobs.CancelAll(em, entity); continue; }
+            if (PlayerContextHelper.GetPlayerContextEntity(em, item.PlayerID, out var player, out var context) != FunctionResult.Success) continue;
+            item.RemainingWork = math.max(0, item.RemainingWork - math.max(0, work.ValueRO.Rate) * SystemAPI.Time.DeltaTime);
+            queue[0] = item;
+            if (item.RemainingWork > 0) continue;
+            if (item.Offer.Kind == ProductionKind.Research)
+            {
+                if (em.HasBuffer<PlayerPendingTech>(player))
+                {
+                    var pending = em.GetBuffer<PlayerPendingTech>(player);
+                    for (int i = pending.Length - 1; i >= 0; i--)
+                    {
+                        if (pending[i].TechID == item.TechID && pending[i].Producer == entity)
+                        {
+                            pending.RemoveAt(i);
+                            break;
+                        }
+                    }
+                }
+                if (em.HasBuffer<PlayerTechnology>(player))
+                {
+                    em.GetBuffer<PlayerTechnology>(player).Add(new PlayerTechnology { ID = item.TechID });
+                }
+            }
+            else
+            {
+                Entity prefab = item.Offer.UnitPrefab;
+                if (!em.Exists(prefab) || !em.HasComponent<UnitComponent>(prefab)) { ProductionJobs.RemoveFirst(em, entity, true); continue; }
+                int cost = em.GetComponentData<UnitComponent>(prefab).PopulationCost;
+                if (cost > 0 && (long)context.currentPopulation + cost > context.maxPopulation) continue; // Ready: do not restart work.
+                Entity unit = ecb.Instantiate(prefab);
+                ecb.SetComponent(unit, new EntityOwner { PlayerID = item.PlayerID });
+                ecb.AddComponent(unit, new PopulationAccount { PlayerID = item.PlayerID, Used = math.max(0, cost) });
+                if (cost > 0) PopulationSystem.Adjust(em, item.PlayerID, cost, 0);
+                var local = em.GetComponentData<LocalTransform>(prefab);
+                local.Position = transform.ValueRO.TransformPoint(production.ValueRO.SpawnOffset);
+                ecb.SetComponent(unit, local);
+                if (em.HasComponent<Selectable>(prefab))
+                {
+                    var selectable = em.GetComponentData<Selectable>(prefab); selectable.playerID = item.PlayerID; ecb.SetComponent(unit, selectable);
+                }
+                if (em.HasComponent<MoveOverride>(prefab))
+                {
+                    var move = em.GetComponentData<MoveOverride>(prefab);
+                    move.targetPosition = transform.ValueRO.TransformPoint(production.ValueRO.RallyOffset); move.targetApplied = false;
+                    ecb.SetComponent(unit, move); ecb.SetComponentEnabled<MoveOverride>(unit, true);
+                }
+            }
+            ProductionJobs.RemoveFirst(em, entity, false);
         }
-
-        MoveOverride moveOverride = moveOverrideLookup[unitPrefab];
-        moveOverride.targetPosition = rallyPos;
-        moveOverride.targetApplied = false;
-
-        ecb.SetComponent(unit, moveOverride);
-        ecb.SetComponentEnabled<MoveOverride>(unit, true);
+        ecb.Playback(em); ecb.Dispose();
     }
 }

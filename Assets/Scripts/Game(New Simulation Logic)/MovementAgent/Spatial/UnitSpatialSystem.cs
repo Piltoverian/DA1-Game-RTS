@@ -13,7 +13,7 @@ public struct UnitSpatialBucket : IComponentData
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct UnitSpatialSystem : ISystem
 {
-    private ComponentLookup<Health> healthLookup;
+    private ComponentLookup<EntityHealth> healthLookup;
 
     [BurstCompile]
     public void OnCreate(ref SystemState state)
@@ -24,7 +24,7 @@ public partial struct UnitSpatialSystem : ISystem
             state.EntityManager.CreateSingleton(new UnitSpatialBucket { Bucket = bucket });
         }
         state.RequireForUpdate<GridComponent>();
-        healthLookup = state.GetComponentLookup<Health>(true);
+        healthLookup = state.GetComponentLookup<EntityHealth>(true);
     }
 
     [BurstCompile]
@@ -39,10 +39,11 @@ public partial struct UnitSpatialSystem : ISystem
         bucketMap.Clear();
 
         foreach (var (transform, unit, entity)
-            in SystemAPI.Query<RefRO<LocalTransform>, RefRO<Unit>>()
+            in SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityOwner>>()
+            .WithAll<EntityHealth>()
             .WithEntityAccess())
         {
-            if (healthLookup.HasComponent(entity) && healthLookup[entity].healthAmount <= 0f)
+            if (healthLookup.HasComponent(entity) && healthLookup[entity].CurrentHP <= 0f)
             {
                 continue;
             }
@@ -70,3 +71,4 @@ public partial struct UnitSpatialSystem : ISystem
         }
     }
 }
+

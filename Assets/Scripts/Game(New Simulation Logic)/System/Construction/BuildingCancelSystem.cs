@@ -22,23 +22,23 @@ public partial struct BuildingCancelSystem : ISystem
                 continue;
             }
 
-            if (!em.HasComponent<BuildingStateComponent>(req.BuildingEntity))
+            if (!em.HasComponent<BuildingConstruction>(req.BuildingEntity))
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
             }
 
-            var bState = em.GetComponentData<BuildingStateComponent>(req.BuildingEntity);
-            if (bState.Current == BuildingState.Destroyed)
+            var bState = em.GetComponentData<BuildingConstruction>(req.BuildingEntity);
+            if (bState.Phase == ConstructionPhase.Destroyed)
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
             }
 
-            if (em.HasComponent<Unit>(req.BuildingEntity))
+            if (em.HasComponent<EntityOwner>(req.BuildingEntity))
             {
-                var unit = em.GetComponentData<Unit>(req.BuildingEntity);
-                if (unit.playerID != req.PlayerId)
+                var unit = em.GetComponentData<EntityOwner>(req.BuildingEntity);
+                if (unit.PlayerID != req.PlayerId)
                 {
                     ecb.DestroyEntity(reqEntity);
                     continue;
@@ -47,24 +47,23 @@ public partial struct BuildingCancelSystem : ISystem
 
             // Construction progress is independent of damage. Completed buildings never refund their build cost.
             float refundRate = 0f;
-            if ((bState.Current == BuildingState.StartBuild || bState.Current == BuildingState.UnderConstruction) &&
-                em.HasComponent<BuildingData>(req.BuildingEntity) &&
-                em.HasComponent<ConstructionData>(req.BuildingEntity))
+            if ((bState.Phase == ConstructionPhase.Planned || bState.Phase == ConstructionPhase.UnderConstruction) &&
+                em.HasComponent<BuildingComponent>(req.BuildingEntity) &&
+                em.HasComponent<BuildingConstruction>(req.BuildingEntity))
             {
-                float total = em.GetComponentData<BuildingData>(req.BuildingEntity).TotalWorkLoad;
-                float current = em.GetComponentData<ConstructionData>(req.BuildingEntity).currentWorkLoad;
+                float total = em.GetComponentData<BuildingComponent>(req.BuildingEntity).WorkLoad;
+                float current = em.GetComponentData<BuildingConstruction>(req.BuildingEntity).CompletedWork;
                 if (math.isfinite(total) && total > 0f && math.isfinite(current))
                     refundRate = 1f - math.saturate(current / total);
             }
 
             // Mark immediately so duplicate cancellation requests cannot refund the same building twice.
-            bState.Previous = bState.Current;
-            bState.Current = BuildingState.Destroyed;
+            bState.Phase = ConstructionPhase.Destroyed;
             em.SetComponentData(req.BuildingEntity, bState);
 
-            if (refundRate > 0f && em.HasBuffer<BuildingCost>(req.BuildingEntity))
+            if (refundRate > 0f && em.HasBuffer<EntityResourceCost>(req.BuildingEntity))
             {
-                var costBuffer = em.GetBuffer<BuildingCost>(req.BuildingEntity);
+                var costBuffer = em.GetBuffer<EntityResourceCost>(req.BuildingEntity);
                 for (int c = 0; c < costBuffer.Length; c++)
                 {
                     float refundAmount = costBuffer[c].Amount * refundRate;
@@ -75,20 +74,7 @@ public partial struct BuildingCancelSystem : ISystem
                 }
             }
 
-            // Queued units were paid separately; their refund does not depend on construction progress.
-            if (em.HasComponent<ProductionData>(req.BuildingEntity) && em.HasBuffer<ProductionQueueElement>(req.BuildingEntity))
-            {
-                var prod = em.GetComponentData<ProductionData>(req.BuildingEntity);
-                var queue = em.GetBuffer<ProductionQueueElement>(req.BuildingEntity);
-                int count = queue.Length;
-                if (count > 0)
-                {
-                    if (prod.UnitGoldCost > 0)
-                        PlayerContextHelper.AddPlayerResource(em, req.PlayerId, ResourceType.Gold, prod.UnitGoldCost * count);
-                    if (prod.UnitFoodCost > 0)
-                        PlayerContextHelper.AddPlayerResource(em, req.PlayerId, ResourceType.Food, prod.UnitFoodCost * count);
-                }
-            }
+            ProductionJobs.CancelAll(em, req.BuildingEntity);
 
             // Destroying the root also destroys its LinkedEntityGroup.
             ecb.DestroyEntity(req.BuildingEntity);
@@ -99,3 +85,4 @@ public partial struct BuildingCancelSystem : ISystem
         ecb.Dispose();
     }
 }
+

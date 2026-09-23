@@ -15,14 +15,14 @@ public class UnitInfoPanel : MonoBehaviour
         ClearInfo();
         var world = Unity.Entities.World.DefaultGameObjectInjectionWorld;
         var entityManager = world.EntityManager;
-        var query = entityManager.CreateEntityQuery(typeof(Selected), typeof(Unit));
+        var query = entityManager.CreateEntityQuery(typeof(Selected), typeof(EntityOwner));
         if (query.IsEmpty) return;
         var selectedUnits = query.ToEntityArray(Unity.Collections.Allocator.Temp);
         var firstUnit = selectedUnits[0];
         InfoPanel healthpanel = Instantiate(InfoPanelPrefab, transform);
         InfoIconMapping infoIconMapping = Resources.Load<InfoIconMapping>("InfoIconMapping");
         healthpanel.SetInfoIcon(infoIconMapping.GetIconForStat(StatInfo.MaxHealth));
-        healthpanel.SetInfoValue(entityManager.GetComponentData<Health>(firstUnit).maxHealthAmount);
+        healthpanel.SetInfoValue(entityManager.GetComponentData<EntityHealth>(firstUnit).MaxHP);
     }
 
     public void ClearInfo()

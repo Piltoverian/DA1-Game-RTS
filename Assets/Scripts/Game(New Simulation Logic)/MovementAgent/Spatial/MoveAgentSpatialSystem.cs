@@ -9,6 +9,7 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct MoveAgentSpatialSystem : ISystem
 {
+
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {

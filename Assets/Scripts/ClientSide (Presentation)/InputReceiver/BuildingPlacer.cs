@@ -28,10 +28,6 @@ public class BuildingPlacer : MonoBehaviour
         }
     }
 
-    [Header("Database")]
-    [SerializeField] private BuildingDatabase buildingDatabase;
-    public BuildingDatabase BuildingDatabase => buildingDatabase;
-
     [Header("Ghost Materials")]
     [SerializeField] private Material validGhostMaterial;
     [SerializeField] private Material invalidGhostMaterial;
@@ -41,7 +37,7 @@ public class BuildingPlacer : MonoBehaviour
 
     private EntityManager entityManager;
     private bool isPlacing;
-    private BuildingDefinition currentDefinition;
+    private FixedString64Bytes currentBuildingId;
     private Entity selectedBuildingPrefab;
     private Entity sourceWorkerEntity;
     private int localPlayerId = -1;
@@ -103,41 +99,37 @@ public class BuildingPlacer : MonoBehaviour
         if (sourceEntity == Entity.Null)
             return;
 
-        if (buildingDatabase == null)
+        if (entityManager != default && entityManager.HasBuffer<BuildOffer>(sourceEntity))
         {
-            Debug.LogError("BuildingDatabase is null on BuildingPlacer.");
-            return;
+            var offers = entityManager.GetBuffer<BuildOffer>(sourceEntity);
+            int index = commandData.indexInUnitCommandList;
+            if (index >= 0 && index < offers.Length)
+            {
+                StartPlacement(offers[index].DefinitionID, sourceEntity, playerID);
+                return;
+            }
         }
 
-        int index = commandData.indexInUnitCommandList;
-        BuildingDefinition definition = buildingDatabase.GetByIndex(index);
-        if (definition == null)
-            definition = buildingDatabase.GetByCommandIndex(index);
-
-        if (definition == null)
-        {
-            Debug.LogError("No BuildingDefinition found for index: " + index);
-            return;
-        }
-
-        StartPlacement(definition, sourceEntity, playerID, index);
+        Debug.LogError("No BuildOffer found for index: " + commandData.indexInUnitCommandList);
     }
 
-    public void StartPlacement(BuildingDefinition definition, Entity sourceWorker, int playerId, int databaseIndex = -1)
+    public void StartPlacement(FixedString64Bytes buildingId, Entity sourceWorker, int playerId)
     {
-        if (definition == null)
-            return;
-
         CancelPlacement();
 
-        currentDefinition = definition;
+        currentBuildingId = buildingId;
         sourceWorkerEntity = sourceWorker;
         localPlayerId = playerId;
 
-        int lookupIndex = databaseIndex >= 0 ? databaseIndex : (buildingDatabase != null ? buildingDatabase.GetIndexOf(definition) : -1);
-        selectedBuildingPrefab = GetBuildingPrefabEntityByCommandIndex(lookupIndex);
+        selectedBuildingPrefab = GetBuildingPrefabEntityFromRegistry(buildingId);
 
-        if (entityManager != default && selectedBuildingPrefab != Entity.Null && entityManager.HasComponent<BlockageData>(selectedBuildingPrefab))
+        if (selectedBuildingPrefab == Entity.Null)
+        {
+            Debug.LogError($"Building with ID '{buildingId}' not found in GameDataRegistry.");
+            return;
+        }
+
+        if (entityManager != default && entityManager.HasComponent<BlockageData>(selectedBuildingPrefab))
         {
             currentLocalRect = entityManager.GetComponentData<BlockageData>(selectedBuildingPrefab).LocalRect;
         }
@@ -147,7 +139,7 @@ public class BuildingPlacer : MonoBehaviour
             currentLocalRect.ExpandTo(new float2(1.5f, 1.5f));
         }
 
-        GameObject previewSource = definition.BuildingPrefab != null ? definition.BuildingPrefab : definition.PreviewPrefab;
+        GameObject previewSource = EntityPresentation.BuildingPreview(buildingId);
         if (previewSource != null)
         {
             currentGhost = CreateGhostFromPrefab(previewSource);
@@ -157,6 +149,9 @@ public class BuildingPlacer : MonoBehaviour
             currentGhost = GameObject.CreatePrimitive(PrimitiveType.Cube);
             Collider col = currentGhost.GetComponent<Collider>();
             if (col != null) Destroy(col);
+            float width = currentLocalRect.MaxPoint.x - currentLocalRect.MinPoint.x;
+            float depth = currentLocalRect.MaxPoint.y - currentLocalRect.MinPoint.y;
+            currentGhost.transform.localScale = new Vector3(math.max(1f, width), 2f, math.max(1f, depth));
         }
 
         currentGhostRenderers = currentGhost.GetComponentsInChildren<Renderer>(true);
@@ -287,10 +282,10 @@ public class BuildingPlacer : MonoBehaviour
         if (buildingPrefab == Entity.Null || localPlayerId < 0)
             return false;
 
-        if (entityManager == default || !entityManager.HasBuffer<BuildingCost>(buildingPrefab))
+        if (entityManager == default || !entityManager.HasBuffer<EntityResourceCost>(buildingPrefab))
             return true;
 
-        var costBuffer = entityManager.GetBuffer<BuildingCost>(buildingPrefab);
+        var costBuffer = entityManager.GetBuffer<EntityResourceCost>(buildingPrefab);
         foreach (var cost in costBuffer)
         {
             if (PlayerContextHelper.GetPlayerResourceByType(entityManager, localPlayerId, cost.Type, out float currentAmount) != FunctionResult.Success)
@@ -341,31 +336,32 @@ public class BuildingPlacer : MonoBehaviour
         CancelPlacement();
     }
 
-    private Entity GetBuildingPrefabEntityByCommandIndex(int commandIndex)
+    private Entity GetBuildingPrefabEntityFromRegistry(FixedString64Bytes buildingId)
     {
         if (entityManager == default)
             return Entity.Null;
 
         EntityQuery query = entityManager.CreateEntityQuery(
-            typeof(BuildingPrefabCatalogTag),
-            typeof(BuildingPrefabCatalogElement)
+            ComponentType.ReadOnly<GameDataRegistryComponent>(),
+            ComponentType.ReadOnly<RegistryBlobElement>(),
+            ComponentType.ReadOnly<RegistryPrefabElement>()
         );
 
         if (query.IsEmpty)
             return Entity.Null;
 
-        Entity catalogEntity = query.GetSingletonEntity();
-        DynamicBuffer<BuildingPrefabCatalogElement> buffer = entityManager.GetBuffer<BuildingPrefabCatalogElement>(catalogEntity);
+        Entity regEntity = query.GetSingletonEntity();
+        var blobBuffer = entityManager.GetBuffer<RegistryBlobElement>(regEntity);
+        var prefabBuffer = entityManager.GetBuffer<RegistryPrefabElement>(regEntity);
 
-        for (int i = 0; i < buffer.Length; i++)
-        {
-            if (buffer[i].CommandIndex == commandIndex)
-                return buffer[i].Prefab;
-        }
+        var blobRef = blobBuffer.GetBlobByID<BuildingBlob>(buildingId, out var result);
+        if (result != FunctionResult.Success)
+            return Entity.Null;
 
-        if (commandIndex >= 0 && commandIndex < buffer.Length)
+        int pIndex = blobRef.Value.Base.PrefabIndex;
+        if (pIndex >= 0 && pIndex < prefabBuffer.Length)
         {
-            return buffer[commandIndex].Prefab;
+            return prefabBuffer[pIndex].Prefab;
         }
 
         return Entity.Null;
@@ -379,7 +375,7 @@ public class BuildingPlacer : MonoBehaviour
         currentGhost = null;
         currentGhostRenderers = null;
         isPlacing = false;
-        currentDefinition = null;
+        currentBuildingId = default;
         selectedBuildingPrefab = Entity.Null;
     }
 

@@ -18,12 +18,13 @@ public class UnitImage : MonoBehaviour
         var entityManager = world.EntityManager;
         if (selectUnit != Entity.Null)
         {
-            if (entityManager.HasComponent<Unit>(selectUnit))
+            if (entityManager.HasComponent<EntityOwner>(selectUnit))
             {
-                var mapping =Resources.Load<IconMapping>("IconMapping");
-                image.sprite = mapping.GetIconOfCommand(entityManager.GetComponentData<Unit>(selectUnit).unitName.ToString());
+
+                image.sprite = EntityPresentation.Icon(entityManager, selectUnit);
                 image.enabled = true;
             }
         }
     }
 }
+

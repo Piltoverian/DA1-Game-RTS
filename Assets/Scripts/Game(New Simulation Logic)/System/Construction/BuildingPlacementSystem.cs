@@ -45,17 +45,28 @@ public partial struct BuildingPlacementSystem : ISystem
                 continue;
             }
 
-            if (!em.HasComponent<BuildingData>(req.PrefabEntity) ||
-                !em.HasComponent<ConstructionData>(req.PrefabEntity) ||
-                !em.HasComponent<BuildingStateComponent>(req.PrefabEntity) ||
-                !em.HasComponent<Health>(req.PrefabEntity) ||
-                !em.HasBuffer<BuildingCost>(req.PrefabEntity) ||
-                !math.isfinite(em.GetComponentData<BuildingData>(req.PrefabEntity).TotalWorkLoad) ||
-                em.GetComponentData<BuildingData>(req.PrefabEntity).TotalWorkLoad <= 0f)
+            if (!em.HasComponent<BuildingComponent>(req.PrefabEntity) ||
+                !em.HasComponent<BuildingConstruction>(req.PrefabEntity) ||
+                !em.HasComponent<EntityOwner>(req.PrefabEntity) ||
+                !em.HasComponent<EntityHealth>(req.PrefabEntity) ||
+                !em.HasBuffer<EntityResourceCost>(req.PrefabEntity) ||
+                !math.isfinite(em.GetComponentData<BuildingComponent>(req.PrefabEntity).WorkLoad) ||
+                em.GetComponentData<BuildingComponent>(req.PrefabEntity).WorkLoad <= 0f)
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
             }
+
+            bool allowed = false;
+            if (em.HasBuffer<PlaceBuildingWorkerElement>(reqEntity))
+                foreach (var entry in em.GetBuffer<PlaceBuildingWorkerElement>(reqEntity))
+                {
+                    if (!em.Exists(entry.WorkerEntity) || !em.HasComponent<EntityOwner>(entry.WorkerEntity) || !em.HasBuffer<BuildOffer>(entry.WorkerEntity)
+                        || em.GetComponentData<EntityOwner>(entry.WorkerEntity).PlayerID != req.PlayerId) continue;
+                    foreach (var offer in em.GetBuffer<BuildOffer>(entry.WorkerEntity))
+                        if (offer.DefinitionID == em.GetComponentData<BuildingComponent>(req.PrefabEntity).DefinitionID) allowed = true;
+                }
+            if (!allowed) { ecb.DestroyEntity(reqEntity); continue; }
 
             if (!CanAfford(em, req.PlayerId, req.PrefabEntity))
             {
@@ -86,6 +97,8 @@ public partial struct BuildingPlacementSystem : ISystem
             DeductCost(em, req.PlayerId, req.PrefabEntity);
 
             Entity building = em.Instantiate(req.PrefabEntity);
+            em.SetComponentData(building, new BuildingConstruction { Phase = ConstructionPhase.Planned });
+            em.AddComponentData(building, new PopulationAccount { PlayerID = -1 });
 
             if (em.HasComponent<LocalTransform>(building))
             {
@@ -98,18 +111,18 @@ public partial struct BuildingPlacementSystem : ISystem
                 em.AddComponentData(building, LocalTransform.FromPosition(req.Position));
             }
 
-            if (em.HasComponent<Unit>(building))
+            if (em.HasComponent<EntityOwner>(building))
             {
-                var u = em.GetComponentData<Unit>(building);
-                u.playerID = req.PlayerId;
+                var u = em.GetComponentData<EntityOwner>(building);
+                u.PlayerID = req.PlayerId;
                 em.SetComponentData(building, u);
             }
 
-            if (em.HasComponent<Health>(building))
+            if (em.HasComponent<EntityHealth>(building))
             {
-                var h = em.GetComponentData<Health>(building);
-                h.healthAmount = math.min(1f, h.maxHealthAmount);
-                h.OnHealthChanged = true;
+                var h = em.GetComponentData<EntityHealth>(building);
+                h.CurrentHP = math.min(1f, h.MaxHP);
+                h.Changed = true;
                 em.SetComponentData(building, h);
             }
 
@@ -131,7 +144,7 @@ public partial struct BuildingPlacementSystem : ISystem
                 for (int w = 0; w < workerBuffer.Length; w++)
                 {
                     Entity worker = workerBuffer[w].WorkerEntity;
-                    if (worker != Entity.Null && em.Exists(worker) && em.HasComponent<BuilderComponent>(worker))
+                    if (EntityCapabilities.CanBuild(em, worker, building) && em.HasComponent<BuilderComponent>(worker))
                     {
                         CommandDataHelper.AddCommandToQueue(
                             em,
@@ -166,10 +179,10 @@ public partial struct BuildingPlacementSystem : ISystem
         if (playerId < 0)
             return false;
 
-        if (!em.HasBuffer<BuildingCost>(prefabEntity))
+        if (!em.HasBuffer<EntityResourceCost>(prefabEntity))
             return true;
 
-        var costBuffer = em.GetBuffer<BuildingCost>(prefabEntity);
+        var costBuffer = em.GetBuffer<EntityResourceCost>(prefabEntity);
         for (int i = 0; i < costBuffer.Length; i++)
         {
             var cost = costBuffer[i];
@@ -185,10 +198,10 @@ public partial struct BuildingPlacementSystem : ISystem
 
     private static void DeductCost(EntityManager em, int playerId, Entity prefabEntity)
     {
-        if (playerId < 0 || !em.HasBuffer<BuildingCost>(prefabEntity))
+        if (playerId < 0 || !em.HasBuffer<EntityResourceCost>(prefabEntity))
             return;
 
-        var costBuffer = em.GetBuffer<BuildingCost>(prefabEntity);
+        var costBuffer = em.GetBuffer<EntityResourceCost>(prefabEntity);
         for (int i = 0; i < costBuffer.Length; i++)
         {
             var cost = costBuffer[i];
@@ -255,3 +268,5 @@ public partial struct BuildingPlacementSystem : ISystem
         }
     }
 }
+
+
