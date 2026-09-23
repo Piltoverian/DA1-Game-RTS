@@ -8,6 +8,7 @@ public partial struct ShootAttackSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
+        state.RequireForUpdate<GameDataRegistryComponent>();
         state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
     }
 
@@ -28,12 +29,13 @@ public partial struct ShootAttackSystem : ISystem
 
         ComponentLookup<MovementSteeringComponent> steeringLookup =
             SystemAPI.GetComponentLookup<MovementSteeringComponent>(true);
-
+        var registryEntity = SystemAPI.GetSingletonEntity<GameDataRegistryComponent>();
+        var registry = SystemAPI.GetBuffer<RegistryBlobElement>(registryEntity);
+        var Prefab= SystemAPI.GetBuffer<RegistryPrefabElement>(registryEntity);
         foreach (var (
                      localTransform,
                      shootAttack,
                      target,
-                     movementAgent,
                      weaponBuffer,
                      unit,
                      entity)
@@ -41,14 +43,17 @@ public partial struct ShootAttackSystem : ISystem
                          RefRW<LocalTransform>,
                          RefRO<ShootAttack>,
                          RefRW<Target>,
-                         RefRO<MovementAgentComponent>,
                          DynamicBuffer<UnitWeaponSlot>,
-                         RefRO<Unit>>()
+                         RefRO<EntityOwner>>()
                      .WithEntityAccess())
         {
+            if (SystemAPI.HasComponent<BuildingConstruction>(entity) && SystemAPI.GetComponent<BuildingConstruction>(entity).Phase != ConstructionPhase.Completed) continue;
             Entity targetEntity = target.ValueRO.targetEntity;
-
-            if (!IsValidTarget(ref state, targetEntity, unit.ValueRO.playerID))
+            var attackReference = registry.GetBlobByID<AttackBlob>(shootAttack.ValueRO.IDs, out var result);
+            if (result != FunctionResult.Success)
+                continue;
+            ref var attackBlob = ref attackReference.Value;
+            if (!IsValidTarget(ref state, targetEntity, unit.ValueRO.PlayerID))
             {
                 target.ValueRW.targetEntity = Entity.Null;
                 continue;
@@ -76,13 +81,10 @@ public partial struct ShootAttackSystem : ISystem
 
             float distanceSq = math.lengthsq(toTarget);
 
-            float attackDistanceSq =
-                shootAttack.ValueRO.attackDistance *
-                shootAttack.ValueRO.attackDistance;
-
+            float attackDistanceSq =attackBlob.Range * attackBlob.Range;
             if (distanceSq > attackDistanceSq)
             {
-                MovementAgentAPI.SetTarget(
+                if (SystemAPI.HasComponent<MovementAgentComponent>(entity)) MovementAgentAPI.SetTarget(
                     state.EntityManager,
                     entity,
                     targetPosition,
@@ -95,7 +97,7 @@ public partial struct ShootAttackSystem : ISystem
 
             // Trong tầm bắn thì dừng lại để bắn.
             // Chỉ gọi PauseAgent nếu agent đang có target để tránh record ECB thừa.
-            if (movementAgent.ValueRO.hastarget)
+            if (SystemAPI.HasComponent<MovementAgentComponent>(entity) && SystemAPI.GetComponent<MovementAgentComponent>(entity).hastarget)
             {
                 MovementAgentAPI.PauseAgent(
                     state.EntityManager,
@@ -108,35 +110,38 @@ public partial struct ShootAttackSystem : ISystem
                 ref localTransform.ValueRW,
                 toTarget,
                 deltaTime,
-                entity,
+                attackBlob.RotationSpeed,
                 ref steeringLookup
             );
 
             if (!IsFacingTargetYawOnly(localTransform.ValueRO, toTarget))
                 continue;
 
-            for (int i = 0; i < weaponBuffer.Length; i++)
+            for (int i = 0; i < weaponBuffer.Length && i < attackBlob.Weapons.Length; i++)
             {
                 ref UnitWeaponSlot weapon =
                     ref weaponBuffer.ElementAt(i);
-
+                ref WeaponDefinitionBlob weaponDefinition =
+                    ref attackBlob.Weapons[i];
                 weapon.timer -= deltaTime;
 
                 if (weapon.timer > 0f)
                     continue;
 
-                weapon.timer = weapon.timerMax;
-
-                if (weapon.bulletPrefab == Entity.Null)
+                weapon.timer = weaponDefinition.Cooldown;
+                if (weaponDefinition.ProjectilePrefabIndex < 0 || weaponDefinition.ProjectilePrefabIndex >= Prefab.Length) continue;
+                Entity BulletPreFab = Prefab[weaponDefinition.ProjectilePrefabIndex].Prefab;
+                if (BulletPreFab == Entity.Null)
                     continue;
 
                 SpawnProjectile(
                     ref state,
                     ecb,
                     localTransform.ValueRO,
-                    weapon,
+                    weaponDefinition,
+                    BulletPreFab,
                     targetEntity,
-                    unit.ValueRO.playerID,
+                    unit.ValueRO.PlayerID,
                     entity
                 );
             }
@@ -167,19 +172,19 @@ public partial struct ShootAttackSystem : ISystem
         if (!SystemAPI.HasComponent<LocalTransform>(targetEntity))
             return false;
 
-        if (!SystemAPI.HasComponent<Health>(targetEntity))
+        if (!SystemAPI.HasComponent<EntityHealth>(targetEntity))
             return false;
 
-        Health targetHealth = SystemAPI.GetComponent<Health>(targetEntity);
-        if (targetHealth.healthAmount <= 0f)
+        EntityHealth targetHealth = SystemAPI.GetComponent<EntityHealth>(targetEntity);
+        if (targetHealth.CurrentHP <= 0f)
             return false;
 
-        if (SystemAPI.HasComponent<Unit>(targetEntity))
+        if (SystemAPI.HasComponent<EntityOwner>(targetEntity))
         {
-            Unit targetUnit =
-                SystemAPI.GetComponent<Unit>(targetEntity);
+            EntityOwner targetUnit =
+                SystemAPI.GetComponent<EntityOwner>(targetEntity);
 
-            if (targetUnit.playerID == attackerPlayerID)
+            if (targetUnit.PlayerID == attackerPlayerID)
                 return false;
         }
 
@@ -190,23 +195,13 @@ public partial struct ShootAttackSystem : ISystem
         ref LocalTransform transform,
         float3 toTarget,
         float deltaTime,
-        Entity entity,
+        float rotationSpeed,
         ref ComponentLookup<MovementSteeringComponent> steeringLookup)
     {
         toTarget.y = 0f;
 
         if (math.lengthsq(toTarget) < 0.001f)
             return;
-
-        float rotationSpeed = 10f;
-
-        if (steeringLookup.HasComponent(entity))
-        {
-            MovementSteeringComponent steering =
-                steeringLookup[entity];
-
-            rotationSpeed = steering.rotationSpeed;
-        }
 
         float3 flatDirection =
             math.normalizesafe(toTarget, math.forward());
@@ -248,12 +243,13 @@ public partial struct ShootAttackSystem : ISystem
         ref SystemState state,
         EntityCommandBuffer ecb,
         LocalTransform shooterTransform,
-        UnitWeaponSlot weapon,
+        WeaponDefinitionBlob weapon,
+        Entity BulletPrefab,
         Entity targetEntity,
         int shooterPlayerID,
         Entity shooterEntity)
     {
-        Entity projectilePrefab = weapon.bulletPrefab;
+        Entity projectilePrefab = BulletPrefab;
 
         Entity projectileEntity =
             ecb.Instantiate(projectilePrefab);
@@ -266,7 +262,7 @@ public partial struct ShootAttackSystem : ISystem
          * Ở đây ta convert local muzzle position sang world position.
          */
         float3 spawnWorldPosition =
-            shooterTransform.TransformPoint(weapon.bulletSpawnLocalPos);
+            shooterTransform.TransformPoint(weapon.SpawnOffset);
 
         ApplyProjectileTransform(
             ref state,
@@ -341,13 +337,16 @@ public partial struct ShootAttackSystem : ISystem
         Entity projectilePrefab,
         int shooterPlayerID)
     {
-        if (!state.EntityManager.HasComponent<Unit>(projectilePrefab))
+        if (!state.EntityManager.HasComponent<EntityOwner>(projectilePrefab))
+        {
+            ecb.AddComponent(projectileEntity, new EntityOwner { PlayerID = shooterPlayerID });
             return;
+        }
 
-        Unit projectileUnit =
-            state.EntityManager.GetComponentData<Unit>(projectilePrefab);
+        EntityOwner projectileUnit =
+            state.EntityManager.GetComponentData<EntityOwner>(projectilePrefab);
 
-        projectileUnit.playerID = shooterPlayerID;
+        projectileUnit.PlayerID = shooterPlayerID;
 
         ecb.SetComponent(projectileEntity, projectileUnit);
     }
@@ -379,7 +378,7 @@ public partial struct ShootAttackSystem : ISystem
         EntityCommandBuffer ecb,
         Entity projectileEntity,
         Entity projectilePrefab,
-        UnitWeaponSlot weapon,
+        WeaponDefinitionBlob weapon,
         Entity shooterEntity,
         int shooterPlayerID)
     {
@@ -391,8 +390,8 @@ public partial struct ShootAttackSystem : ISystem
             Bullet bullet =
                 state.EntityManager.GetComponentData<Bullet>(projectilePrefab);
 
-            bullet.damage = weapon.damage;
-            bullet.speed = weapon.bulletSpeed;
+            bullet.damage = weapon.Damage;
+            bullet.speed = weapon.ProjectileSpeed;
             bullet.sourceEntity = shooterEntity;
             bullet.playerID = shooterPlayerID;
 
@@ -407,8 +406,8 @@ public partial struct ShootAttackSystem : ISystem
             ArtilleryBullet artilleryBullet =
                 state.EntityManager.GetComponentData<ArtilleryBullet>(projectilePrefab);
 
-            artilleryBullet.aoeDamage = weapon.damage;
-            artilleryBullet.speed = weapon.bulletSpeed;
+            artilleryBullet.aoeDamage = weapon.Damage;
+            artilleryBullet.speed = weapon.ProjectileSpeed;
             artilleryBullet.sourceEntity = shooterEntity;
             artilleryBullet.playerID = shooterPlayerID;
 
@@ -433,3 +432,4 @@ public partial struct ShootAttackSystem : ISystem
          */
     }
 }
+

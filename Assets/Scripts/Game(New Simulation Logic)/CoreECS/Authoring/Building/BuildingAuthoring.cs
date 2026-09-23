@@ -1,117 +1,52 @@
-using JetBrains.Annotations;
+using System;
+using Unity.Collections;
 using Unity.Entities;
-using Unity.Rendering;
+using Unity.Mathematics;
 using UnityEngine;
 
-public enum BuildingType
-{
-    Barracks,
-    Tower,
-    ResourceDepot,
-    House
-}
-
-public enum BuildingState
-{
-    StartBuild,
-    UnderConstruction,
-    Completed,
-    Destroyed
-}
-
+[DisallowMultipleComponent]
 public class BuildingAuthoring : MonoBehaviour
 {
-    [Header("Data")]
-    public BuildingDefinition buildingDef;
+    public BuildingSO buildingDef;
+    [Tooltip("-1 starts at MaxHP from BasedSO; otherwise use this instance's initial HP.")]
+    public float initialHealth = -1f;
+    [Range(0f, 1f)] public float initialConstructionProgress;
 
-    class Baker : Baker<BuildingAuthoring>
+    public class Baker : EntityDefinitionBaker<BuildingAuthoring>
     {
-        public override void Bake(BuildingAuthoring src)
+        public override void Bake(BuildingAuthoring authoring)
         {
-            Entity e = GetEntity(TransformUsageFlags.Dynamic);
+            if (GetComponent<UnitAuthoring>() != null)
+                throw new InvalidOperationException("BuildingAuthoring and UnitAuthoring cannot share an entity.");
+            DependsOn(authoring.buildingDef);
+            if (authoring.buildingDef == null)
+                throw new InvalidOperationException("BuildingAuthoring requires a BuildingSO.");
+            if (!math.isfinite(authoring.buildingDef.WorkLoad) || authoring.buildingDef.WorkLoad <= 0f)
+                throw new InvalidOperationException("BuildingSO.WorkLoad must be finite and positive.");
+            float progress = authoring.initialConstructionProgress;
+            if (!math.isfinite(progress) || progress < 0f || progress > 1f)
+                throw new InvalidOperationException("Initial construction progress must be between 0 and 1.");
 
-            BuildingType type = src.buildingDef != null ? src.buildingDef.BuildingType : BuildingType.Barracks;
-            float totalWork = src.buildingDef != null ? src.buildingDef.TotalWorkLoad : 100f;
-
-            AddComponent(e, new BuildingData
+            Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            BakeBase(entity, authoring.buildingDef.basedSO, authoring.initialHealth);
+            AddComponent(entity, new BuildingComponent
             {
-                Type = type,
-                TotalWorkLoad = totalWork
+                DefinitionID = new FixedString64Bytes(authoring.buildingDef.basedSO.ID),
+                WorkLoad = authoring.buildingDef.WorkLoad,
+                PopulationCapacity = authoring.buildingDef.PopulationCapacity
             });
-
-            AddComponent(e, new ConstructionData
+            var costs = AddBuffer<EntityResourceCost>(entity);
+            foreach (var cost in authoring.buildingDef.Cost)
+                costs.Add(new EntityResourceCost { Type = cost.Type, Amount = cost.Amount });
+            var tags = AddBuffer<BuildingTagElement>(entity);
+            foreach (var tag in authoring.buildingDef.Tags) tags.Add(new BuildingTagElement { Value = tag });
+            AddComponent(entity, new RevealHeightProperty { Value = math.lerp(-10f, 10f, progress) });
+            AddComponent(entity, new BuildingConstruction
             {
-                currentWorkLoad = 0f
+                CompletedWork = progress * authoring.buildingDef.WorkLoad,
+                Phase = progress >= 1f ? ConstructionPhase.Completed :
+                    progress > 0f ? ConstructionPhase.UnderConstruction : ConstructionPhase.Planned
             });
-
-            var costBuffer = AddBuffer<BuildingCost>(e);
-            if (src.buildingDef != null && src.buildingDef.Cost != null)
-            {
-                foreach (var c in src.buildingDef.Cost)
-                {
-                    if (c.Amount <= 0f) continue;
-                    bool isFound = false;
-                    for (int i = 0; i < costBuffer.Length; i++)
-                    {
-                        if (costBuffer[i].Type == c.Type)
-                        {
-                            var existing = costBuffer[i];
-                            existing.Amount += c.Amount;
-                            costBuffer[i] = existing;
-                            isFound = true;
-                            break;
-                        }
-                    }
-
-                    if (!isFound)
-                    {
-                        costBuffer.Add(new BuildingCost
-                        {
-                            Type = c.Type,
-                            Amount = c.Amount
-                        });
-                    }
-                }
-            }
-
-            if (type == BuildingType.ResourceDepot)
-            {
-                AddComponent<ResourceDepotTag>(e);
-            }
-
-            AddComponent(e, new BuildingStateComponent
-            {
-                Current = BuildingState.StartBuild,
-                Previous = BuildingState.StartBuild
-            });
-            AddComponent(e, new RevealHeightProperty { Value = -10f });
         }
     }
-}
-
-public struct BuildingStateComponent : IComponentData
-{
-    public BuildingState Current;
-    public BuildingState Previous;
-}
-
-public struct BuildingData : IComponentData
-{
-    public BuildingType Type;
-    public float TotalWorkLoad;
-}
-
-public struct ConstructionData : IComponentData
-{
-    public float currentWorkLoad;
-}
-
-public struct ResourceDepotTag : IComponentData
-{
-}
-
-public struct BuildingCost: IBufferElementData
-{
-    public ResourceType Type;
-    public float Amount;
 }

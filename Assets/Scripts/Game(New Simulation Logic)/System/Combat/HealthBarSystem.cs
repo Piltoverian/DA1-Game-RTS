@@ -22,13 +22,13 @@ partial struct HealthBarSystem : ISystem
                 transform.ValueRW.Rotation = parentLocalTransform.InverseTransformRotation(quaternion.LookRotation(cameraForwar, math.up()));
             }
 
-            Health health = SystemAPI.GetComponent<Health>(healthBar.ValueRO.healthEntity);
-            if (!health.OnHealthChanged)
+            EntityHealth health = SystemAPI.GetComponent<EntityHealth>(healthBar.ValueRO.healthEntity);
+            if (!health.Changed)
             {
                 continue;
             }
-            //Debug.Log(health.OnHealthChanged);
-            float healthNormalized = (float)health.healthAmount / health.maxHealthAmount;
+            //Debug.Log(health.Changed);
+            float healthNormalized = (float)health.CurrentHP / health.MaxHP;
 
             if (healthNormalized == 1f)
             {

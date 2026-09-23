@@ -148,8 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45ac3d5d547ca7649a60ae51e0ca56a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShootAttackAuthoring
-  attackDistance: 15
-  weapons: []
+  definition: {fileID: 11400000, guid: 9fbcd506527868b4c9901751c549b12a, type: 2}
 --- !u!114 &-4530266368495814317
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,10 +178,8 @@ MonoBehaviour:
   speed: 7
   radius: 0.75
   arrivalRadius: 5.6
-  formationRange: 25
   stoppingDistance: 1.125
   rotationSpeed: 8
-  formationType: 0
   useTestTarget: 0
   testTarget:
     x: 50
@@ -261,7 +258,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b0b6deb153286348a7154a362a0dc44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveOverrideAuthoring
-  stopDistance: 3
 --- !u!114 &4590490605873051776
 MonoBehaviour:
   m_ObjectHideFlags: 0

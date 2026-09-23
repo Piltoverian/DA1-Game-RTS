@@ -8,7 +8,6 @@ using UnityEngine.UI;
 public class CommandMenu : MonoBehaviour
 {
     [SerializeField] private GameObject ButtonPrefab;
-    [SerializeField] private BuildingDatabase buildingPlacementDatabase;
 
     private Entity lastSelected;
 
@@ -42,68 +41,178 @@ public class CommandMenu : MonoBehaviour
         if (!entityManager.Exists(selectedEntity))
             return;
 
-        if (!entityManager.HasBuffer<CommandElement>(selectedEntity))
-        {
+        bool hasBuildOffers = entityManager.HasBuffer<BuildOffer>(selectedEntity);
+        bool hasProduction = entityManager.HasBuffer<ProductionElement>(selectedEntity);
+        bool hasCommands = entityManager.HasBuffer<CommandElement>(selectedEntity);
+
+        if (!hasBuildOffers && !hasProduction && !hasCommands)
             return;
-        }
 
-        NativeList<CommandElement> commands =
-            CommandDataHelper.GetCommandsForEntity(entityManager, selectedEntity);
-
-        foreach (CommandElement command in commands)
+        if (hasBuildOffers)
         {
-            GameObject buttonObject = Instantiate(ButtonPrefab, transform);
+            var buildOffers = entityManager.GetBuffer<BuildOffer>(selectedEntity);
+            for (int i = 0; i < buildOffers.Length; i++)
+            {
+                var offer = buildOffers[i];
+                GameObject buttonObject = Instantiate(ButtonPrefab, transform);
+                Image image = GetButtonImageComponent(buttonObject);
 
-            Image image = GetButtonImageComponent(buttonObject);
-            var IconMapping= Resources.Load<IconMapping>("IconMapping");
-            if (IconMapping == null)
-            {
-                Debug.LogError("IconMapping asset not found in Resources folder.");
-                continue;
-            }
-            else
-            {
-                if (command.Type == CommandType.Build)
+                Sprite icon = EntityPresentation.BuildingIcon(offer.DefinitionID);
+                if (icon != null && image != null)
                 {
-                    var buildingdef = buildingPlacementDatabase.GetByIndex(command.indexInUnitCommandList);
-                    var buildingName = buildingdef != null ? buildingdef.DisplayName : "Unknown Building";
-
-                    image.sprite = IconMapping.GetIconOfCommand(buildingName);
+                    image.sprite = icon;
+                }
+                else if (image != null)
+                {
+                    var iconMapping = Resources.Load<IconMapping>("IconMapping");
+                    if (iconMapping != null)
+                    {
+                        string bName = EntityPresentation.BuildingName(offer.DefinitionID);
+                        image.sprite = iconMapping.GetIconOfCommand(bName);
+                    }
                 }
 
-                if (command.Type == CommandType.Progression)
+                CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
+                if (commandButton == null)
+                    commandButton = buttonObject.AddComponent<CommandButton>();
+
+                commandButton.SetBuildOffer(offer.DefinitionID, i);
+
+                Button button = buttonObject.GetComponent<Button>();
+                if (button != null)
                 {
-                    var productlist=entityManager.GetBuffer<ProductionElement>(selectedEntity);
-                    var commandprefab= productlist[command.indexInUnitCommandList].UnitPrefab;
-                    if (entityManager.HasComponent<Unit>(commandprefab))
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(commandButton.OnClick);
+                }
+            }
+        }
+
+        if (hasProduction && !hasCommands)
+        {
+            var productList = entityManager.GetBuffer<ProductionElement>(selectedEntity);
+            for (int i = 0; i < productList.Length; i++)
+            {
+                var offer = productList[i];
+                GameObject buttonObject = Instantiate(ButtonPrefab, transform);
+                Image image = GetButtonImageComponent(buttonObject);
+                if (image != null)
+                    image.sprite = EntityPresentation.JobIcon(offer);
+
+                CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
+                if (commandButton == null)
+                    commandButton = buttonObject.AddComponent<CommandButton>();
+
+                commandButton.SetCommandDataFromCommandData(new CommandData
+                {
+                    Type = CommandType.Progression,
+                    indexInUnitCommandList = i
+                });
+
+                Button button = buttonObject.GetComponent<Button>();
+                if (button != null)
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(commandButton.OnClick);
+                }
+                ApplyProductionUnlockState(entityManager, GameManager.Instance.GetModule<SelectManager>().currentContext.playerId, offer, button, image);
+            }
+        }
+
+        if (hasCommands)
+        {
+            NativeList<CommandElement> commands =
+                CommandDataHelper.GetCommandsForEntity(entityManager, selectedEntity);
+
+            foreach (CommandElement command in commands)
+            {
+                if (hasBuildOffers && command.Type == CommandType.Build)
+                    continue;
+
+                GameObject buttonObject = Instantiate(ButtonPrefab, transform);
+                Image image = GetButtonImageComponent(buttonObject);
+
+                if (command.Type == CommandType.Build)
+                {
+                    var iconMapping = Resources.Load<IconMapping>("IconMapping");
+                    if (iconMapping != null && image != null)
+                        image.sprite = iconMapping.GetIconOfCommand("Build");
+                }
+                else if (command.Type == CommandType.Progression)
+                {
+                    if (entityManager.HasBuffer<ProductionElement>(selectedEntity))
                     {
-                        var unitName = entityManager.GetComponentData<Unit>(commandprefab);
-                        if (IconMapping.GetIconOfCommand(unitName.GetValueNormalizedString()) != null)
+                        var productList = entityManager.GetBuffer<ProductionElement>(selectedEntity);
+                        if (command.indexInUnitCommandList >= 0 && command.indexInUnitCommandList < productList.Length)
                         {
-                            image.sprite = IconMapping.GetIconOfCommand(unitName.GetValueNormalizedString());
+                            if (image != null)
+                                image.sprite = EntityPresentation.JobIcon(productList[command.indexInUnitCommandList]);
                         }
                     }
                 }
+
+                CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
+                if (commandButton == null)
+                    commandButton = buttonObject.AddComponent<CommandButton>();
+
+                commandButton.SetCommandDataFromBufferElement(command);
+
+                Button button = buttonObject.GetComponent<Button>();
+                if (button != null)
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(commandButton.OnClick);
+                }
+
+                if (command.Type == CommandType.Progression && entityManager.HasBuffer<ProductionElement>(selectedEntity))
+                {
+                    var productList = entityManager.GetBuffer<ProductionElement>(selectedEntity);
+                    if (command.indexInUnitCommandList >= 0 && command.indexInUnitCommandList < productList.Length)
+                    {
+                        ApplyProductionUnlockState(entityManager, GameManager.Instance.GetModule<SelectManager>().currentContext.playerId, productList[command.indexInUnitCommandList], button, image);
+                    }
+                }
             }
-            CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
 
-            if (commandButton == null)
+            commands.Dispose();
+        }
+    }
+
+    private void ApplyProductionUnlockState(EntityManager entityManager, int playerId, ProductionElement offer, Button button, Image image)
+    {
+        if (button == null) return;
+        if (!ProductionJobs.TryRegistry(entityManager, out var registryEntity)) return;
+        var registry = entityManager.GetBuffer<RegistryBlobElement>(registryEntity, true);
+        if (offer.Kind == ProductionKind.Train)
+        {
+            var job = registry.GetBlobByID<TrainBlob>(offer.JobID, out var found);
+            if (found == FunctionResult.Success)
             {
-                commandButton = buttonObject.AddComponent<CommandButton>();
-            }
-
-            commandButton.SetCommandDataFromBufferElement(command);
-
-            Button button = buttonObject.GetComponent<Button>();
-
-            if (button != null)
-            {
-                button.onClick.RemoveAllListeners();
-                button.onClick.AddListener(commandButton.OnClick);
+                var status = TechUnlockHelper.CheckUnitUnlockStatus(entityManager, playerId, job.Value.OutputUnitID);
+                if (status != UnitUnlockStatus.Available)
+                {
+                    button.interactable = false;
+                    if (image != null) image.color = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+                }
             }
         }
-
-        commands.Dispose();
+        else if (offer.Kind == ProductionKind.Research)
+        {
+            var job = registry.GetBlobByID<ResearchBlob>(offer.JobID, out var found);
+            if (found == FunctionResult.Success)
+            {
+                var status = TechUnlockHelper.CheckTechUnlockStatus(entityManager, playerId, job.Value.Tech.ID);
+                if (status == TechUnlockStatus.Completed)
+                {
+                    button.interactable = false;
+                    if (image != null) image.color = new Color(0.3f, 0.7f, 0.3f, 0.6f);
+                }
+                else if (status != TechUnlockStatus.Available)
+                {
+                    button.interactable = false;
+                    if (image != null) image.color = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+                }
+            }
+        }
     }
     private void ClearButtons()
     {
@@ -111,32 +220,6 @@ public class CommandMenu : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
-    }
-
-    private string GetCommandLabel(CommandElement command)
-    {
-        if (command.Type == CommandType.Build)
-        {
-            if (buildingPlacementDatabase != null)
-            {
-                BuildingDefinition definition =
-                    buildingPlacementDatabase.GetByIndex(command.indexInUnitCommandList);
-
-                if (definition != null && !string.IsNullOrEmpty(definition.DisplayName))
-                {
-                    return definition.DisplayName;
-                }
-            }
-
-            return "Build " + command.indexInUnitCommandList;
-        }
-
-        if (command.Type == CommandType.Progression)
-        {
-            return "Train Unit " + command.indexInUnitCommandList;
-        }
-
-        return Enum.GetName(typeof(CommandType), command.Type);
     }
 
     Image GetButtonImageComponent(GameObject buttonObject)
@@ -154,3 +237,5 @@ public class CommandMenu : MonoBehaviour
         return null;
     }
 }
+
+

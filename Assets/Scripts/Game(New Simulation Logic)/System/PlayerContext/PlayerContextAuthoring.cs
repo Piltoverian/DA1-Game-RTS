@@ -9,6 +9,8 @@ public class PlayerContextAuthoring : MonoBehaviour
 {
     public int playerId = 0;
     public int civilizationId = 0;
+    public CivDef civDef;
+    public string civId = "";
     public Age age = Age.Industrial;
     public List<ResourcePair> startResources;
 
@@ -16,13 +18,23 @@ public class PlayerContextAuthoring : MonoBehaviour
     {
         public override void Bake(PlayerContextAuthoring authoring)
         {
+            if (authoring.civDef != null)
+                DependsOn(authoring.civDef);
+
             Entity entity = GetEntity(TransformUsageFlags.None);
+            FixedString64Bytes civKey = authoring.civDef != null && !string.IsNullOrEmpty(authoring.civDef.Id)
+                ? new FixedString64Bytes(authoring.civDef.Id)
+                : new FixedString64Bytes(authoring.civId);
+
             var playerContext = new PlayerContext(
                 authoring.playerId,
                 authoring.civilizationId,
-                authoring.age
+                authoring.age,
+                civKey
             );
             AddComponent(entity, playerContext);
+            AddBuffer<PlayerTechnology>(entity);
+            AddBuffer<PlayerPendingTech>(entity);
 
             var buffer = AddBuffer<ResourcePair>(entity);
             buffer.ResizeUninitialized(authoring.startResources.Count);
@@ -47,3 +59,4 @@ public class PlayerContextAuthoring : MonoBehaviour
         }
     }
 }
+

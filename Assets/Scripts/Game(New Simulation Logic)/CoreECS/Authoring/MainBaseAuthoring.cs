@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Attach this authoring component to the main base GameObject.
 /// The same GameObject should also contain BuildingAuthoring so the ECS entity
-/// has BuildingData.PlayerID.
+/// has BuildingComponent.PlayerID.
 /// </summary>
 public class MainBaseAuthoring : MonoBehaviour
 {

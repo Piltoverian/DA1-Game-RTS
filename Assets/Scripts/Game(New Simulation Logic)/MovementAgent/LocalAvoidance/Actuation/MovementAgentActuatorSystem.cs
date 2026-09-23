@@ -96,7 +96,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 
                 float3 correction = pushDir * pushMag * avoidance.radius;
                 
-                // GIỚI HẠN LỰC ĐẨY: Không cho phép Unit bị teleport đi quá xa trong 1 frame
+                // GIỚI HẠN LỰC ĐẨY: Không cho phép EntityOwner bị teleport đi quá xa trong 1 frame
                 // Tối đa trượt đi 1 khoảng bằng 1.5 lần bán kính của nó mỗi frame
                 float maxCorrection = avoidance.radius * 1.5f;
                 if (math.length(correction) > maxCorrection)

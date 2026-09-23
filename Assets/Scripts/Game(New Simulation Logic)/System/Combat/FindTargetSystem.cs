@@ -4,17 +4,17 @@ using Unity.Entities;
 using Unity.Physics;
 using Unity.Transforms;
 
-[DisableAutoCreation]
+[UpdateBefore(typeof(ShootAttackSystem))]
 [BurstCompile]
 public partial struct FindTargetSystem : ISystem
 {
-    private ComponentLookup<Unit> unitLookup;
-    private ComponentLookup<Health> healthLookup;
+    private ComponentLookup<EntityOwner> unitLookup;
+    private ComponentLookup<EntityHealth> healthLookup;
 
     public void OnCreate(ref SystemState state)
     {
-        unitLookup = state.GetComponentLookup<Unit>(true);
-        healthLookup = state.GetComponentLookup<Health>(true);
+        unitLookup = state.GetComponentLookup<EntityOwner>(true);
+        healthLookup = state.GetComponentLookup<EntityHealth>(true);
 
         state.RequireForUpdate<PhysicsWorldSingleton>();
     }
@@ -37,12 +37,14 @@ public partial struct FindTargetSystem : ISystem
         foreach (var (
                      localTransform,
                      findTarget,
-                     target)
+                     target, owner)
                  in SystemAPI.Query<
                      RefRO<LocalTransform>,
                      RefRW<FindTarget>,
-                     RefRW<Target>>())
+                     RefRW<Target>, RefRO<EntityOwner>>())
         {
+            Entity current = target.ValueRO.targetEntity;
+            if (current != Entity.Null && healthLookup.HasComponent(current) && healthLookup[current].CurrentHP > 0 && unitLookup.HasComponent(current) && unitLookup[current].PlayerID != owner.ValueRO.PlayerID) continue;
             findTarget.ValueRW.timer -= SystemAPI.Time.DeltaTime;
 
             if (findTarget.ValueRO.timer > 0f)
@@ -56,7 +58,7 @@ public partial struct FindTargetSystem : ISystem
             {
                 BelongsTo = PhysicsLayersDefine.Everything,
 
-                // Tìm cả Unit và Building
+                // Tìm cả EntityOwner và Building
                 CollidesWith =
                     PhysicsLayersDefine.Units |
                     PhysicsLayersDefine.Building,
@@ -87,7 +89,7 @@ public partial struct FindTargetSystem : ISystem
                 if (!healthLookup.HasComponent(hitEntity))
                     continue;
 
-                if (!IsWantedTarget(hitEntity, findTarget.ValueRO.playerID))
+                if (!IsWantedTarget(hitEntity, owner.ValueRO.PlayerID))
                     continue;
 
                 float distanceSq = distanceHitList[i].Distance * distanceHitList[i].Distance;
@@ -109,9 +111,10 @@ public partial struct FindTargetSystem : ISystem
     {
         if (unitLookup.HasComponent(entity))
         {
-            return unitLookup[entity].playerID == wantedPlayerID;
+            return unitLookup[entity].PlayerID != wantedPlayerID && healthLookup[entity].CurrentHP > 0;
         }
 
         return false;
     }
 }
+

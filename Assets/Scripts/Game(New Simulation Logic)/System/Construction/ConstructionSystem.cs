@@ -37,14 +37,14 @@ public partial struct ConstructionSystem : ISystem
         BufferLookup<LinkedEntityGroup> linkedEntityLookup =
             SystemAPI.GetBufferLookup<LinkedEntityGroup>(true);
 
-        foreach (var (construction, building, buildingState, entity) in
-                 SystemAPI.Query<RefRO<ConstructionData>, RefRO<BuildingData>, RefRW<BuildingStateComponent>>()
+        foreach (var (building, buildingState, entity) in
+                 SystemAPI.Query<RefRO<BuildingComponent>, RefRW<BuildingConstruction>>()
                      .WithEntityAccess())
         {
-            float totalWork = building.ValueRO.TotalWorkLoad;
-            if (!math.isfinite(totalWork) || totalWork <= 0f || buildingState.ValueRO.Current == BuildingState.Destroyed)
+            float totalWork = building.ValueRO.WorkLoad;
+            if (!math.isfinite(totalWork) || totalWork <= 0f || buildingState.ValueRO.Phase == ConstructionPhase.Destroyed)
                 continue;
-            float progress = math.saturate(construction.ValueRO.currentWorkLoad / totalWork);
+            float progress = math.saturate(buildingState.ValueRO.CompletedWork / totalWork);
             float baseHeight = transformLookup.HasComponent(entity) ? transformLookup[entity].Position.y : 0f;
             float revealValue = baseHeight + math.lerp(-10f, 10f, progress);
 
@@ -66,28 +66,25 @@ public partial struct ConstructionSystem : ISystem
 
             if (progress >= 1f)
             {
-                if (buildingState.ValueRO.Current != BuildingState.Completed)
+                if (buildingState.ValueRO.Phase != ConstructionPhase.Completed)
                 {
-                    buildingState.ValueRW.Previous = buildingState.ValueRO.Current;
-                    buildingState.ValueRW.Current = BuildingState.Completed;
+                    buildingState.ValueRW.Phase = ConstructionPhase.Completed;
                 }
 
-                ecb.RemoveComponent<ConstructionData>(entity);
+
             }
-            else if (progress >= 0.1f)
+            else if (progress > 0f)
             {
-                if (buildingState.ValueRO.Current != BuildingState.UnderConstruction)
+                if (buildingState.ValueRO.Phase != ConstructionPhase.UnderConstruction)
                 {
-                    buildingState.ValueRW.Previous = buildingState.ValueRO.Current;
-                    buildingState.ValueRW.Current = BuildingState.UnderConstruction;
+                    buildingState.ValueRW.Phase = ConstructionPhase.UnderConstruction;
                 }
             }
             else
             {
-                if (buildingState.ValueRO.Current != BuildingState.StartBuild)
+                if (buildingState.ValueRO.Phase != ConstructionPhase.Planned)
                 {
-                    buildingState.ValueRW.Previous = buildingState.ValueRO.Current;
-                    buildingState.ValueRW.Current = BuildingState.StartBuild;
+                    buildingState.ValueRW.Phase = ConstructionPhase.Planned;
                 }
             }
         }

@@ -7,12 +7,12 @@ using Unity.Transforms;
 partial struct BulletMoverSystem : ISystem
 {
     private ComponentLookup<LocalTransform> transformLookup;
-    private ComponentLookup<Health> healthLookup;
+    private ComponentLookup<EntityHealth> healthLookup;
     private ComponentLookup<ShootVictim> shootVictimLookup;
     private ComponentLookup<Target> targetLookup;
     private ComponentLookup<MoveOverride> moveOverrideLookup;
     private ComponentLookup<ShootAttack> shootAttackLookup;
-    private ComponentLookup<Unit> unitLookup;
+    private ComponentLookup<EntityOwner> unitLookup;
 
     [BurstCompile]
     public void OnCreate(ref SystemState state)
@@ -22,12 +22,12 @@ partial struct BulletMoverSystem : ISystem
         state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
         transformLookup = state.GetComponentLookup<LocalTransform>(true);
-        healthLookup = state.GetComponentLookup<Health>(false);
+        healthLookup = state.GetComponentLookup<EntityHealth>(false);
         shootVictimLookup = state.GetComponentLookup<ShootVictim>(true);
         targetLookup = state.GetComponentLookup<Target>(false);
         moveOverrideLookup = state.GetComponentLookup<MoveOverride>(true);
         shootAttackLookup = state.GetComponentLookup<ShootAttack>(true);
-        unitLookup = state.GetComponentLookup<Unit>(true);
+        unitLookup = state.GetComponentLookup<EntityOwner>(true);
     }
 
     [BurstCompile]
@@ -90,8 +90,8 @@ partial struct BulletMoverSystem : ISystem
                 if (healthLookup.HasComponent(targetEntity))
                 {
                     var health = healthLookup.GetRefRW(targetEntity);
-                    health.ValueRW.healthAmount -= bullet.ValueRO.damage;
-                    health.ValueRW.OnHealthChanged = true;
+                    health.ValueRW.CurrentHP -= bullet.ValueRO.damage;
+                    health.ValueRW.Changed = true;
                 }
 
                 Entity attacker = bullet.ValueRO.sourceEntity;
@@ -99,7 +99,7 @@ partial struct BulletMoverSystem : ISystem
 
                 bool isAttackerAlive = attacker != Entity.Null &&
                                        healthLookup.HasComponent(attacker) &&
-                                       healthLookup[attacker].healthAmount > 0f;
+                                       healthLookup[attacker].CurrentHP > 0f;
 
                 if (isAttackerAlive && targetLookup.HasComponent(targetEntity))
                 {
@@ -111,7 +111,7 @@ partial struct BulletMoverSystem : ISystem
                     {
                         victimTarget.ValueRW.targetEntity = attacker;
 
-                        int victimFaction = unitLookup.HasComponent(targetEntity) ? unitLookup[targetEntity].playerID : -1;
+                        int victimFaction = unitLookup.HasComponent(targetEntity) ? unitLookup[targetEntity].PlayerID : -1;
                         float3 victimPos = transformLookup[targetEntity].Position;
                         int2 centerCell = GridHelper.WorldToGrid(victimPos, gridComponent);
 
@@ -130,7 +130,7 @@ partial struct BulletMoverSystem : ISystem
                                     {
                                         if (ally == targetEntity) continue;
 
-                                        if (victimFaction != -1 && unitLookup.HasComponent(ally) && unitLookup[ally].playerID == victimFaction)
+                                        if (victimFaction != -1 && unitLookup.HasComponent(ally) && unitLookup[ally].PlayerID == victimFaction)
                                         {
                                             bool allyIdle = targetLookup.HasComponent(ally) &&
                                                             targetLookup[ally].targetEntity == Entity.Null &&

@@ -8,9 +8,9 @@ partial struct ResetEventSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach (RefRW<Health> health in SystemAPI.Query<RefRW<Health>>())
+        foreach (RefRW<EntityHealth> health in SystemAPI.Query<RefRW<EntityHealth>>())
         {
-            health.ValueRW.OnHealthChanged = false;
+            health.ValueRW.Changed = false;
         }
     }
 
