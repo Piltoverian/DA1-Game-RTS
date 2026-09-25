@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Entities.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.UIElements;
 using static UnityEngine.Rendering.STP;
 
 // Preserve the existing serialized mode values and membership behavior.
@@ -15,6 +16,7 @@ public class RegistryAuthoring : MonoBehaviour
     [SerializeField] private GameDataRegistry gameDataRegistry;
     [SerializeField] private BakeMode bakeMode;
 
+    private static RegistryAuthoring __instance;
 
 
     private void Awake()
@@ -24,7 +26,117 @@ public class RegistryAuthoring : MonoBehaviour
         {
             Debug.LogError($"There should be exactly one RegistryAuthoring in the scene, but found {regs.Count()}.");
         }
+        __instance = this;
     }
+
+    public Sprite GetIcon<T>(FixedString64Bytes ID) where T: ScriptableObject
+    {
+        Sprite result;
+        switch(typeof(T))
+        {
+            case Type t when t == typeof(UnitSO):
+                result = gameDataRegistry.Units.FirstOrDefault(u => u.basedSO.ID == ID)?.basedSO.Icon;
+                break;
+            case Type t when t == typeof(BuildingSO):
+                result = gameDataRegistry.Buildings.FirstOrDefault(b => b.basedSO.ID == ID)?.basedSO.Icon;
+                break;
+            case Type t when t == typeof(Job):
+                result = gameDataRegistry.Jobs.FirstOrDefault(j => j.Id == ID)?.Icon;
+                break;
+            case Type t when t == typeof(CivDef):
+                result = gameDataRegistry.Civs.FirstOrDefault(c => c.Id == ID)?.Icon;
+                break;
+            default:
+                throw new NotSupportedException($"Unknown type: {typeof(T)}");
+        }
+        return result;
+    }   
+
+    public string GetName<T>(FixedString64Bytes ID) where T: ScriptableObject
+    {
+        string result;
+        switch (typeof(T))
+        {
+            case Type t when t == typeof(UnitSO):
+                result = gameDataRegistry.Units.FirstOrDefault(u => u.basedSO.ID == ID)?.basedSO.Name;
+                break;
+            case Type t when t == typeof(BuildingSO):
+                result = gameDataRegistry.Buildings.FirstOrDefault(b => b.basedSO.ID == ID)?.basedSO.Name;
+                break;
+            case Type t when t == typeof(Job):
+                result = gameDataRegistry.Jobs.FirstOrDefault(j => j.Id == ID)?.name;
+                break;
+            case Type t when t == typeof(CivDef):
+                result = gameDataRegistry.Civs.FirstOrDefault(c => c.Id == ID)?.name;
+                break;
+            default:
+                throw new NotSupportedException($"Unknown type: {typeof(T)}");
+        }
+        return result;
+    }
+
+    public Sprite GetIcon(FixedString64Bytes ID)
+    {
+        if (gameDataRegistry == null) return null;
+
+        var unit = gameDataRegistry.Units?.FirstOrDefault(u => u != null && u.basedSO != null && u.basedSO.ID == ID);
+        if (unit != null) return unit.basedSO.Icon;
+
+        var bld = gameDataRegistry.Buildings?.FirstOrDefault(b => b != null && b.basedSO != null && b.basedSO.ID == ID);
+        if (bld != null) return bld.basedSO.Icon;
+
+        var job = gameDataRegistry.Jobs?.FirstOrDefault(j => j != null && j.Id == ID);
+        if (job != null) return job.Icon;
+
+        var civ = gameDataRegistry.Civs?.FirstOrDefault(c => c != null && c.Id == ID);
+        if (civ != null) return civ.Icon;
+
+        return null;
+    }
+
+    public string GetName(FixedString64Bytes ID)
+    {
+        if (gameDataRegistry == null) return ID.ToString();
+
+        var unit = gameDataRegistry.Units?.FirstOrDefault(u => u != null && u.basedSO != null && u.basedSO.ID == ID);
+        if (unit != null) return string.IsNullOrEmpty(unit.basedSO.Name) ? unit.name : unit.basedSO.Name;
+
+        var bld = gameDataRegistry.Buildings?.FirstOrDefault(b => b != null && b.basedSO != null && b.basedSO.ID == ID);
+        if (bld != null) return string.IsNullOrEmpty(bld.basedSO.Name) ? bld.name : bld.basedSO.Name;
+
+        var job = gameDataRegistry.Jobs?.FirstOrDefault(j => j != null && j.Id == ID);
+        if (job != null) return job.name;
+
+        var civ = gameDataRegistry.Civs?.FirstOrDefault(c => c != null && c.Id == ID);
+        if (civ != null) return civ.name;
+
+        return ID.ToString();
+    }
+
+    public BuildingSO GetBuildingSO(FixedString64Bytes ID)
+    {
+        if (gameDataRegistry == null || gameDataRegistry.Buildings == null) return null;
+        return gameDataRegistry.Buildings.FirstOrDefault(b => b != null && b.basedSO != null && b.basedSO.ID == ID);
+    }
+
+    public GameObject GetBuildingPrefab(FixedString64Bytes ID)
+    {
+        return gameDataRegistry.Buildings.FirstOrDefault(b => b.basedSO.ID == ID)?.basedSO.Prefab;
+    }
+
+    public static RegistryAuthoring Instance
+    {
+        get
+        {
+            if (__instance==null)
+            {
+                throw new InvalidOperationException("RegistryAuthoring instance is not set. Ensure that there is exactly one RegistryAuthoring in the scene.");
+            }
+            return __instance;
+        }
+    }
+
+
 
     class Baker : Baker<RegistryAuthoring>
     {

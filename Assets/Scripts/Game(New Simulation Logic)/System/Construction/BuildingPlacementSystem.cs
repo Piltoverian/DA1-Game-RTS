@@ -150,11 +150,7 @@ public partial struct BuildingPlacementSystem : ISystem
                             em,
                             req.PlayerId,
                             worker,
-                            new CommandData
-                            {
-                                Type = CommandType.Build,
-                                indexInUnitCommandList = 0
-                            },
+                            CommandType.Build,
                             targetEntity: building
                         );
                     }

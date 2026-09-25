@@ -1,8 +1,61 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+
+public enum CommandType
+{
+    Move,
+    TargetTo,
+    Progression,
+    Build
+}
+
+public struct CommandQueueElement : IBufferElementData
+{
+    public int PlayerId;
+    public CommandType Type;
+    public int DataIndex;
+    public Entity sourceEntity;
+    public Entity targetEntity;
+    public Vector3 position;
+    public GridRect gridRect;
+}
+
+public struct CommandQueueComponent : IComponentData
+{
+}
+
+public static class CommandDataHelper
+{
+    public static void AddCommandToQueue(
+        EntityManager entityManager,
+        int playerId,
+        Entity sourceEntity,
+        CommandType type,
+        int dataIndex = 0,
+        Entity targetEntity = default,
+        Vector3 position = default,
+        GridRect gridRect = default)
+    {
+        var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>());
+        var commandQueueEntity = query.GetSingletonEntity();
+        var commandBuffer = entityManager.GetBuffer<CommandQueueElement>(commandQueueEntity);
+        commandBuffer.Add(new CommandQueueElement
+        {
+            PlayerId = playerId,
+            Type = type,
+            DataIndex = dataIndex,
+            sourceEntity = sourceEntity,
+            targetEntity = targetEntity,
+            position = position,
+            gridRect = gridRect,
+        });
+    }
+}
+
 partial struct CommandQueue : ISystem
 {
     [BurstCompile]
@@ -27,30 +80,59 @@ partial struct CommandQueue : ISystem
 
     private static void ProcessCommand(ref SystemState state, CommandQueueElement command)
     {
-        if (!IsValidSourceEntity(state.EntityManager, command))
+        if (command.Type == CommandType.Build)
         {
+            if (command.targetEntity != Entity.Null &&
+                state.EntityManager.HasComponent<BuildingComponent>(command.targetEntity) &&
+                !state.EntityManager.HasComponent<BuildingConstruction>(command.targetEntity))
+            {
+                HandlePlaceBuilding(ref state, command);
+                return;
+            }
+
+            HandleBuild(ref state, command);
             return;
         }
-        
-        if (command.Command.Type == CommandType.Build)
+
+        if (command.Type == CommandType.Progression)
         {
-            HandleBuild(ref state, command);
+            HandleProgression(ref state, command);
+            return;
+        }
+
+        if (!IsValidSourceEntity(state.EntityManager, command))
+        {
             return;
         }
 
         DeactiveAllAbility(state.EntityManager, command.sourceEntity);
 
-        switch (command.Command.Type)
+        switch (command.Type)
         {
             case CommandType.Move:
                 HandleMove(ref state, command);
                 break;
-            case CommandType.Progression:
-                HandleProgression(ref state, command);
-                break;
             case CommandType.TargetTo:
                 HandleTargetTo(ref state, command);
                 break;
+        }
+    }
+
+    private static void HandlePlaceBuilding(ref SystemState state, CommandQueueElement command)
+    {
+        var em = state.EntityManager;
+        Entity reqEntity = em.CreateEntity();
+        em.AddComponentData(reqEntity, new PlaceBuildingRequest
+        {
+            PlayerId = command.PlayerId,
+            PrefabEntity = command.targetEntity,
+            Position = command.position,
+        });
+
+        DynamicBuffer<PlaceBuildingWorkerElement> workerBuffer = em.AddBuffer<PlaceBuildingWorkerElement>(reqEntity);
+        if (command.sourceEntity != Entity.Null && em.Exists(command.sourceEntity))
+        {
+            workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = command.sourceEntity });
         }
     }
 
@@ -60,7 +142,7 @@ partial struct CommandQueue : ISystem
         {
             return false;
         }
-        switch (command.Command.Type)
+        switch (command.Type)
         {
             case CommandType.Move:
                 return entityManager.HasComponent<MoveOverride>(command.sourceEntity);
@@ -102,7 +184,7 @@ partial struct CommandQueue : ISystem
         bool canBuild =
             entityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
             BuildingHelper.CanBuildOrRepair(entityManager, command.targetEntity);
-        
+
         return canGather || canAttack || canBuild;
     }
 
@@ -133,10 +215,10 @@ partial struct CommandQueue : ISystem
             return;
         }
 
-        TrainUnitHelper.TrainUnit(
-            entityManager: state.EntityManager,
-            buildingEntity: command.sourceEntity,
-            indexInPrefabList: command.Command.indexInUnitCommandList
+        ProductionJobs.Enqueue(
+            state.EntityManager,
+            command.sourceEntity,
+            command.DataIndex
         );
     }
 
@@ -155,7 +237,7 @@ partial struct CommandQueue : ISystem
                  BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
         {
             HandleBuild(ref state, command);
-        }   
+        }
     }
 
     private static void HandleBuild(ref SystemState state, CommandQueueElement command)
@@ -175,7 +257,7 @@ partial struct CommandQueue : ISystem
             return;
 
         var builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
-        if (command.Command.Type == CommandType.Build &&
+        if (command.Type == CommandType.Build &&
             em.IsComponentEnabled<BuilderComponent>(command.sourceEntity) &&
             builder.State != BuilderState.Idle &&
             em.HasBuffer<BuilderQueueElement>(command.sourceEntity))
@@ -268,24 +350,18 @@ partial struct CommandQueue : ISystem
             state.EntityManager.SetComponentData(command.sourceEntity, targetCache);
         }
     }
-    
-    public static void DeactiveAllAbility(EntityManager em,Entity entity)
+
+    public static void DeactiveAllAbility(EntityManager em, Entity entity)
     {
-        // A direct move/gather/attack/target order replaces the scheduled construction work.
         if (em.HasBuffer<BuilderQueueElement>(entity))
             em.GetBuffer<BuilderQueueElement>(entity).Clear();
         if (em.HasComponent<MoveOverride>(entity))
             em.SetComponentEnabled<MoveOverride>(entity, false);
-        
+
         if (em.HasComponent<WorkerGatherData>(entity))
         {
             em.SetComponentEnabled<WorkerGatherData>(entity, false);
         }
-
-        if (em.HasComponent<ShootAttack>(entity))
-        {
-            em.SetComponentEnabled<ShootAttack>(entity, false);
-        }   
 
         if (em.HasComponent<BuilderComponent>(entity))
         {
@@ -296,9 +372,5 @@ partial struct CommandQueue : ISystem
     [BurstCompile]
     public void OnDestroy(ref SystemState state)
     {
-        
     }
-
 }
-
-

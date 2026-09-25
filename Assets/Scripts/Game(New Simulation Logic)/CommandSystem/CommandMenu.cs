@@ -1,5 +1,4 @@
 using System;
-using TMPro;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -43,9 +42,8 @@ public class CommandMenu : MonoBehaviour
 
         bool hasBuildOffers = entityManager.HasBuffer<BuildOffer>(selectedEntity);
         bool hasProduction = entityManager.HasBuffer<ProductionElement>(selectedEntity);
-        bool hasCommands = entityManager.HasBuffer<CommandElement>(selectedEntity);
 
-        if (!hasBuildOffers && !hasProduction && !hasCommands)
+        if (!hasBuildOffers && !hasProduction)
             return;
 
         if (hasBuildOffers)
@@ -61,15 +59,6 @@ public class CommandMenu : MonoBehaviour
                 if (icon != null && image != null)
                 {
                     image.sprite = icon;
-                }
-                else if (image != null)
-                {
-                    var iconMapping = Resources.Load<IconMapping>("IconMapping");
-                    if (iconMapping != null)
-                    {
-                        string bName = EntityPresentation.BuildingName(offer.DefinitionID);
-                        image.sprite = iconMapping.GetIconOfCommand(bName);
-                    }
                 }
 
                 CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
@@ -87,9 +76,10 @@ public class CommandMenu : MonoBehaviour
             }
         }
 
-        if (hasProduction && !hasCommands)
+        if (hasProduction)
         {
             var productList = entityManager.GetBuffer<ProductionElement>(selectedEntity);
+            int playerId = GameManager.Instance.GetModule<SelectManager>().currentContext.playerId;
             for (int i = 0; i < productList.Length; i++)
             {
                 var offer = productList[i];
@@ -102,11 +92,7 @@ public class CommandMenu : MonoBehaviour
                 if (commandButton == null)
                     commandButton = buttonObject.AddComponent<CommandButton>();
 
-                commandButton.SetCommandDataFromCommandData(new CommandData
-                {
-                    Type = CommandType.Progression,
-                    indexInUnitCommandList = i
-                });
+                commandButton.SetProductionJob(i, offer.JobID);
 
                 Button button = buttonObject.GetComponent<Button>();
                 if (button != null)
@@ -114,66 +100,8 @@ public class CommandMenu : MonoBehaviour
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(commandButton.OnClick);
                 }
-                ApplyProductionUnlockState(entityManager, GameManager.Instance.GetModule<SelectManager>().currentContext.playerId, offer, button, image);
+                ApplyProductionUnlockState(entityManager, playerId, offer, button, image);
             }
-        }
-
-        if (hasCommands)
-        {
-            NativeList<CommandElement> commands =
-                CommandDataHelper.GetCommandsForEntity(entityManager, selectedEntity);
-
-            foreach (CommandElement command in commands)
-            {
-                if (hasBuildOffers && command.Type == CommandType.Build)
-                    continue;
-
-                GameObject buttonObject = Instantiate(ButtonPrefab, transform);
-                Image image = GetButtonImageComponent(buttonObject);
-
-                if (command.Type == CommandType.Build)
-                {
-                    var iconMapping = Resources.Load<IconMapping>("IconMapping");
-                    if (iconMapping != null && image != null)
-                        image.sprite = iconMapping.GetIconOfCommand("Build");
-                }
-                else if (command.Type == CommandType.Progression)
-                {
-                    if (entityManager.HasBuffer<ProductionElement>(selectedEntity))
-                    {
-                        var productList = entityManager.GetBuffer<ProductionElement>(selectedEntity);
-                        if (command.indexInUnitCommandList >= 0 && command.indexInUnitCommandList < productList.Length)
-                        {
-                            if (image != null)
-                                image.sprite = EntityPresentation.JobIcon(productList[command.indexInUnitCommandList]);
-                        }
-                    }
-                }
-
-                CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
-                if (commandButton == null)
-                    commandButton = buttonObject.AddComponent<CommandButton>();
-
-                commandButton.SetCommandDataFromBufferElement(command);
-
-                Button button = buttonObject.GetComponent<Button>();
-                if (button != null)
-                {
-                    button.onClick.RemoveAllListeners();
-                    button.onClick.AddListener(commandButton.OnClick);
-                }
-
-                if (command.Type == CommandType.Progression && entityManager.HasBuffer<ProductionElement>(selectedEntity))
-                {
-                    var productList = entityManager.GetBuffer<ProductionElement>(selectedEntity);
-                    if (command.indexInUnitCommandList >= 0 && command.indexInUnitCommandList < productList.Length)
-                    {
-                        ApplyProductionUnlockState(entityManager, GameManager.Instance.GetModule<SelectManager>().currentContext.playerId, productList[command.indexInUnitCommandList], button, image);
-                    }
-                }
-            }
-
-            commands.Dispose();
         }
     }
 
@@ -214,6 +142,7 @@ public class CommandMenu : MonoBehaviour
             }
         }
     }
+
     private void ClearButtons()
     {
         foreach (Transform child in transform)
@@ -237,5 +166,3 @@ public class CommandMenu : MonoBehaviour
         return null;
     }
 }
-
-

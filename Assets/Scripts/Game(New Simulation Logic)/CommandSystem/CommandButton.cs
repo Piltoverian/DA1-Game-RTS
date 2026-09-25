@@ -4,15 +4,17 @@ using UnityEngine;
 
 public class CommandButton : MonoBehaviour
 {
-    [SerializeField] private CommandData commandData;
+    [SerializeField] private CommandType commandType;
+    [SerializeField] private int dataIndex;
     private FixedString64Bytes buildingId;
+    private FixedString64Bytes jobId;
 
     public void OnClick()
     {
         int playerId = GameManager.Instance.GetModule<SelectManager>().currentContext.playerId;
         Entity sourceEntity = SelectHelper.GetFirstSelectedEntityByplayerID(playerId);
 
-        switch (commandData.Type)
+        switch (commandType)
         {
             case CommandType.Move:
                 break;
@@ -36,7 +38,8 @@ public class CommandButton : MonoBehaviour
                         entityManager: entityManager,
                         playerId: playerId,
                         sourceEntity: sourceEntity,
-                        commandData: commandData
+                        type: CommandType.Progression,
+                        dataIndex: dataIndex
                     );
 
                     break;
@@ -60,7 +63,7 @@ public class CommandButton : MonoBehaviour
                     }
                     else
                     {
-                        BuildingPlacer.Instance.StartPlacementFromCommand(commandData, sourceEntity, playerId);
+                        BuildingPlacer.Instance.StartPlacementFromOfferIndex(dataIndex, sourceEntity, playerId);
                     }
                     break;
                 }
@@ -75,26 +78,16 @@ public class CommandButton : MonoBehaviour
     public void SetBuildOffer(FixedString64Bytes definitionId, int index = 0)
     {
         buildingId = definitionId;
-        commandData = new CommandData
-        {
-            Type = CommandType.Build,
-            indexInUnitCommandList = index
-        };
+        jobId = default;
+        commandType = CommandType.Build;
+        dataIndex = index;
     }
 
-    public void SetCommandDataFromCommandData(CommandData data)
+    public void SetProductionJob(int index, FixedString64Bytes id)
     {
         buildingId = default;
-        commandData = data;
-    }
-
-    public void SetCommandDataFromBufferElement(CommandElement commandElement)
-    {
-        buildingId = default;
-        commandData = new CommandData
-        {
-            Type = commandElement.Type,
-            indexInUnitCommandList = commandElement.indexInUnitCommandList
-        };
+        jobId = id;
+        commandType = CommandType.Progression;
+        dataIndex = index;
     }
 }

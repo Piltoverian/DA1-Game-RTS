@@ -91,18 +91,14 @@ public class BuildingPlacer : MonoBehaviour
         }
     }
 
-    public void StartPlacementFromCommand(CommandData commandData, Entity sourceEntity, int playerID)
+    public void StartPlacementFromOfferIndex(int index, Entity sourceEntity, int playerID)
     {
-        if (commandData.Type != CommandType.Build)
-            return;
-
         if (sourceEntity == Entity.Null)
             return;
 
         if (entityManager != default && entityManager.HasBuffer<BuildOffer>(sourceEntity))
         {
             var offers = entityManager.GetBuffer<BuildOffer>(sourceEntity);
-            int index = commandData.indexInUnitCommandList;
             if (index >= 0 && index < offers.Length)
             {
                 StartPlacement(offers[index].DefinitionID, sourceEntity, playerID);
@@ -110,7 +106,7 @@ public class BuildingPlacer : MonoBehaviour
             }
         }
 
-        Debug.LogError("No BuildOffer found for index: " + commandData.indexInUnitCommandList);
+        Debug.LogError("No BuildOffer found for index: " + index);
     }
 
     public void StartPlacement(FixedString64Bytes buildingId, Entity sourceWorker, int playerId)
@@ -303,35 +299,28 @@ public class BuildingPlacer : MonoBehaviour
         if (selectedBuildingPrefab == Entity.Null || entityManager == default)
             return;
 
-        Entity requestEntity = entityManager.CreateEntity();
-        entityManager.AddComponentData(requestEntity, new PlaceBuildingRequest
+        Entity worker = sourceWorkerEntity;
+        if (worker == Entity.Null || !entityManager.Exists(worker))
         {
-            PlayerId = playerId,
-            PrefabEntity = selectedBuildingPrefab,
-            Position = new float3(rootPosition.x, rootPosition.y, rootPosition.z),
-        });
-
-        DynamicBuffer<PlaceBuildingWorkerElement> workerBuffer = entityManager.AddBuffer<PlaceBuildingWorkerElement>(requestEntity);
-
-        List<Entity> selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
-        bool addedAny = false;
-
-        foreach (Entity worker in selectedEntities)
-        {
-            if (entityManager.HasComponent<BuilderComponent>(worker) && entityManager.HasComponent<MoveOverride>(worker))
+            List<Entity> selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
+            foreach (Entity e in selectedEntities)
             {
-                workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = worker });
-                addedAny = true;
+                if (entityManager.HasComponent<BuilderComponent>(e) && entityManager.HasComponent<MoveOverride>(e))
+                {
+                    worker = e;
+                    break;
+                }
             }
         }
 
-        if (!addedAny && sourceWorkerEntity != Entity.Null && entityManager.Exists(sourceWorkerEntity))
-        {
-            if (entityManager.HasComponent<BuilderComponent>(sourceWorkerEntity) && entityManager.HasComponent<MoveOverride>(sourceWorkerEntity))
-            {
-                workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = sourceWorkerEntity });
-            }
-        }
+        CommandDataHelper.AddCommandToQueue(
+            entityManager,
+            playerId,
+            worker,
+            CommandType.Build,
+            targetEntity: selectedBuildingPrefab,
+            position: rootPosition
+        );
 
         CancelPlacement();
     }
