@@ -4,92 +4,53 @@ using UnityEngine;
 
 public static class EntityPresentation
 {
+    public static Sprite GetIcon(FixedString64Bytes id)
+    {
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetIcon(id) : null;
+    }
+
+    public static string GetName(FixedString64Bytes id)
+    {
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetName(id) : id.ToString();
+    }
+
     public static Sprite Icon(EntityManager em, Entity entity)
     {
-        FixedString64Bytes id;
-        bool unit = em.HasComponent<UnitComponent>(entity);
-        if (unit) id = em.GetComponentData<UnitComponent>(entity).DefinitionID;
-        else if (em.HasComponent<BuildingComponent>(entity)) id = em.GetComponentData<BuildingComponent>(entity).DefinitionID;
-        else return null;
-        foreach (var registry in Resources.LoadAll<GameDataRegistry>(""))
+        if (RegistryAuthoring.Instance == null) return null;
+
+        if (em.HasComponent<UnitComponent>(entity))
         {
-            if (unit)
-            {
-                foreach (var definition in registry.Units)
-                    if (definition != null && definition.basedSO != null && definition.basedSO.ID == id.ToString()) return definition.basedSO.Icon;
-            }
-            else
-                foreach (var definition in registry.Buildings)
-                    if (definition != null && definition.basedSO != null && definition.basedSO.ID == id.ToString()) return definition.basedSO.Icon;
+            return RegistryAuthoring.Instance.GetIcon(em.GetComponentData<UnitComponent>(entity).DefinitionID);
+        }
+        if (em.HasComponent<BuildingComponent>(entity))
+        {
+            return RegistryAuthoring.Instance.GetIcon(em.GetComponentData<BuildingComponent>(entity).DefinitionID);
         }
         return null;
     }
+
     public static Sprite JobIcon(ProductionElement offer)
     {
-        foreach (var registry in Resources.LoadAll<GameDataRegistry>(""))
-            foreach (var job in registry.Jobs)
-                if (job != null && job.Id == offer.JobID.ToString() &&
-                    ((offer.Kind == ProductionKind.Train && job is Train) || (offer.Kind == ProductionKind.Research && job is Research))) return job.Icon;
-        return null;
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetIcon(offer.JobID) : null;
     }
 
     public static Sprite BuildingIcon(FixedString64Bytes buildingId)
     {
-        string idStr = buildingId.ToString();
-        foreach (var registry in Resources.LoadAll<GameDataRegistry>(""))
-        {
-            if (registry.Buildings == null) continue;
-            foreach (var definition in registry.Buildings)
-            {
-                if (definition != null && definition.basedSO != null && definition.basedSO.ID == idStr)
-                    return definition.basedSO.Icon;
-            }
-        }
-        return null;
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetIcon(buildingId) : null;
     }
 
     public static string BuildingName(FixedString64Bytes buildingId)
     {
-        string idStr = buildingId.ToString();
-        foreach (var registry in Resources.LoadAll<GameDataRegistry>(""))
-        {
-            if (registry.Buildings == null) continue;
-            foreach (var definition in registry.Buildings)
-            {
-                if (definition != null && definition.basedSO != null && definition.basedSO.ID == idStr)
-                    return string.IsNullOrEmpty(definition.basedSO.Name) ? definition.name : definition.basedSO.Name;
-            }
-        }
-        return idStr;
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetName(buildingId) : buildingId.ToString();
     }
 
     public static GameObject BuildingPreview(FixedString64Bytes buildingId)
     {
-        string idStr = buildingId.ToString();
-        foreach (var registry in Resources.LoadAll<GameDataRegistry>(""))
-        {
-            if (registry.Buildings == null) continue;
-            foreach (var definition in registry.Buildings)
-            {
-                if (definition != null && definition.basedSO != null && definition.basedSO.ID == idStr)
-                    return definition.basedSO.Prefab;
-            }
-        }
-        return null;
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetBuildingPrefab(buildingId) : null;
     }
 
     public static BuildingSO GetBuildingSO(FixedString64Bytes buildingId)
     {
-        string idStr = buildingId.ToString();
-        foreach (var registry in Resources.LoadAll<GameDataRegistry>(""))
-        {
-            if (registry.Buildings == null) continue;
-            foreach (var definition in registry.Buildings)
-            {
-                if (definition != null && definition.basedSO != null && definition.basedSO.ID == idStr)
-                    return definition;
-            }
-        }
-        return null;
+        return RegistryAuthoring.Instance != null ? RegistryAuthoring.Instance.GetBuildingSO(buildingId) : null;
     }
 }

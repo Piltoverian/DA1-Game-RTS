@@ -110,15 +110,10 @@ public class UnitController : MonoBehaviour
             }
 
             CommandDataHelper.AddCommandToQueue(
-
                 entityManager,
                 playerId,
                 worker,
-                new CommandData
-                {
-                    Type = CommandType.TargetTo,
-                    indexInUnitCommandList = 0
-                },
+                CommandType.TargetTo,
                 targetEntity: resourceNode
             );
 
@@ -202,11 +197,7 @@ public class UnitController : MonoBehaviour
                 entityManager,
                 playerId,
                 entity,
-                new CommandData
-                {
-                    Type = CommandType.Move,
-                    indexInUnitCommandList = 0
-                },
+                CommandType.Move,
                 position: mouseWorldPosition
             );
 
@@ -261,11 +252,7 @@ public class UnitController : MonoBehaviour
                 entityManager,
                 myPlayerId,
                 unit,
-                new CommandData
-                {
-                    Type = CommandType.TargetTo,
-                    indexInUnitCommandList = 0
-                },
+                CommandType.TargetTo,
                 targetEntity: hitEntity
             );
             attackCommandedCount++;
@@ -312,11 +299,7 @@ public class UnitController : MonoBehaviour
                 entityManager,
                 playerId,
                 worker,
-                new CommandData
-                {
-                    Type = CommandType.Build,
-                    indexInUnitCommandList = 0
-                },
+                CommandType.Build,
                 targetEntity: targetBuilding
             );
 
