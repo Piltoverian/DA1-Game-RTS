@@ -17,6 +17,34 @@ Toàn bộ hệ thống dữ liệu gameplay của dự án hiện đã được
 
 ---
 
+## 🌐 Mục Lục Tài Liệu Kỹ Thuật Multiplayer
+
+| Tài Liệu | Mục Đích & Nội Dung Chính | Dành Cho Ai |
+|---|---|---|
+| [1. Kiến Trúc Multiplayer Chuẩn Gaming](Multiplayer/README.md) | Bản thiết kế tổng thể kiến trúc 2 tầng (Meta & Simulation), Host-Authoritative qua Unity Relay, lộ trình 5 Sprint. | Toàn đội ngũ. |
+| [2. Sprint 0: Kiểm Toán Hạ Tầng Code](Multiplayer/Sprint0_CodeAudit.md) | Báo cáo chi tiết các điểm nghẽn mã nguồn (Player Identity, Match State, Data Contracts) và kế hoạch xử lý cho session tới. | Programmer, Technical Lead. |
+| [3. Đặc Tả Sinh Bản Đồ & Texture Data](Multiplayer/MapGen_DataTexture_Specification.md) | Sinh map theo mode, cân bằng gói tài nguyên khởi đầu quanh base, quota tài nguyên trung lập, Single Island Guarantee, mã hóa Texture RGBA và Player Spawn. | Programmer, Technical Designer. |
+| [4. Kế Hoạch Triển Khai MapGen](Multiplayer/MapGen_ImplementationPlan.md) | Kế hoạch hiện hành cho Hạng mục B, các ràng buộc theo source, file tác động, thứ tự triển khai và tiêu chí nghiệm thu. | Programmer, Technical Lead. |
+
+---
+
+## 🧭 Mục Lục Tài Liệu Hệ Thống Di Chuyển (Movement Agent & Pathfinding)
+
+> [!NOTE]
+> **Cập nhật tiến độ (2026-09-29):** Đã hoàn tất triển khai và tối ưu **`NaturalBlockedTargetResolver`** cùng cơ chế phân biệt vật cản công trình theo ô lưới (`BuildingBlockage`) và vật cản tự nhiên (`NaturalResolved`, `cost ≥ 255`):
+> - Tự động quét 4 hướng cố định (**Bắc → Đông → Nam → Tây**) từ điểm click vào núi/nước tự nhiên tới cạnh vào (entry edge) của ô walkable đầu tiên gần nhất.
+> - Tối ưu hiệu năng: Chỉ resolve **1 lần duy nhất** tại `FlowFieldAssignmentSystem` khi có `TargetChangeRequest`, lưu trạng thái (`navigationTargetCell`, `targetResolutionGeneration`, `targetResolutionKind`) vào `MovementAgentComponent`, loại bỏ hoàn toàn việc quét tia 4 hướng và copy `BlockageData` mỗi tick ở `MovementAgentPathRequestSystem` và `MovementAgentTargetSystem`.
+
+| Tài Liệu | Mục Đích & Nội Dung Chính | Dành Cho Ai |
+|---|---|---|
+| [1. Cẩm Nang Kỹ Thuật Movement Agent (2026)](../Assets/Scripts/MovementAgentDocs/Manual/Movement_Manual_2026.md) | Luồng xử lý 7 bước từ lúc click chuột tới ORCA và Anti-Deadlock, giao tiếp với `MoveOverrideSystem`. | Programmer, Technical Designer. |
+| [2. Tổng Quan Kiến Trúc Movement Agent](../Assets/Scripts/MovementAgentDocs/MovementAgent/Architecture_Overview.md) | Phân lớp L0–L3, vòng đời lệnh di chuyển, Spatial Indexing và Debug System. | Toàn đội ngũ kỹ thuật. |
+| [3. Cấu Trúc Dữ Liệu Agent (`MovementAgentComponent`)](../Assets/Scripts/MovementAgentDocs/MovementAgent/AgentMovementData/MovementAgentComponent.md) | Chi tiết các trường dữ liệu, `TargetResolutionKind`, `navigationTargetCell`, `realTarget` và `currentworldtarget`. | Gameplay Programmer. |
+| [4. Bộ Giải Quyết Vật Cản Tự Nhiên (`GridHelper`)](../Assets/Scripts/MovementAgentDocs/MovementAgent/Helpers/GridHelper.md) | Quy đổi tọa độ lưới và thuật toán `NaturalBlockedTargetResolver` (quét 4 hướng, kiểm tra `TryGetBlockageGridBounds`). | Gameplay Programmer. |
+| [5. Cầu Nối Lệnh & Gán Flow Field (`CommandBridge`)](../Assets/Scripts/MovementAgentDocs/MovementAgent/CommandBridge/FlowFieldAssignmentSystem.md) | Quy trình resolve mục tiêu 1 lần, tra cứu Cache, quản lý Ref Count và phát hiện yêu cầu đường đi mới. | Gameplay Programmer. |
+
+---
+
 ## 🚀 Quy Trình Làm Việc Tiêu Chuẩn Cho Designer (Workflow)
 
 ```mermaid

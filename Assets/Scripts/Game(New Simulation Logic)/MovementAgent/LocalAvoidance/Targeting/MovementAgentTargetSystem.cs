@@ -65,7 +65,7 @@ public partial struct MovementAgentTargetSystem : ISystem
 
             move.preferredVelocity = float3.zero;
 
-            if (!move.hastarget)
+            if (!move.hastarget || move.targetResolutionKind == TargetResolutionKind.None)
             {
                 steering.stuckTime = 0;
                 steering.minDistanceToTarget = float.MaxValue;
@@ -80,38 +80,14 @@ public partial struct MovementAgentTargetSystem : ISystem
             int unitIsland = GridIslands[nodeIndex].islandID;
 
             // --- 1. ISLAND SYNC & BLOCKAGE FOOTPRINT TARGETING ---
-            float3 targetWorldPos = globalTarget;
-            float2 targetWorld2D = new float2(targetWorldPos.x, targetWorldPos.z);
             int2 targetGrid = GridHelper.WorldToGrid(globalTarget, Grid);
-            bool foundBuilding = false;
-            int2 bMinGrid = targetGrid;
-            int2 bMaxGrid = targetGrid;
-
-            for (int b = 0; b < BlockageDatas.Length; b++)
-            {
-                BlockageData bData = BlockageDatas[b];
-                float3 bPos = BlockageLocalToWorlds[b].Position;
-
-                float2 worldMin = new float2(bPos.x + bData.LocalRect.MinPoint.x, bPos.z + bData.LocalRect.MinPoint.y);
-                float2 worldMax = new float2(bPos.x + bData.LocalRect.MaxPoint.x, bPos.z + bData.LocalRect.MaxPoint.y);
-
-                StartEndRect worldRect = new StartEndRect(worldMin);
-                worldRect.ExpandTo(worldMax);
-
-                if (worldRect.isContains(targetWorld2D))
-                {
-                    float3 minWorld3D = new float3(worldRect.MinPoint.x + 0.01f, 0, worldRect.MinPoint.y + 0.01f);
-                    float3 maxWorld3D = new float3(worldRect.MaxPoint.x - 0.01f, 0, worldRect.MaxPoint.y - 0.01f);
-
-                    int2 bMin = GridHelper.WorldToGrid(minWorld3D, Grid);
-                    int2 bMax = GridHelper.WorldToGrid(maxWorld3D, Grid);
-
-                    bMinGrid = math.min(bMin, bMax);
-                    bMaxGrid = math.max(bMin, bMax);
-                    foundBuilding = true;
-                    break;
-                }
-            }
+            bool foundBuilding = NaturalBlockedTargetResolver.TryGetBlockageGridBounds(
+                targetGrid,
+                Grid,
+                BlockageDatas,
+                BlockageLocalToWorlds,
+                out int2 bMinGrid,
+                out int2 bMaxGrid);
 
             if (foundBuilding)
             {
@@ -153,65 +129,30 @@ public partial struct MovementAgentTargetSystem : ISystem
             }
             else
             {
-                bool isTargetInGrid = targetGrid.x >= 0 && targetGrid.x < Grid.width && targetGrid.y >= 0 && targetGrid.y < Grid.height;
-                int targetIndex = isTargetInGrid ? GridHelper.GetNodeIndex(targetGrid, Grid) : -1;
-                bool isTargetBlocked = isTargetInGrid && (GridCosts[targetIndex].cost >= 255 || GridCosts[targetIndex].cost == int.MaxValue);
-
-                if (isTargetBlocked)
+                if (!NaturalBlockedTargetResolver.IsCellInBounds(move.navigationTargetCell, Grid))
                 {
-                    float minDistSq = float.MaxValue;
-                    float3 nearestWalkable = globalTarget;
-                    bool foundWalkable = false;
-
-                    for (int r = 1; r <= 8 && !foundWalkable; r++)
-                    {
-                        for (int dx = -r; dx <= r; dx++)
-                        {
-                            for (int dy = -r; dy <= r; dy++)
-                            {
-                                if (math.abs(dx) == r || math.abs(dy) == r)
-                                {
-                                    int2 neighbor = targetGrid + new int2(dx, dy);
-                                    if (neighbor.x >= 0 && neighbor.x < Grid.width && neighbor.y >= 0 && neighbor.y < Grid.height)
-                                    {
-                                        int nIdx = GridHelper.GetNodeIndex(neighbor, Grid);
-                                        if (GridCosts[nIdx].cost < 255 && GridCosts[nIdx].cost != int.MaxValue && GridIslands[nIdx].islandID == unitIsland)
-                                        {
-                                            float3 nPos = GridHelper.GridToWorld(neighbor, Grid);
-                                            float dSq = math.distancesq(pos, nPos);
-                                            if (dSq < minDistSq)
-                                            {
-                                                minDistSq = dSq;
-                                                nearestWalkable = nPos;
-                                                foundWalkable = true;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    islandGoal = foundWalkable ? nearestWalkable : globalTarget;
+                    return;
                 }
-                else
-                {
-                    int targetIsland = (isTargetInGrid && targetIndex < GridIslands.Length) ? GridIslands[targetIndex].islandID : 0;
 
-                    if (targetIsland > 0 && unitIsland != targetIsland && IslandSeedLookup.HasBuffer(move.FieldEntity))
+                float3 baseGoal = move.targetResolutionKind == TargetResolutionKind.NaturalResolved
+                    ? GridHelper.GridToWorld(move.navigationTargetCell, Grid)
+                    : globalTarget;
+
+                islandGoal = baseGoal;
+
+                int resolvedIndex = GridHelper.GetNodeIndex(move.navigationTargetCell, Grid);
+                int targetIsland = (resolvedIndex >= 0 && resolvedIndex < GridIslands.Length) ? GridIslands[resolvedIndex].islandID : 0;
+
+                if (targetIsland > 0 && unitIsland != targetIsland && IslandSeedLookup.HasBuffer(move.FieldEntity))
+                {
+                    var seedBuffer = IslandSeedLookup[move.FieldEntity];
+                    for (int i = 0; i < seedBuffer.Length; i++)
                     {
-                        var seedBuffer = IslandSeedLookup[move.FieldEntity];
-                        for (int i = 0; i < seedBuffer.Length; i++)
+                        if (seedBuffer[i].islandID == unitIsland)
                         {
-                            if (seedBuffer[i].islandID == unitIsland)
-                            {
-                                islandGoal = seedBuffer[i].seedPosition;
-                                break;
-                            }
+                            islandGoal = seedBuffer[i].seedPosition;
+                            break;
                         }
-                    }
-                    else
-                    {
-                        islandGoal = globalTarget;
                     }
                 }
             }

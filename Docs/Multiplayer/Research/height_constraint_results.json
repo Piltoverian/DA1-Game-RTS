@@ -1,0 +1,25 @@
+{
+  "scope": "Synthetic symmetric ramp/height field; no cliff, resource or Unity runtime test",
+  "ramp_delta_cells": 4,
+  "ramp_length_cells": 20,
+  "analytic_ramp_max_slope_degrees": 20.556045219583464,
+  "slope_limit_degrees": 25,
+  "results": [
+    {
+      "raw_amplitude_cell_units": 0.8,
+      "alpha": 1.0,
+      "raw_max_slope_degrees": 20.430739685978118,
+      "quantized_max_slope_degrees": 20.359575249777734,
+      "rotation_height_error": 0.0,
+      "quantized_slope_passes": true
+    },
+    {
+      "raw_amplitude_cell_units": 4.0,
+      "alpha": 0.8054769895766142,
+      "raw_max_slope_degrees": 30.067457343487586,
+      "quantized_max_slope_degrees": 24.99820314667557,
+      "rotation_height_error": 0.0,
+      "quantized_slope_passes": true
+    }
+  ]
+}

@@ -36,32 +36,33 @@ public partial struct MovementAgentPathRequestSystem : ISystem
     }
 
     [BurstCompile]
+    [WithNone(typeof(TargetChangeRequest))]
     public partial struct IdentifyPathRequestJob : IJobEntity
     {
         [ReadOnly] public GridComponent Grid;
         public EntityCommandBuffer.ParallelWriter Ecb;
         [ReadOnly] public ComponentLookup<FlowField> FlowFieldLookup;
 
-        public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, ref MovementAgentComponent move)
+        public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in MovementAgentComponent move)
         {
             if (!move.hastarget) return;
 
-            int2 targetCell = GridHelper.WorldToGrid(move.currentworldtarget, Grid);
-
-            if (move.FieldEntity == Entity.Null)
+            if (move.FieldEntity == Entity.Null ||
+                move.targetResolutionKind == TargetResolutionKind.None ||
+                !FlowFieldLookup.TryGetComponent(move.FieldEntity, out var currentField))
             {
                 Ecb.AddComponent(chunkIndex, entity, new TargetChangeRequest { newWorldTarget = move.currentworldtarget });
                 return;
             }
 
-            if (FlowFieldLookup.TryGetComponent(move.FieldEntity, out var currentField))
+            if (move.targetResolutionKind == TargetResolutionKind.NaturalResolved &&
+                move.targetResolutionGeneration != Grid.generation)
             {
-                if (math.any(targetCell != currentField.targetcell))
-                {
-                    Ecb.AddComponent(chunkIndex, entity, new TargetChangeRequest { newWorldTarget = move.currentworldtarget });
-                }
+                Ecb.AddComponent(chunkIndex, entity, new TargetChangeRequest { newWorldTarget = move.currentworldtarget });
+                return;
             }
-            else
+
+            if (math.any(move.navigationTargetCell != currentField.targetcell))
             {
                 Ecb.AddComponent(chunkIndex, entity, new TargetChangeRequest { newWorldTarget = move.currentworldtarget });
             }

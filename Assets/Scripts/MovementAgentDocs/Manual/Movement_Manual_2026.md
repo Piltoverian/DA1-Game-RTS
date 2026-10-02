@@ -9,12 +9,16 @@ Tài liệu này tổng hợp luồng xử lý (Flow) của hệ thống di chuy
 Khi người chơi (hoặc AI) chọn một đạo quân và click chuột phải vào bản đồ, quy trình sau sẽ diễn ra nghiêm ngặt theo từng System (chạy theo thứ tự Pipeline):
 
 1. **`MovementAgentPathRequestSystem` (Phát hiện Lệnh):** 
-   - Kiểm tra xem mục tiêu thế giới (`currentworldtarget`) có thay đổi hay không.
-   - Nếu đổi, gắn thẻ component tạm thời: `TargetChangeRequest`.
+   - Kiểm tra xem Unit có cần đường đi mới hay không dựa trên trạng thái đã lưu (`FieldEntity`, `targetResolutionKind`, `navigationTargetCell` và `targetResolutionGeneration`), kết hợp `[WithNone(typeof(TargetChangeRequest))]` để chống gắn trùng lặp.
+   - Nếu cần cập nhật, gắn thẻ component tạm thời: `TargetChangeRequest`.
    
-2. **`FlowFieldAssignmentSystem` (Tìm đường Vĩ mô):**
-   - Đọc `TargetChangeRequest` để gán FlowField (Lưới véc-tơ). 
-   - Nó dùng `Cache` để kiểm tra xem đã có lưới nào chỉ tới đích đó chưa, nếu chưa thì báo `IntegrationFieldSystem` tính lưới mới.
+2. **`FlowFieldAssignmentSystem` (Phân giải Mục tiêu & Tìm đường Vĩ mô):**
+   - Chỉ chạy khi có `TargetChangeRequest`.
+   - Gọi `NaturalBlockedTargetResolver.TryResolveTarget` một lần duy nhất:
+     - Nếu click vào ô đi được (`Direct`): giữ nguyên đích.
+     - Nếu click vào ô có footprint công trình (`BuildingBlockage`): giữ nguyên đích để hệ thống điều hướng chọn slot quanh chu vi công trình.
+     - Nếu click vào vật cản tự nhiên (`NaturalResolved`, `cost ≥ 255` ngoài công trình): quét 4 hướng Bắc → Đông → Nam → Tây, chọn ô walkable đầu tiên có khoảng cách từ điểm click tới cạnh vào (entry edge) ngắn nhất và dùng tâm ô đó làm `navigationTargetCell`.
+   - Dùng `Cache` theo `navigationTargetCell` để tái sử dụng hoặc yêu cầu `IntegrationFieldSystem` tính lưới mới.
 
 3. **`MovementAgentGroupFormationSystem` (Xếp Đội Hình - Đã Nâng Cấp):**
    - Chạy đồng bộ (Single-thread) lúc vừa nhận lệnh.
@@ -24,7 +28,8 @@ Khi người chơi (hoặc AI) chọn một đạo quân và click chuột phả
 4. **`TargetRequestCleanupSystem` (Late Update):**
    - Xóa `TargetChangeRequest` đi để dọn dẹp, đảm bảo FlowField và Formation chỉ tính 1 lần duy nhất lúc xuất phát.
 
-5. **`MovementAgentTargetSystem` (Hòa trộn Hướng đi):**
+5. **`MovementAgentTargetSystem` (Tái tạo Đích Cơ sở & Hòa trộn Hướng đi):**
+   - Tái tạo `baseGoal` mỗi frame từ `targetResolutionKind` và `navigationTargetCell` (hoặc chọn slot chu vi công trình nếu là `BuildingBlockage`), sau đó kiểm tra đồng bộ hóa đảo (`IslandSeed`) để ghi vào `realTarget`.
    - Lấy vector tổng hợp từ `FlowField` (đường vòng qua chướng ngại) và `DirectVelocity` (đường kéo thẳng tới đích).
    - Xác định xem Agent đã tới gần đích (`formationRange`) chưa để bắt đầu chuyển hướng đi thẳng vào `slotTarget`.
 

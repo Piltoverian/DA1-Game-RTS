@@ -4,10 +4,23 @@ Hệ thống này đóng vai trò là "bộ não" điều hướng, quyết đ�
 
 ---
 
-## 1. Đồng bộ hóa Đảo (Island Sync)
-Nếu người chơi ra lệnh di chuyển sang một hòn đảo khác:
-- Hệ thống sẽ tìm trong `IslandSeedLookup` để lấy tọa độ "hạt giống" (Seed) của hòn đảo hiện tại mà Unit đang đứng.
-- `realTarget` sẽ tạm thời được đặt tại Seed này thay vì đích đến cuối cùng. Điều này đảm bảo Unit luôn đi đến điểm "bờ biển" gần đích nhất thay vì đi lung tung.
+## 1. Tái tạo Mục tiêu Cơ sở (`baseGoal`) & Đồng bộ hóa Đảo (Island Sync)
+Nếu `!move.hastarget` hoặc `move.targetResolutionKind == TargetResolutionKind.None`, hệ thống bỏ qua ngay lập tức.
+
+Mỗi frame, hệ thống **không** dùng lại `move.realTarget` của frame trước (vì `realTarget` có thể đã bị ghi đè tạm thời bởi `IslandSeed` hoặc điểm chu vi công trình), mà tái tạo đích điều hướng từ trạng thái đã lưu:
+
+1. **Nhánh Công trình (`foundBuilding == true` qua `NaturalBlockedTargetResolver.TryGetBlockageGridBounds`)**:
+   - Quét chu vi hình chữ nhật của công trình `[bMinGrid.x - 1 .. bMaxGrid.x + 1, bMinGrid.y - 1 .. bMaxGrid.y + 1]` để chọn ô walkable trên cùng đảo có khoảng cách kết hợp (`distToAgent + distToClick × 0.25f`) nhỏ nhất làm `islandGoal`.
+2. **Nhánh Không phải Công trình (hoặc Công trình đã bị phá hủy khi Unit đang đi tới)**:
+   - Kiểm tra `NaturalBlockedTargetResolver.IsCellInBounds(move.navigationTargetCell, Grid)`. Nếu ngoài biên thì dừng Unit (`hastarget = false`, `isSettled = true`).
+   - Tái tạo `baseGoal`:
+     - Nếu `move.targetResolutionKind == TargetResolutionKind.NaturalResolved`: `baseGoal = GridHelper.GridToWorld(move.navigationTargetCell, Grid)` (tâm ô đã resolve).
+     - Nếu `move.targetResolutionKind == TargetResolutionKind.Direct` (hoặc fallback khi `BuildingBlockage` không còn tìm thấy công trình): `baseGoal = move.currentworldtarget`.
+   - **Đồng bộ hóa Đảo (Island Sync)**:
+     - Kiểm tra `targetIsland` tại `move.navigationTargetCell`.
+     - Nếu `myIsland != 0` và `myIsland != targetIsland`: tìm trong `IslandSeedLookup` hạt giống (`Seed`) của đảo hiện tại và đặt tạm `islandGoal = GridHelper.GridToWorld(seedGrid, Grid)`.
+     - Khi Unit đã sang cùng đảo (`myIsland == targetIsland`), `islandGoal` tự động khôi phục về `baseGoal`.
+3. Cuối cùng, ghi `move.realTarget = islandGoal`.
 
 ---
 

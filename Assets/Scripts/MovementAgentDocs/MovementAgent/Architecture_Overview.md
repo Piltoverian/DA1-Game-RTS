@@ -21,13 +21,13 @@ Hệ thống được chia thành 4 lớp chính theo mô hình Agentic:
 Khi người chơi ra lệnh di chuyển cho một nhóm Unit, quy trình sau sẽ diễn ra:
 
 ### Bước 1: Phát hiện yêu cầu (`PathRequestSystem`)
-Hệ thống kiểm tra xem `currentworldtarget` của Unit có thay đổi so với đích đến cũ không. Nếu có, nó sẽ gắn một `TargetChangeRequest` vào Unit.
+Hệ thống kiểm tra trạng thái đường đi đã lưu (`FieldEntity`, `targetResolutionKind`, `navigationTargetCell` và `targetResolutionGeneration`). Nếu Unit chưa có Flow Field hợp lệ hoặc bản đồ thay đổi làm lệch đích tự nhiên đã resolve, nó sẽ gắn một `TargetChangeRequest` vào Unit.
 
 ### Bước 2: Phân bổ đội hình (`GroupFormationSystem`)
 Các Unit có cùng mục tiêu sẽ được gom nhóm. Hệ thống tính toán các "Slot" (vị trí đứng) trong đội hình (Box/Circle) và gán `slotTarget` cho từng Unit dựa trên khoảng cách gần nhất.
 
-### Bước 3: Gán đường đi (`FlowFieldAssignmentSystem`)
-Dựa trên mục tiêu mới, hệ thống sẽ tìm trong `Cache` xem đã có Flow Field dẫn đến đó chưa.
+### Bước 3: Phân giải mục tiêu & Gán đường đi (`FlowFieldAssignmentSystem`)
+Gọi `NaturalBlockedTargetResolver.TryResolveTarget` một lần để phân loại mục tiêu (`Direct`, `BuildingBlockage`, hoặc quét 4 hướng Bắc → Đông → Nam → Tây tìm ô walkable gần nhất cho `NaturalResolved`), lưu kết quả vào `MovementAgentComponent` và tra cứu `Cache` theo `navigationTargetCell`:
 - Nếu có: Gán ngay `FieldEntity` cho Unit.
 - Nếu không: Khởi tạo một Flow Field mới và yêu cầu `IntegrationFieldSystem` tính toán.
 

@@ -4,16 +4,28 @@ File này định nghĩa các thành phần dữ liệu cốt lỗi (`IComponent
 
 ---
 
-## 1. MovementAgentComponent
-Thành phần chính lưu trữ thông tin về đích đến và thực thể đường đi (Flow Field).
+## 1. TargetResolutionKind & MovementAgentComponent
+
+### Enum `TargetResolutionKind` (`byte`)
+Phân loại kết quả phân giải (resolve) mục tiêu di chuyển của Unit:
+- `None = 0`: Chưa được resolve hoặc mục tiêu không hợp lệ (ngoài bản đồ / bị bao vây kín).
+- `Direct = 1`: Ô click nằm trong lưới và đi được trực tiếp (`cost < 255`, không thuộc công trình).
+- `BuildingBlockage = 2`: Ô click nằm trong phạm vi ô lưới của công trình (`BlockageData`).
+- `NaturalResolved = 3`: Ô click là vật cản tự nhiên (`cost ≥ 255`, không thuộc công trình) và đã được dời sang ô walkable gần nhất theo 4 hướng.
+
+### Struct `MovementAgentComponent`
+Thành phần chính lưu trữ thông tin về đích đến, trạng thái phân giải mục tiêu và thực thể đường đi (Flow Field).
 
 | Trường | Giải thích |
 | :--- | :--- |
 | `speed` | Tốc độ di chuyển cơ bản của Unit. |
 | `hastarget` | Flag cho biết Unit có đang trong trạng thái có mục tiêu hay không. |
 | `FieldEntity` | Thực thể chứa Flow Field mà Unit đang bám theo. |
-| `currentworldtarget` | Tọa độ đích đến cuối cùng mà người chơi đã click. |
-| `realTarget` | Tọa độ đích đến thực tế trên đảo (được hệ thống Pathfinding tính toán lại). |
+| `currentworldtarget` | Tọa độ đích đến gốc mà người chơi đã click (giữ nguyên để xoay mặt và tính đội hình). |
+| `realTarget` | Tọa độ đích điều hướng thực tế ở frame hiện tại (tâm ô resolved, điểm chu vi công trình, hoặc `IslandSeed` khi đi liên đảo). |
+| `navigationTargetCell` | Ô lưới đích đã được resolve dùng cho Flow Field (`FlowField.targetcell`). |
+| `targetResolutionGeneration` | Thế hệ `grid.generation` tại thời điểm resolve mục tiêu gần nhất. |
+| `targetResolutionKind` | Loại kết quả resolve (`None`, `Direct`, `BuildingBlockage`, `NaturalResolved`). |
 | `slotTarget` | Tọa độ vị trí cụ thể mà Unit cần đứng trong đội hình. |
 | `useSlotTarget` | Nếu `true`, Unit sẽ bỏ qua Flow Field để lái trực tiếp vào `slotTarget`. |
 | `velocity` | Vận tốc hiện tại của Unit (dùng để nội suy mượt mà). |

@@ -173,38 +173,13 @@ public partial struct IntegrationFieldSystem : ISystem
             sbuffer.Clear();
 
             // 1. Kiểm tra xem điểm click (targetcell) có nằm trong Blockage nào không
-            float3 targetWorldPos = GridHelper.GridToWorld(field.targetcell, Grid);
-            float2 targetWorld2D = new float2(targetWorldPos.x, targetWorldPos.z);
-
-            bool foundTargetBlockage = false;
-            int2 bMinGrid = field.targetcell;
-            int2 bMaxGrid = field.targetcell;
-
-            for (int b = 0; b < BlockageDatas.Length; b++)
-            {
-                BlockageData bData = BlockageDatas[b];
-                float3 bPos = BlockageLocalToWorlds[b].Position;
-
-                float2 worldMin = new float2(bPos.x + bData.LocalRect.MinPoint.x, bPos.z + bData.LocalRect.MinPoint.y);
-                float2 worldMax = new float2(bPos.x + bData.LocalRect.MaxPoint.x, bPos.z + bData.LocalRect.MaxPoint.y);
-
-                StartEndRect worldRect = new StartEndRect(worldMin);
-                worldRect.ExpandTo(worldMax);
-
-                if (worldRect.isContains(targetWorld2D))
-                {
-                    float3 minWorld3D = new float3(worldRect.MinPoint.x + 0.01f, 0, worldRect.MinPoint.y + 0.01f);
-                    float3 maxWorld3D = new float3(worldRect.MaxPoint.x - 0.01f, 0, worldRect.MaxPoint.y - 0.01f);
-
-                    int2 bMin = GridHelper.WorldToGrid(minWorld3D, Grid);
-                    int2 bMax = GridHelper.WorldToGrid(maxWorld3D, Grid);
-
-                    bMinGrid = math.min(bMin, bMax);
-                    bMaxGrid = math.max(bMin, bMax);
-                    foundTargetBlockage = true;
-                    break;
-                }
-            }
+            bool foundTargetBlockage = NaturalBlockedTargetResolver.TryGetBlockageGridBounds(
+                field.targetcell,
+                Grid,
+                BlockageDatas,
+                BlockageLocalToWorlds,
+                out int2 bMinGrid,
+                out int2 bMaxGrid);
 
             // 2. Nạp IslandSeed đại diện cho từng đảo vào sbuffer (dùng khi di chuyển khác đảo)
             for (int i = 1; i < 1000; i++)

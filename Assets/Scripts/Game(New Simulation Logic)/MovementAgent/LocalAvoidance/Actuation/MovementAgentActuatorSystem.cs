@@ -60,7 +60,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 else
                     steering.stuckTime += DeltaTime * 0.2f; // Vẫn đang lách -> tăng chậm
 
-                float distToGlobal = math.distance(pos, move.currentworldtarget);
+                float distToGlobal = math.distance(pos, move.realTarget);
 
                 float stuckThreshold;
                 bool blockedByNeighbor = avoidance.closestDistance < avoidance.radius * 2.5f

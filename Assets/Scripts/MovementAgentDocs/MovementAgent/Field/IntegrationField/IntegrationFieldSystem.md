@@ -8,10 +8,11 @@
 Thay vì chỉ tính toán từ 1 điểm đích duy nhất, hệ thống này hỗ trợ việc di chuyển trên nhiều hòn đảo tách biệt.
 
 ### Thuật toán tìm Seed:
-1. Duyệt qua toàn bộ bản đồ để xác định có bao nhiêu hòn đảo (`IslandID`).
-2. Với mỗi hòn đảo, tìm ra một ô lưới nằm trên đảo đó mà **gần với mục tiêu thực tế nhất**.
-3. Ô lưới này được gọi là **Seed** (Hạt giống).
-4. Tất cả các Seed của các đảo khác nhau sẽ được coi là "điểm đích phụ" và được đưa vào hàng đợi BFS cùng một lúc với `bestcost = 0`.
+1. Kiểm tra xem `field.targetcell` có nằm trong vùng ô lưới `[bMinGrid .. bMaxGrid]` của một công trình hay không thông qua `NaturalBlockedTargetResolver.TryGetBlockageGridBounds`.
+2. Duyệt qua toàn bộ bản đồ để xác định có bao nhiêu hòn đảo (`IslandID`).
+3. Với mỗi hòn đảo, tìm ra một ô lưới nằm trên đảo đó mà **gần với mục tiêu thực tế nhất** (nếu đích là công trình thì tính khoảng cách tới hình chữ nhật `[bMinGrid .. bMaxGrid]` của công trình; ngược lại tính khoảng cách tới `field.targetcell`).
+4. Ô lưới này được gọi là **Seed** (Hạt giống).
+5. Tất cả các Seed của các đảo khác nhau sẽ được coi là "điểm đích phụ" và được đưa vào hàng đợi BFS cùng một lúc với `bestcost = 0`.
 
 > [!NOTE]
 > Hiện tại hệ thống đang sử dụng mảng tĩnh 1000 phần tử cho các đảo. Đây là giới hạn cần lưu ý (sẽ được nâng cấp lên HashMap ở bước tiếp theo).
@@ -23,8 +24,8 @@ Hệ thống sử dụng một biến thể của BFS (giống thuật toán Dij
 
 - **Chi phí bước đi**: 
   - Đi ngang/dọc: +10.
-  - Đi chéo: +14 ($\approx 10 \times \sqrt{2}$).
-- **Né vật cản**: Các ô có `GridNodeCost >= 250` sẽ bị bỏ qua hoàn toàn.
+  - Đi chéo: +14 (`≈ 10 × √2`).
+- **Né vật cản**: Các ô có `GridNodeCost >= 255` sẽ bị bỏ qua hoàn toàn.
 - **An toàn góc chéo**: Khi đi chéo, hệ thống kiểm tra 2 ô bên cạnh để đảm bảo Unit không "cắt góc" qua tường.
 
 ---

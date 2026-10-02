@@ -16,6 +16,7 @@ public partial struct GridIslandSystem : ISystem
         {
             if (grid.ValueRW.islandGeneration == grid.ValueRW.generation)
                 continue;
+           
             var costBuffer = SystemAPI.GetBuffer<GridNodeCost>(entity);
             var islandBuffer = SystemAPI.GetBuffer<GridIsland>(entity);
             int width = grid.ValueRO.width;
@@ -27,10 +28,21 @@ public partial struct GridIslandSystem : ISystem
 
             int currentIslandID = 0;
 
+            for (int i = 0; i < grid.ValueRO.width * grid.ValueRO.height; i++)
+            {
+                islandBuffer[i] = new GridIsland { islandID = 0 };
+            }
+
             for (int i = 0; i < totalNodes; i++)
             {
-               
-                if (visited[i] || costBuffer[i].cost == int.MaxValue)
+
+                if (costBuffer[i].cost >= 255)
+                {
+                    islandBuffer[i] = new GridIsland { islandID = 0 };
+                    continue;
+                }
+
+                if (islandBuffer[i].islandID != 0 || visited[i])
                     continue;
 
                 currentIslandID++;
@@ -60,13 +72,13 @@ public partial struct GridIslandSystem : ISystem
                                     int indexX = GridHelper.GetNodeIndex(orthox, grid.ValueRO);
                                     int indexY = GridHelper.GetNodeIndex(orthoy, grid.ValueRO);
 
-                                    if (costBuffer[indexX].cost == int.MaxValue || costBuffer[indexY].cost == int.MaxValue)
+                                    if (costBuffer[indexX].cost >=255 || costBuffer[indexY].cost >= 255)
                                         continue;
                                 }
 
                                 int neighborIndex = GridHelper.GetNodeIndex(neighborPos, grid.ValueRO);
 
-                                if (!visited[neighborIndex] && costBuffer[neighborIndex].cost < int.MaxValue)
+                                if (!visited[neighborIndex] && costBuffer[neighborIndex].cost <255)
                                 {
                                     visited[neighborIndex] = true;
                                     islandBuffer[neighborIndex] = new GridIsland { islandID = currentIslandID };
