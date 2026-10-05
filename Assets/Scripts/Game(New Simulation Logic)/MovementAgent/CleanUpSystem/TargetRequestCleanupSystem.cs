@@ -6,12 +6,14 @@ using Unity.Entities;
 /// Cleanup system: Xóa TargetChangeRequest sau khi TẤT CẢ systems trong
 /// FixedStepSimulationSystemGroup đã xử lý xong.
 /// 
-/// Chạy ở LateSimulationSystemGroup để đảm bảo:
+/// Chạy cuối FixedStepSimulationSystemGroup để đảm bảo:
 ///   - FlowFieldAssignmentSystem đã gán FlowField
 ///   - GroupFormationSystem đã gán slot
 ///   - Mọi system khác cần đọc request đều đã hoàn tất
 /// </summary>
-[UpdateInGroup(typeof(LateSimulationSystemGroup))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[UpdateAfter(typeof(FlowFieldAssignmentSystem))]
+[UpdateAfter(typeof(MovementAgentActuatorSystem))]
 public partial struct TargetRequestCleanupSystem : ISystem
 {
     [BurstCompile]

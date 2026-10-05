@@ -1,5 +1,7 @@
 # Thiết kế terrain competitive: height, noise và walkability
 
+> **Cập nhật 2026-10-03:** Thuật toán Lab 5 đã được người dùng chốt. Bước tiếp theo là port nguyên thuật toán sang Unity theo [kế hoạch port](Archive/2026-10-04/MapGen_NextSteps_2026-10-03.md). Các mô tả thuật toán cũ bên dưới mâu thuẫn với [Lab 5](MapGen_Lab5_AcceptedAlgorithm.md) chỉ còn là lịch sử tham khảo, không dùng để triển khai. Kiểm tra tiếp theo nhằm đối chiếu bản C# và tích hợp gameplay; không yêu cầu thiết kế lại, sweep balance hoặc làm hash trước khi port.
+
 Ngày 2026-10-02. Đề xuất kỹ thuật có thể triển khai; chưa có generator hoặc map hoàn chỉnh được nghiệm thu. Thiết kế này thay thế phần terrain của kế hoạch trước. Mọi hằng số dưới đây là preset khởi đầu của dự án, không phải hằng số StarCraft hay kết quả cân bằng đã chứng minh qua chơi.
 
 ## 1. Quyết định thiết kế
@@ -277,3 +279,5 @@ Thí nghiệm chứng minh công thức có thể giới hạn slope ở fixture
 Batch output phải có success/failure rate từng stage, accepted-map metrics, generation latency p50/p95, seed/version/hash; báo cả seed fail, không chỉ chọn hình đẹp. Baseline ablation: A threshold-height cũ, B layout+ramp không height detail, C layout+ramp+certified noise. So sánh connectivity, slope, resource access, throughput và failure. Chưa có số liệu batch/match, không tuyên bố preset đã balance.
 
 Thành phẩm milestone đầu là map hai tầng có mọi kiểm tra hình học/navigation thông qua và báo cáo metrics, không phải chỉ một PNG đẹp.
+
+

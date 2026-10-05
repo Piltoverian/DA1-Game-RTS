@@ -42,7 +42,7 @@ Nếu cả hai bước trên đều không tìm thấy, hệ thống gọi `Flow
 ## 2. Lưu ý về Dọn dẹp (Cleanup)
 Khác với phiên bản cũ, hệ thống này **KHÔNG CÒN** tự tay xóa component `TargetChangeRequest` sau khi gán đường đi xong.
 - **Lý do**: Component này phải được giữ lại để `MovementAgentGroupFormationSystem` (chạy sau đó) có thể nhận diện và tính toán Slot xếp đội hình.
-- Việc dọn dẹp được giao lại cho `TargetRequestCleanupSystem` chạy ở `LateSimulationSystemGroup`.
+- Việc dọn dẹp được giao lại cho `TargetRequestCleanupSystem` chạy cuối `FixedStepSimulationSystemGroup`, sau assignment và actuator. Request tạo ở Simulation phải tồn tại tới fixed tick xử lý nó; xóa ở LateSimulation có thể làm mất lệnh mới.
 
 ---
 

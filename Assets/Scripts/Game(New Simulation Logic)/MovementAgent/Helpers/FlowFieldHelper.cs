@@ -4,7 +4,9 @@ public static class FlowFieldHelper
 {
     public static Entity FlowFieldInit(EntityManager etManager, float3 worldtarget, GridComponent grid, EntityCommandBuffer ecb)
     {
-        Entity fieldEntity = etManager.CreateEntity();
+        // Assignment holds component refs and grid/cache buffers while iterating.
+        // Defer structural changes until the whole request batch has finished.
+        Entity fieldEntity = ecb.CreateEntity();
 
         ecb.AddComponent(fieldEntity, new FlowFieldStatus { Value = FieldState.Requested });
 

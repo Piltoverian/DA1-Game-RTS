@@ -93,6 +93,8 @@ public partial struct GridIslandSystem : ISystem
             visited.Dispose();
             queue.Dispose();
             grid.ValueRW.islandGeneration = grid.ValueRW.generation;
+            state.Enabled = false;
+
         }
     }
 

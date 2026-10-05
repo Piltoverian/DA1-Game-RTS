@@ -48,3 +48,4 @@ Blob không chứa dữ liệu UI: không Icon/IconIndex, Name/DisplayName hoặ
 
 Kiểm chứng: compile toàn runtime bằng Roslyn của Unity với references/source generators hiện có pass; chỉ còn diagnostics legacy CS0618/SGFE009. Evidence tại Temp/BlobDefinitionsCompile. Chưa chạy Unity baking/serialization/Burst/PlayMode.
 
+

@@ -1,5 +1,7 @@
 # Đặc Tả Kỹ Thuật: Sinh Bản Đồ RTS, Mã Hóa Data-Packed Texture & Quy Chuẩn Player Spawn
 
+> **Cập nhật 2026-10-03:** Thuật toán Lab 5 đã được người dùng chốt. Bước tiếp theo là port nguyên thuật toán sang Unity theo [kế hoạch port](Archive/2026-10-04/MapGen_NextSteps_2026-10-03.md). Các mô tả thuật toán cũ bên dưới mâu thuẫn với [Lab 5](MapGen_Lab5_AcceptedAlgorithm.md) chỉ còn là lịch sử tham khảo, không dùng để triển khai. Kiểm tra tiếp theo nhằm đối chiếu bản C# và tích hợp gameplay; không yêu cầu thiết kế lại, sweep balance hoặc làm hash trước khi port.
+
 > **Mục tiêu**: Xây dựng thuật toán sinh bản đồ theo seed và mode, cân bằng người chơi bằng gói tài nguyên khởi đầu tương đương quanh mỗi base thay vì bắt buộc địa hình đối xứng, mã hóa dữ liệu địa hình, tài nguyên và vị trí xuất phát vào Texture RGBA, hỗ trợ chọn Spawn trực tiếp trên Minimap và thiết lập ván đấu tại Frame đầu tiên thông qua Pipeline Request Spawn chuẩn.
 
 > [!IMPORTANT]
@@ -149,11 +151,11 @@ Tại **Setup Frame (Frame 0)**, hệ thống kích hoạt trực tiếp **Pipel
 
 ## 📦 5. Danh Sách Các File Cốt Lõi & Giáo Trình Học Tập
 
-* 📘 **Giáo trình Toán & Thuật toán MapGen:** [MapGen_Noise_RNG_Curriculum.md](MapGen_Noise_RNG_Curriculum.md)
+* 📘 **Giáo trình Toán & Thuật toán MapGen:** [MapGen_Noise_RNG_Curriculum.md](Archive/2026-10-04/MapGen_Noise_RNG_Curriculum.md)
 * 🧪 **Phòng thí nghiệm tương tác (HTML Labs):**
-  * [Lab 1: Bitwise, PRNG (SplitMix32 + Xorshift32) & Vành Khuyên Base](Labs/Lab1_Bitwise_PRNG_Annulus.html)
-  * [Lab 2: Lerp, Quintic Fade, Bilinear Interpolation & Tích Vô Hướng](Labs/Lab2_Lerp_Fade_Bilinear_DotProduct.html)
-  * [Lab 3: Vector Perlin Noise 2D, Chồng Sóng fBm & 4 Bước RTS MapGen](Labs/Lab3_PerlinVectors_fBm_RTSMapGen.html)
+  * [Lab 1: Bitwise, PRNG (SplitMix32 + Xorshift32) & Vành Khuyên Base](Archive/2026-10-04/Labs/Lab1_Bitwise_PRNG_Annulus.html)
+  * [Lab 2: Lerp, Quintic Fade, Bilinear Interpolation & Tích Vô Hướng](Archive/2026-10-04/Labs/Lab2_Lerp_Fade_Bilinear_DotProduct.html)
+  * [Lab 3: Vector Perlin Noise 2D, Chồng Sóng fBm & 4 Bước RTS MapGen](Archive/2026-10-04/Labs/Lab3_PerlinVectors_fBm_RTSMapGen.html)
 
 | STT | Tên File | Vị Trí | Nhiệm Vụ |
 | :---: | :--- | :--- | :--- |
@@ -164,3 +166,5 @@ Tại **Setup Frame (Frame 0)**, hệ thống kích hoạt trực tiếp **Pipel
 | 5 | `MapSpawnerConfigAuthoring.cs` | `Game(New Simulation Logic)/MapGen/` | Bake các Prefab (`TownHall`, `Worker`, danh sách `ResourceSlot -> Prefab`) trong SubScene sang Entity |
 | 6 | `MapRuntimeSpawner.cs` | `Game(New Simulation Logic)/MapGen/` | Gửi request spawn chuẩn vào Grid tại Setup Frame (miễn phí), sinh `TownHall` và `InitWorker` worker |
 | 7 | `MapGenTestAndSpawnUI.cs` | `ClientSide (Presentation)/UI/` | UI test trực quan trong Editor: Minimap Texture preview, nút chọn Spawn và bấm bắt đầu trận |
+
+

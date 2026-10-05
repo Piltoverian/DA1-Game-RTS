@@ -46,3 +46,4 @@ Authoring mới không tạo component cũ, không ánh xạ nhiều BuildingTag
 Chưa chuyển scene/prefab hoặc viết lại các system gameplay, UI, ability execution và job queue. Prefab dùng đường mới phải được cấu hình theo phần Authoring; system cũ không tự xử lý entity mới. Không tự tạo mutable state cho ability/job chưa có consumer mới.
 
 Kiểm chứng: compile runtime và Editor với Unity references/source generators thành công. Chưa kiểm chứng Unity baking/Play Mode.
+

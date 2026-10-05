@@ -16,31 +16,34 @@ partial struct GridInitSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
 
-       
         foreach (var (grid, costBuffer, islandBuffer, entity) in SystemAPI.Query<RefRW<GridComponent>, DynamicBuffer<GridNodeCost>, DynamicBuffer<GridIsland>>().WithEntityAccess())
         {
-            PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
-
-            var clone = collider.Value.Value.Clone();
-
-            var filter = clone.Value.GetCollisionFilter();
-            //filter.BelongsTo = PhysicsLayersDefine.Ground;
-            clone.Value.SetCollisionFilter(filter);
-            collider.Value = clone;
-            state.EntityManager.SetComponentData(entity, collider);
+            int totalNodes = grid.ValueRO.width * grid.ValueRO.height;
+            if (state.EntityManager.HasComponent<PhysicsCollider>(entity))
+            {
+                PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
+                var clone = collider.Value.Value.Clone();
+                var filter = clone.Value.GetCollisionFilter();
+                clone.Value.SetCollisionFilter(filter);
+                collider.Value = clone;
+                state.EntityManager.SetComponentData(entity, collider);
+            }
             
             var cbuffer = costBuffer;
             var ibuffer = islandBuffer;
-            int totalNodes = grid.ValueRO.width * grid.ValueRO.height;
             
             cbuffer.ResizeUninitialized(totalNodes);
             ibuffer.ResizeUninitialized(totalNodes);
             
+            bool hasTerrain = state.EntityManager.HasBuffer<GridTerrain>(entity);
+            var terrain = hasTerrain ? state.EntityManager.GetBuffer<GridTerrain>(entity) : default;
+            bool useTerrain = hasTerrain && terrain.Length == totalNodes;
             for (int i = 0; i < totalNodes; i++)
             {
-                cbuffer[i] = new GridNodeCost { cost = 1 };
+                cbuffer[i] = new GridNodeCost { cost = useTerrain && !terrain[i].walkable ? 255 : 1 };
                 ibuffer[i] = new GridIsland { islandID = 0 };
             }
+            grid.ValueRW.islandGeneration = uint.MaxValue;
         }
         state.Enabled = false;
     }

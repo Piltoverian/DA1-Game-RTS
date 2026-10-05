@@ -1,0 +1,31 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lab 6 — Tilemap cliff và ramp</title>
+<style>body{background:#18201c;color:#eee;font:16px system-ui;margin:24px auto;max-width:1100px;padding:0 16px}canvas{width:100%;height:auto;background:#30372b}button,input{font:inherit}p{line-height:1.6}#info{white-space:pre-wrap}a{color:#badebd}</style>
+<h1>Lab 6 — Tilemap cliff và ramp</h1>
+<p>Map thật từ Lab 5 → hướng nối cliff + mặt cao/thấp → nhóm ramp → chọn sprite → vẽ theo lớp. Mỗi sprite giữ nguyên 418×418 pixel.</p>
+<label><input id="mark" type="checkbox" checked> Khoanh ô ramp và chỉ hướng lên tầng cao</label>
+<label><input id="grid" type="checkbox"> Lưới và HeightLevel</label>
+<p id="info"></p><canvas id="map" width="4180" height="4180"></canvas>
+<p>Đổi seed: chạy <code>node Docs/Multiplayer/Labs/lab6-generate.cjs 1337</code>, sau đó mở lại trang. Atlas V17 là bộ thử nghiệm; khớp đầu cliff–ramp và các ô cliff nhiều mảnh vẫn cần hoàn thiện art.</p>
+<script src="lab6-data.js"></script><script>
+'use strict';
+const {sample,plan}=window.LAB6_DATA,canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),n=418;
+const names=['cliff_straight','cliff_outer_corner','cliff_inner_corner','ramp_single','ramp_left','ramp_middle','ramp_right','ground_grass','ground_soil'];
+const atlas=new Image();atlas.src='../../../../Assets/Art/Terrain/Lab6/atlas.png';
+function tile(name,r,x,y){const k=names.indexOf(name);if(k<0)throw Error('Missing sprite '+name);ctx.save();ctx.translate(x*n+n/2,y*n+n/2);ctx.rotate(r*Math.PI/2);ctx.drawImage(atlas,k%3*n,Math.floor(k/3)*n,n,n,-n/2,-n/2,n,n);ctx.restore();}
+function render(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ for(const c of sample.cells)tile(plan.ground,0,c.x,c.y);
+ const cells=new Map(sample.cells.map(c=>[c.globalCell,c]));
+ for(const d of plan.draws){const c=cells.get(d.cell);if(c)tile(d.source,d.rotation,c.x,c.y);}
+ for(const c of sample.cells){
+  const x=c.x*n,y=c.y*n;
+  if(document.querySelector('#grid').checked){ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;ctx.strokeRect(x,y,n,n);ctx.fillStyle='white';ctx.font='35px sans-serif';ctx.fillText('H'+c.level,x+12,y+42);}
+  if(document.querySelector('#mark').checked&&c.rampTile){ctx.strokeStyle='#ff4545';ctx.lineWidth=7;ctx.strokeRect(x+5,y+5,n-10,n-10);const d=[[0,-1],[1,0],[0,1],[-1,0]][c.rampTile.direction],cx=x+n/2,cy=y+n/2;ctx.beginPath();ctx.moveTo(cx-d[0]*65,cy-d[1]*65);ctx.lineTo(cx+d[0]*65,cy+d[1]*65);ctx.lineTo(cx+d[0]*35-d[1]*22,cy+d[1]*35+d[0]*22);ctx.moveTo(cx+d[0]*65,cy+d[1]*65);ctx.lineTo(cx+d[0]*35+d[1]*22,cy+d[1]*35-d[0]*22);ctx.stroke();}
+ }
+ document.querySelector('#info').textContent=`Seed ${sample.seed} · map ${plan.W}×${plan.H} · crop (${sample.crop.x}, ${sample.crop.y}) · ${sample.fullTerrainIslandCount} vùng đi được\n${plan.diagnostics.length} lỗi hướng/vị trí · ${plan.warnings.length} ô cliff nhiều mảnh cần art riêng trên toàn map`;
+}
+atlas.onload=()=>{if(atlas.width!==1254||atlas.height!==1254)throw Error('Invalid native atlas');render();};atlas.onerror=()=>document.querySelector('#info').textContent='Không tải được atlas. Chạy lab6-generate.cjs trước.';
+document.querySelector('#mark').onchange=render;document.querySelector('#grid').onchange=render;
+</script></html>
+

@@ -1,5 +1,7 @@
 # Kế Hoạch Triển Khai MapGen, Data Texture và Player Spawn
 
+> **Cập nhật 2026-10-03:** Thuật toán Lab 5 đã được người dùng chốt. Bước tiếp theo là port nguyên thuật toán sang Unity theo [kế hoạch port](Archive/2026-10-04/MapGen_NextSteps_2026-10-03.md). Các mô tả thuật toán cũ bên dưới mâu thuẫn với [Lab 5](MapGen_Lab5_AcceptedAlgorithm.md) chỉ còn là lịch sử tham khảo, không dùng để triển khai. Kiểm tra tiếp theo nhằm đối chiếu bản C# và tích hợp gameplay; không yêu cầu thiết kế lại, sweep balance hoặc làm hash trước khi port.
+
 > Bổ sung policy connectivity: phải thử nối **mọi island**, không chỉ base, trước khi lấp. Chỉ pocket không có base, ≤64 ô và tổng lấp ≤2% grid được chuyển thành núi khi không nối được; vùng lớn không nối được phải reject/retry (tối đa 16 candidate). Resource chỉ block footprint và không được làm xuất hiện island mới. Chi tiết pipeline và kết quả seed 30000 nằm trong tài liệu thuật toán chuẩn bên dưới.
 
 > Quyết định terrain cập nhật 2026-10-02: [MapGen_Lab5_AcceptedAlgorithm.md](MapGen_Lab5_AcceptedAlgorithm.md) là nguồn chuẩn cho thuật toán đã chọn. Các luật mới gồm common Y, integer HeightLevel, cliff/ramp bake vào walkable, 2–10 người, vùng bảo vệ 4–16 ô, **đúng 1 island sau clearance và resource occupancy**, pocket bị loại chuyển thành núi. Ưu tiên những luật này nếu mô tả terrain cũ bên dưới mâu thuẫn. Lab đã kiểm chứng; chưa xác nhận đã port vào Unity.
@@ -108,11 +110,11 @@ Hệ thống Movement Agent hiện đã hoàn tất việc phân biệt và xử
 
 ## 3. File sẽ tạo & Tài liệu Giáo trình / Labs đi kèm
 
-* 📘 **Giáo trình Lý thuyết & Toán học MapGen:** [MapGen_Noise_RNG_Curriculum.md](MapGen_Noise_RNG_Curriculum.md)
+* 📘 **Giáo trình Lý thuyết & Toán học MapGen:** [MapGen_Noise_RNG_Curriculum.md](Archive/2026-10-04/MapGen_Noise_RNG_Curriculum.md)
 * 🧪 **Các Phòng thí nghiệm tương tác (HTML Labs):**
-  * [Lab 1: Bitwise, PRNG (SplitMix32 + Xorshift32) & Vành Khuyên Base](Labs/Lab1_Bitwise_PRNG_Annulus.html)
-  * [Lab 2: Lerp, Quintic Fade, Bilinear Interpolation & Tích Vô Hướng](Labs/Lab2_Lerp_Fade_Bilinear_DotProduct.html)
-  * [Lab 3: Vector Perlin Noise 2D, Chồng Sóng fBm & 4 Bước RTS MapGen](Labs/Lab3_PerlinVectors_fBm_RTSMapGen.html)
+  * [Lab 1: Bitwise, PRNG (SplitMix32 + Xorshift32) & Vành Khuyên Base](Archive/2026-10-04/Labs/Lab1_Bitwise_PRNG_Annulus.html)
+  * [Lab 2: Lerp, Quintic Fade, Bilinear Interpolation & Tích Vô Hướng](Archive/2026-10-04/Labs/Lab2_Lerp_Fade_Bilinear_DotProduct.html)
+  * [Lab 3: Vector Perlin Noise 2D, Chồng Sóng fBm & 4 Bước RTS MapGen](Archive/2026-10-04/Labs/Lab3_PerlinVectors_fBm_RTSMapGen.html)
 
 | File | Trách nhiệm |
 |---|---|
@@ -271,3 +273,5 @@ sequenceDiagram
 - Ghost snapshot, command replication và fog-of-war culling.
 
 Các phần này tiếp tục theo [kiến trúc Multiplayer](README.md) sau khi Hạng mục B được nghiệm thu.
+
+

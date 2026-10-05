@@ -291,3 +291,4 @@ Tình trạng lúc viết manual: các đoạn mã Heal ở bước A–F đã �
 | Muốn gọi Dispose sau lookup | Không gọi: reference mượn blob do Unity quản lý |
 
 Tham khảo source flow và ownership tại [R2/README](R2/README.md), schema tại [BlobDefinitions](BlobDefinitions.md).
+

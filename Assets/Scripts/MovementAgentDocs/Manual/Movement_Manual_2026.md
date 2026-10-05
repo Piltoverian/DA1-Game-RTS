@@ -25,7 +25,7 @@ Khi người chơi (hoặc AI) chọn một đạo quân và click chuột phả
    - **Thuật toán Slot-Centric Greedy:** Các Slot (điểm đứng trong Box/Circle) được sinh ra từ đích lùi dần ra ngoài. Slot ở tâm sẽ ưu tiên chọn các Agent đang đi đầu, Slot ở rìa sẽ "hứng" các Agent lẹt đẹt đi sau.
    - Điều này đảm bảo khi nguyên bầy tịnh tiến tới đích, chúng không bao giờ vắt chéo đường (Cross paths) của nhau.
 
-4. **`TargetRequestCleanupSystem` (Late Update):**
+4. **`TargetRequestCleanupSystem` (cuối FixedStep):**
    - Xóa `TargetChangeRequest` đi để dọn dẹp, đảm bảo FlowField và Formation chỉ tính 1 lần duy nhất lúc xuất phát.
 
 5. **`MovementAgentTargetSystem` (Tái tạo Đích Cơ sở & Hòa trộn Hướng đi):**

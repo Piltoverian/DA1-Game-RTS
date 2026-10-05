@@ -54,11 +54,9 @@ public partial struct MoveOverrideSystem : ISystem
                 moveOverride.ValueRO.targetApplied &&
                 !moveAgent.ValueRO.hastarget;
 
-            bool movementSettled =
-                moveOverride.ValueRO.targetApplied &&
-                steering.ValueRO.isSettled;
-
-            if (reachedByDistance || movementAlreadyStopped || movementSettled)
+            // A zero-velocity frame (waiting for a field or local avoidance)
+            // is not command completion. Target/Actuator clear hastarget when done.
+            if (reachedByDistance || movementAlreadyStopped)
             {
                 moveOverride.ValueRW.targetApplied = false;
                 moveOverrideEnabled.ValueRW = false;

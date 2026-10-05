@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using UnityEngine;
 
-public class MapGenerator : MonoBehaviour
+
+public static class MapGenerator
 {
 
     public static float fade(float t)

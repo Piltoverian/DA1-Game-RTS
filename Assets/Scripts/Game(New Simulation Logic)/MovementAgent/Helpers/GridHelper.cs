@@ -21,13 +21,21 @@ public static class GridHelper
 
     public static int GetNodeIndex(int2 gridPos, GridComponent grid)
     {
-        return gridPos.y * grid.width + gridPos.x;
+        return GetNodeIndex(gridPos, grid.width);
     }
+
+    // Explicit row width also supports vertex buffers and render chunk grids.
+    public static int GetNodeIndex(int2 gridPos, int width) => gridPos.y * width + gridPos.x;
 
     public static int2 GetGridPosFromIndex(int index, GridComponent grid)
     {
-        int x = index % grid.width;
-        int y = index / grid.width;
+        return GetGridPosFromIndex(index, grid.width);
+    }
+
+    public static int2 GetGridPosFromIndex(int index, int width)
+    {
+        int x = index % width;
+        int y = index / width;
         return new int2(x, y);
     }
 

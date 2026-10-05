@@ -93,3 +93,4 @@ Trong session tiếp theo, chúng ta sẽ bắt tay xử lý dứt điểm 3 fil
    * Đặt trong thư mục `Game(New Simulation Logic)/Multiplayer/Contracts/` chứa các struct hợp đồng ở trên.
 3. **Tạo `MatchStateComponent.cs` & Cập nhật `MatchPlayingTag`**:
    * Thiết lập cơ chế khóa van mô phỏng ECS trong lúc chờ kết nối mạng và màn hình tải trận.
+

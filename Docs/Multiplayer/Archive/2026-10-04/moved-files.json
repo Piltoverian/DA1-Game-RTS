@@ -1,0 +1,206 @@
+[
+  {
+    "from": "Labs\\lab5-texture-join-cases.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab5-texture-join-cases.cjs"
+  },
+  {
+    "from": "Labs\\Lab2_Lerp_Fade_Bilinear_DotProduct.html",
+    "to": "Archive\\2026-10-04\\Labs\\Lab2_Lerp_Fade_Bilinear_DotProduct.html"
+  },
+  {
+    "from": "Labs\\lab4-browser-test.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-browser-test.cjs"
+  },
+  {
+    "from": "MapGen_Noise_RNG_Curriculum.md",
+    "to": "Archive\\2026-10-04\\MapGen_Noise_RNG_Curriculum.md"
+  },
+  {
+    "from": "Labs\\make-lab5-v4-layout.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\make-lab5-v4-layout.ps1"
+  },
+  {
+    "from": "Labs\\build-lab5-fixed-view-atlas.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\build-lab5-fixed-view-atlas.ps1"
+  },
+  {
+    "from": "Labs\\lab4-terrain-preview.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-terrain-preview.cjs"
+  },
+  {
+    "from": "MapGen_NextSteps_2026-10-03.md",
+    "to": "Archive\\2026-10-04\\MapGen_NextSteps_2026-10-03.md"
+  },
+  {
+    "from": "Labs\\slice-lab5-v4-atlas.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\slice-lab5-v4-atlas.ps1"
+  },
+  {
+    "from": "Labs\\render-lab5-v3-review.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v3-review.ps1"
+  },
+  {
+    "from": "Labs\\render-lab5-fixed-view.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-fixed-view.ps1"
+  },
+  {
+    "from": "Labs\\Lab4_README.md",
+    "to": "Archive\\2026-10-04\\Labs\\Lab4_README.md"
+  },
+  {
+    "from": "Labs\\render-lab5-v17.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v17.ps1"
+  },
+  {
+    "from": "Labs\\Lab4_Height_Noise_Walkability_Balance.html",
+    "to": "Archive\\2026-10-04\\Labs\\Lab4_Height_Noise_Walkability_Balance.html"
+  },
+  {
+    "from": "Labs\\audit-lab5-fixed-view-edges.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\audit-lab5-fixed-view-edges.ps1"
+  },
+  {
+    "from": "Labs\\render-lab5-v11.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v11.ps1"
+  },
+  {
+    "from": "Labs\\build_lab4.py",
+    "to": "Archive\\2026-10-04\\Labs\\build_lab4.py"
+  },
+  {
+    "from": "Labs\\render-lab5-v14.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v14.ps1"
+  },
+  {
+    "from": "Labs\\lab4-preview.png",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-preview.png"
+  },
+  {
+    "from": "Labs\\Lab1_Bitwise_PRNG_Annulus.html",
+    "to": "Archive\\2026-10-04\\Labs\\Lab1_Bitwise_PRNG_Annulus.html"
+  },
+  {
+    "from": "Labs\\lab4-terrain-preview.png",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-terrain-preview.png"
+  },
+  {
+    "from": "Labs\\render-lab5-surface-contract.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-surface-contract.ps1"
+  },
+  {
+    "from": "Labs\\render-lab5-texture-join-audit.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-texture-join-audit.ps1"
+  },
+  {
+    "from": "Labs\\Lab5FixedTileAtlas.cs",
+    "to": "Archive\\2026-10-04\\Labs\\Lab5FixedTileAtlas.cs"
+  },
+  {
+    "from": "Labs\\lab5-preview.png",
+    "to": "Archive\\2026-10-04\\Labs\\lab5-preview.png"
+  },
+  {
+    "from": "Labs\\install_lab4_levels.py",
+    "to": "Archive\\2026-10-04\\Labs\\install_lab4_levels.py"
+  },
+  {
+    "from": "Labs\\render-lab5-high-side-audit.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-high-side-audit.ps1"
+  },
+  {
+    "from": "Labs\\render-lab5-join-overview.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-join-overview.ps1"
+  },
+  {
+    "from": "Labs\\Lab0_Noise_fBm_Intuition.html",
+    "to": "Archive\\2026-10-04\\Labs\\Lab0_Noise_fBm_Intuition.html"
+  },
+  {
+    "from": "Labs\\audit-lab5-fixed-view-direction.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\audit-lab5-fixed-view-direction.ps1"
+  },
+  {
+    "from": "Labs\\lab5-texture-sample.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab5-texture-sample.cjs"
+  },
+  {
+    "from": "Labs\\audit-lab5-v8-walkway.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\audit-lab5-v8-walkway.ps1"
+  },
+  {
+    "from": "Labs\\lab4-controls-test.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-controls-test.cjs"
+  },
+  {
+    "from": "Labs\\render-lab5-v13.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v13.ps1"
+  },
+  {
+    "from": "Labs\\lab4-levels.js",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-levels.js"
+  },
+  {
+    "from": "MapGen_TextureResearch_Notes.md",
+    "to": "Archive\\2026-10-04\\MapGen_TextureResearch_Notes.md"
+  },
+  {
+    "from": "Labs\\Lab3_PerlinVectors_fBm_RTSMapGen.html",
+    "to": "Archive\\2026-10-04\\Labs\\Lab3_PerlinVectors_fBm_RTSMapGen.html"
+  },
+  {
+    "from": "Labs\\lab5-ramp-direction-audit.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab5-ramp-direction-audit.cjs"
+  },
+  {
+    "from": "Labs\\render-lab5-v12.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v12.ps1"
+  },
+  {
+    "from": "Labs\\lab5-clusters-preview.png",
+    "to": "Archive\\2026-10-04\\Labs\\lab5-clusters-preview.png"
+  },
+  {
+    "from": "Labs\\compose-lab5-v5.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\compose-lab5-v5.ps1"
+  },
+  {
+    "from": "Labs\\lab4-engine.js",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-engine.js"
+  },
+  {
+    "from": "Labs\\lab4-view.fragment.html",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-view.fragment.html"
+  },
+  {
+    "from": "Labs\\lab4-tests.cjs",
+    "to": "Archive\\2026-10-04\\Labs\\lab4-tests.cjs"
+  },
+  {
+    "from": "Labs\\lab5-10players-preview.png",
+    "to": "Archive\\2026-10-04\\Labs\\lab5-10players-preview.png"
+  },
+  {
+    "from": "Labs\\render-lab5-texture-sample.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-texture-sample.ps1"
+  },
+  {
+    "from": "Labs\\compile-lab5-v7-ports.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\compile-lab5-v7-ports.ps1"
+  },
+  {
+    "from": "Labs\\Lab5RampSpriteAtlas.cs",
+    "to": "Archive\\2026-10-04\\Labs\\Lab5RampSpriteAtlas.cs"
+  },
+  {
+    "from": "Labs\\audit-lab5-v7.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\audit-lab5-v7.ps1"
+  },
+  {
+    "from": "Labs\\prepare-lab5-v8-walkway.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\prepare-lab5-v8-walkway.ps1"
+  },
+  {
+    "from": "Labs\\render-lab5-v8-sample.ps1",
+    "to": "Archive\\2026-10-04\\Labs\\render-lab5-v8-sample.ps1"
+  }
+]

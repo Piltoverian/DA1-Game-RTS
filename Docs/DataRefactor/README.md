@@ -10,3 +10,4 @@ Thư mục này chứa toàn bộ tài liệu hướng dẫn về cấu hình d�
 - **[BlobDefinitions.md](BlobDefinitions.md)**: Cấu trúc các struct BlobAsset (dành cho Technical Designer và Programmer).
 
 > Để xem quy trình làm việc tổng quan, hãy mở [Trang chủ tài liệu (Docs/README.md)](../README.md).
+

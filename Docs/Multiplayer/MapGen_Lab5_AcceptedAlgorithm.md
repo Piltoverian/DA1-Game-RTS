@@ -1,12 +1,28 @@
+> **Quota ramp mới:** mỗi đoạn face cliff thẳng liên tục cùng hướng/cặp level, tách tại góc, có mục tiêu `max(1, ceil(n/12))` ô mặt ramp. Đếm chiều rộng mặt ramp, không đếm corridor/landing. Bổ sung sau repair và thống nhất núi; ưu tiên rộng cấu hình, cho phép thu đến 1 ô khi cần. Không khoét núi/góc hoặc phá khoảng cách nhóm ramp. Đoạn thiếu vị trí hợp lệ ghi `rampQuota.limited` với reason `geometry_or_ramp_spacing`, hiển thị số đoạn bị giới hạn trong HTML; không tuyên bố quota thay thế kiểm tra một island.
+> **Thay đổi theo yêu cầu người dùng 2026-10-04:** bỏ clearance và unit-radius bake. Một mask `walk` dùng chung cho mọi unit; không còn field `physical` hoặc `clearance` trong output/schema. Núi, cliff chưa mở ramp và footprint resource chặn trực tiếp; HeightLevel không thay thế walkability. Cost Unity = walk ? 1 : 255. Các mô tả clearance/radius bên dưới là lịch sử và được thay thế bởi quyết định này. Retry, ramp cardinal/spacing và một island vẫn giữ. Radius input cũ bị bỏ qua, không ảnh hưởng generation.
 # Thuật toán MapGen đã chọn — Lab 5
 
+**Cấu hình được chọn mới nhất:** map **256×256 ô** (65.536 ô), `fullMap:true`, sinh terrain kín tới mép grid. Bỏ viền outside terrain hai ô; không sinh nước/outside để bao map. MountainMask, cliff collision, clearance và ramp vẫn quyết định ô chặn; sinh full map không đồng nghĩa mọi ô walkable. HTML kết hợp hiện dùng cấu hình này. Engine giữ mặc định `fullMap:false` chỉ để tái hiện các regression/preset cũ; bản port phải truyền `fullMap:true` rõ ràng.
+
+Với fullMap, phạm vi sinh mountainMask và gán terrain kind chạy toàn grid thay vì bỏ viền hai ô. Núi ở mép vẫn hợp lệ; giữ luật không khoét núi. Không thay luật ramp, repair/retry, lấp pocket nhỏ hoặc điều kiện đúng một island. Biên ngoài grid vẫn là giới hạn map, không phải tile outside được sinh bên trong map.
+
+Regression mới: `Labs/Lab5_6/lab56-256-tests.cjs`, seed 30000 / 4 người / radius 0.2 / width 3 cố định / resource tắt: đúng một island, không có kind=4 ngoài mountainMask, visual diagnostics=0. Kết quả hiện tại candidate index 0, 36 nhóm ramp, 2 warning art compound; đây là quan sát preset, không phải hằng số thuật toán cho mọi seed.
+
+**Chốt bổ sung 2026-10-04 — hoàn tất session Lab 5 + Lab 6:** người dùng đã xem và chọn thuật toán trong [HTML kết hợp](Labs/Lab5_6/Lab5_6_Combined_Map_Texture.html). Lab 5 sinh terrain/occupancy/navigation; Lab 6 biên dịch cliff/ramp và render từ chính map đó. Nguồn bổ sung chuẩn: `Labs/Lab5/lab5-visual-tiles.js`, `Labs/Lab6/lab6-engine.js`, `Labs/Lab5_6/lab56-app.js`; quy trình chi tiết trong [Lab6_README.md](Labs/Lab6/Lab6_README.md). Không xét lại thuật toán hoặc quay lại các pack thử cũ khi bắt đầu session sau.
+
+Luật đã chọn: cliff face nằm trên phía cao của biên tầng, lưu ports nối và quadrant cao/thấp riêng; ramp chỉ cardinal, nằm trên cliff thẳng, không ở góc, dài một ô theo chiều dốc. Chiều rộng dùng single hoặc left + middle + right; nhóm ramp cách nhau ít nhất một ô. Vẽ ground → cliff → ramp, sprite không kéo giãn; thu nhỏ đồng đều chỉ để xem tổng quan. Candidate thử tối đa 16 lần; từ lần thử thứ chín có fallback contour block chung theo config để tạo đoạn thẳng hợp lệ. Navigation vẫn đọc walk mask, Y=0.
+
+**Session tiếp theo: gen núi** theo [bàn giao 2026-10-04](MapGen_Session_Handoff_2026-10-04.md). Giữ nguyên mountainMask và gameplay; thay màu núi tạm bằng bộ tile núi phù hợp. Art đầu cliff–ramp và cliff nhiều mảnh còn ghi nhận trong Lab 6; việc chọn thuật toán không đồng nghĩa các texture đã đạt bản cuối hoặc đã port Unity.
+
 Ngày chốt: 2026-10-02. Người dùng đã chọn hướng thuật toán Lab 5 sau khi bổ sung luật giữ núi liền mạch. Đây là bản ghi bàn giao để tiếp tục ở session khác; chốt hướng sinh terrain và tài nguyên, chưa phải nghiệm thu tích hợp Unity hay chứng nhận cân bằng mọi seed.
+
+**Bổ sung đã được người dùng yêu cầu ngày 2026-10-03:** hai cụm mặt ramp khác nhau phải cách nhau ít nhất một ô, kể cả chạm chéo; hướng ramp chỉ N/E/S/W. Luật áp dụng cho cả ramp chính và cửa nối island bổ sung. Không đổi noise, mức terrain, độ rộng cấu hình, núi gốc hoặc policy tài nguyên. Chi tiết ghép sprite và kiểm tra: [MapGen_VisualTileCompiler.md](MapGen_VisualTileCompiler.md).
 
 ## 1. Các quyết định không được thay đổi khi tiếp tục
 
 **Policy nối island hiện hành:** thử nối mọi island với component chứa P1, ưu tiên island lớn nhất trước, bằng đường mở cliff có footprint rộng tối thiểu và không đi qua núi gốc. Chỉ khi không tìm được đường nối hợp lệ mới chuyển pocket không chứa base, tối đa **64 ô walkable/pocket**, thành núi; tổng ô lấp không vượt **2% diện tích grid/candidate**. Vùng lớn hoặc vùng chứa base không nối được phải reject/retry candidate, tối đa 16. Không lấp tất cả island phụ ngay sau khi nối base. Điều kiện cuối vẫn đúng 1 island sau resource occupancy. Các mô tả lấp mọi pocket trong lịch sử đã được thay thế bởi policy này.
 
-Mask và render phải nhất quán: tâm cluster phải nằm trên nền walkable, không thuộc núi/ramp tại lúc chọn; mọi ô footprint kiểm tra mountainMask trực tiếp. Resource occupancy không phải núi và không được vẽ đá núi lên footprint resource. Sau chuyển pocket thành núi, loại portal không còn ô sống, remap ramp ID và đặt nhãn R tại ô nền sống của portal; không dùng tọa độ candidate cũ để ghi nhãn trên núi. Regression `Labs/lab5-mask-consistency-tests.cjs` bao gồm seed 30000 và 4 seed khác, quota 3/3/6/6 với 10 người.
+Mask và render phải nhất quán: tâm cluster phải nằm trên nền walkable, không thuộc núi/ramp tại lúc chọn; mọi ô footprint kiểm tra mountainMask trực tiếp. Resource occupancy không phải núi và không được vẽ đá núi lên footprint resource. Sau chuyển pocket thành núi, loại portal không còn ô sống, remap ramp ID và đặt nhãn R tại ô nền sống của portal; không dùng tọa độ candidate cũ để ghi nhãn trên núi. Regression `Labs/Lab5/lab5-mask-consistency-tests.cjs` bao gồm seed 30000 và 4 seed khác, quota 3/3/6/6 với 10 người.
 
 Pocket nền thường bị loại để giữ 1 island phải được chuyển thành **núi thật trong mountainMask/kind**, không chỉ blocked vô danh. Xóa nhãn cliff/ramp của các ô đó, thống nhất HeightLevel theo median của khối núi 4 hướng sau khi gộp. Không đổi mức của nền còn đi được. Render dùng cùng mask/occupancy nên pocket chuyển sang đá núi; resource không thể đặt vào đó.
 
@@ -23,7 +39,7 @@ Pocket nền thường bị loại để giữ 1 island phải được chuyển
 
 ## 2. Nguồn chuẩn và thứ tự pipeline
 
-Nguồn chạy đã chọn: `Labs/lab5-engine.js`, `Labs/lab5-bake.js`, `Labs/lab5-connectivity.js`, `Labs/lab5-clusters.js`. `Labs/lab5-overview.js` chỉ vẽ; màu/texture minh họa không quyết định gameplay. `Labs/lab5-view.fragment.html` điều phối UI, tắt bộ resource cũ bằng bốn count = 0 rồi gọi bộ cluster.
+Nguồn chạy đã chọn: `Labs/Lab5/lab5-engine.js`, `Labs/Lab5/lab5-bake.js`, `Labs/Lab5/lab5-connectivity.js`, `Labs/Lab5/lab5-clusters.js`. `Labs/Lab5/lab5-overview.js` chỉ vẽ; màu/texture minh họa không quyết định gameplay. `Labs/Lab5/lab5-view.fragment.html` điều phối UI, tắt bộ resource cũ bằng bốn count = 0 rồi gọi bộ cluster.
 
 ```text
 seed + config
@@ -34,9 +50,10 @@ seed + config
   → lượng tử HeightLevel + majority smoothing + core base phẳng
   → thống nhất mức của từng khối núi
   → cliff band theo chênh mức
-  → mở các ramp hợp lệ
+  → mở ramp → chia cụm mặt cliff có hướng cardinal → giữ khoảng trống ≥1 ô giữa các cụm
   → physical mask → clearance → walk mask
-  → thử nối mọi island bằng cửa cliff bổ sung, không khoét núi
+  → thử nối mọi island bằng cửa cliff bổ sung, giữ khoảng trống ≥1 ô, không khoét núi
+  → cửa bị loại làm mất liên thông: rollback rồi thử đường khác (tối đa 24 lần/island)
   → pocket không nối được ≤64 ô, không có base: chuyển thành núi (tổng ≤2%)
   → kiểm tra đúng 1 island; candidate không hợp lệ thì retry (tối đa 16)
   → thống nhất mức các khối núi sau gộp
@@ -98,7 +115,7 @@ Chưa triển khai luật building placement Unity trong lab. Khi tích hợp: g
 
 ## 6. Cluster tài nguyên
 
-**Cluster không phải vật cản.** Chỉ footprint 2×2 của từng prefab được ghi vào `resourceMask`; `physical = terrainPhysical AND NOT resourceMask`. Hàm chuẩn `RTSClusters.bakeResourceOccupancy` không đọc radius, đường bao hoặc bounding box cluster. Ô trống giữ physical của địa hình; walk vẫn phải qua clearance theo radius unit, nên ô sát resource có thể không đủ khoảng trống cho unit lớn. Không chuyển ô trống thành núi vì cluster. `Labs/lab5-resource-occupancy-tests.cjs` so sánh toàn bộ grid trước/sau placement ở seed 30000/1337/2000, kiểm tra mask núi không đổi, chỉ footprint bị chặn và walk còn đúng 1 island.
+**Cluster không phải vật cản.** Chỉ footprint 2×2 của từng prefab được ghi vào `resourceMask`; `physical = terrainPhysical AND NOT resourceMask`. Hàm chuẩn `RTSClusters.bakeResourceOccupancy` không đọc radius, đường bao hoặc bounding box cluster. Ô trống giữ physical của địa hình; walk vẫn phải qua clearance theo radius unit, nên ô sát resource có thể không đủ khoảng trống cho unit lớn. Không chuyển ô trống thành núi vì cluster. `Labs/Lab5/lab5-resource-occupancy-tests.cjs` so sánh toàn bộ grid trước/sau placement ở seed 30000/1337/2000, kiểm tra mask núi không đổi, chỉ footprint bị chặn và walk còn đúng 1 island.
 
 Bốn role: main/chính, secondary/phụ, advantage/lợi thế, contested/tranh chấp. Quota riêng mỗi player; contested quota mỗi cung. Count của từng cluster lấy số nguyên đều trong [clusterMin, clusterMax]. Mỗi prefab lab chiếm 2×2 ô, type xen kẽ 0/1; mapping sang prefab game chưa chốt.
 
@@ -151,19 +168,25 @@ Engine Lab 5 còn code di sản Lab 4: slope, curved-ramp planning, resource pla
 
 Chưa sửa Unity gameplay trong session này. Texture hiện tại là minh họa; cần ground/cliff/ramp tiles giả cao thấp, vẫn cùng Y. Chưa cam kết line-of-sight/high-ground bonus.
 
-## 9. Điểm tiếp tục session sau
+## 9. Điểm tiếp tục session sau — cập nhật 2026-10-03
 
-**Luật bổ sung mới nhất — base không được cô lập khi mở ramp:** sau ramp thông thường, `Labs/lab5-connectivity.js` audit component của mọi ô tâm base trên walk mask theo unit radius. Nếu tách nhóm, chạy Dijkstra 4 hướng trên mask nền có đủ footprint widthMin; đường qua cliff có giá cao, núi/biên bị cấm. Mở các ô cliff trong footprint đường nối, đánh dấu landing và giữ HeightLevel/Y. Đường bổ sung có thể cong và đi qua nhiều band; không bị quota ramp trang trí chặn. Kiểm tra lại bằng walk map thật. Nếu không sửa hợp lệ, bỏ toàn candidate và thử seed-derived attempt tiếp theo, tối đa 16; sau đó báo lỗi chứ không trả map base bị cô lập. Khi người dùng tắt ramp, vẫn giữ thí nghiệm tách tầng. UI ghi số cửa bổ sung và candidate. Quy tắc này thay cho việc giữ base bị cô lập trong các ghi chú trước; mọi island được thử nối trước; chỉ pocket nhỏ không nối được mới chuyển thành núi. Resource placement tiếp tục bảo toàn kết nối đã có.
+Visual workflow bổ sung: [CliffFaceMap/RampTileMap](MapGen_VisualTileCompiler.md). Compiler thuần sau generation chọn sprite cố định từng ô: cliff thẳng/góc trong/góc ngoài/endcap, ramp start/middle/end hoặc single, turn/tee/cross cho tuyến cong/giao nhau. Không kéo sprite, không xử lý riêng seed, không đổi levels hoặc gameplay masks. Sample dùng compiler này; renderer lab chính và Unity chưa được nối vào.
 
-Kiểm thử mới: `lab5-connectivity-tests.cjs`, 27 cấu hình 2/6/10 người với 9 seed, có cliffCells 2 và protectedRadius 16; tất cả base nối nhau, không khoét núi, không có bước khác tầng mở mà thiếu nhãn ramp. Ba seed 10 người 1337/2000/200000 còn được audit sau quota 3/3/6/6 và prefab 2–4. Chưa phải chứng minh cho mọi seed/config, vẫn có thể báo thiếu cluster hoặc hết candidate hợp lệ.
+Thuật toán Lab 5 đã chốt và người dùng đánh giá kết quả generation tốt. Session tiếp theo bắt đầu port nguyên thuật toán sang Unity theo [kế hoạch port](Archive/2026-10-04/MapGen_NextSteps_2026-10-03.md):
 
-Cập nhật thử nghiệm nhiều người (2026-10-02): Lab 5 đã mở control 2–10 player và protectedRadius 4–16 ô; map vẫn 192×192, preview mới mặc định 10 player. Debug vẽ vòng core và UI báo nhóm base kết nối, min spacing, cặp core+collar chồng nhau. Kết quả mới nhất seed 1337/quota mặc định: 10 player ở radius 6 và 16 đều có 1 island, 40/40 cluster sau sửa connectivity. Đây là phạm vi mới thay cho giới hạn 2–8 trước đó; các kết quả không chứng nhận cân bằng.
+1. Port RNG/noise và config/result C#.
+2. Port base → mountain/levels → cliff/ramp → clearance/connectivity/retry → cluster/resource audit, giữ nguyên luật trong tài liệu này.
+3. Làm preview Unity để đối chiếu cùng seed/config với Lab 5.
+4. Nạp grid, mapping prefab và spawn tài nguyên/TownHall/worker; kiểm tra movement, gathering và building footprint.
+5. Gắn hiển thị terrain/cliff/ramp cùng Y.
 
-1. Đọc tài liệu này và 4 source chuẩn; giữ các quyết định mục 1. Không quay lại slope/Y/height link của kế hoạch cũ.
-2. Tách pipeline thuần khỏi di sản Lab 4; tạo hash final bao gồm config, levels, mountain/cliff/ramp masks, occupancy và prefab placements.
-3. Đối chiếu grid cost, building footprint, resource prefab và unit radius hiện tại của Unity để port từng bước; kiểm tra reproducibility C#/JS trước khi dùng seed giữa client/host.
-4. Sweep seed và 2–10 player, đo đúng 1 island, quota thiếu, access theo role và áp lực hàng xóm. Bổ sung chọn candidate tốt nhất nếu cần balance; không phá núi và không mirror map để sửa.
-5. Kiểm tra hình dáng núi sinh thêm từ pocket và các cửa bổ sung, nhất là radius lớn; policy là nối trước, chỉ lấp pocket không nối được ≤64 ô và tổng ≤2%; reject vùng lớn không nối được.
-6. Tạo tile terrain thật và mapping integer level + cliff/ramp direction; movement tiếp tục chỉ dùng walk/cost.
+Các kiểm tra phục vụ phát hiện sai lệch bản port và lỗi tích hợp. Không mở lại thiết kế thuật toán, không tự thêm policy balance/quota, không bắt buộc refactor lab hoặc làm final hash trước khi port. Hash/report được bổ sung trong quá trình triển khai khi cần đối chiếu dữ liệu cuối.
 
-Rebuild lab bằng `python Docs/Multiplayer/Labs/build_lab5.py`; mở `Labs/Lab5_FlatY_Cliff_Ramp_Bake.html`. Đọc thêm `Labs/Lab5_README.md`. Tài liệu này là quyết định hướng mới, ưu tiên hơn phần hướng height vật lý trong các plan nghiên cứu trước đó nếu mâu thuẫn.
+Rebuild lab bằng `python Docs/Multiplayer/Labs/Lab5/build_lab5.py`; mở `Labs/Lab5/Lab5_FlatY_Cliff_Ramp_Bake.html`. Lab 5 và các luật trong tài liệu này tiếp tục là nguồn chuẩn nếu plan cũ mâu thuẫn.
+
+
+### Bổ sung vị trí sprite cliff — 2026-10-03
+
+Mọi sprite cliff thuộc ô phía cao sát viền HeightLevel, kể cả connector góc ở đỉnh chung. Không dùng cliffMask collision phía thấp làm danh sách ô vẽ. Ramp thay face ở highCell; lowCell là đầu tiếp cận thấp. rampFaceGroups từ bake xuất thêm highCells, giữ cells cho collision/cửa mở. Spacing kiểm tra cả hai phía để chuyển nơi vẽ không gây chạm ramp. Không thay đổi HeightLevel hoặc thêm collision để nối góc hình ảnh.
+
+

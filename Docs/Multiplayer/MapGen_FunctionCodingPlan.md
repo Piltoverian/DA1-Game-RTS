@@ -1,11 +1,13 @@
 # Kế Hoạch Triển Khai Chi Tiết: Các Function Cốt Lõi Từ 1 Đến 4 Của MapGenerator
 
+> **Cập nhật 2026-10-03:** Thuật toán Lab 5 đã được người dùng chốt. Bước tiếp theo là port nguyên thuật toán sang Unity theo [kế hoạch port](Archive/2026-10-04/MapGen_NextSteps_2026-10-03.md). Các mô tả thuật toán cũ bên dưới mâu thuẫn với [Lab 5](MapGen_Lab5_AcceptedAlgorithm.md) chỉ còn là lịch sử tham khảo, không dùng để triển khai. Kiểm tra tiếp theo nhằm đối chiếu bản C# và tích hợp gameplay; không yêu cầu thiết kế lại, sweep balance hoặc làm hash trước khi port.
+
 > **Ngày lập kế hoạch:** 2026-10-01  
 > **Trạng thái:** Sẵn sàng thi công (Ready for Implementation)  
 > **Tài liệu liên quan:** 
 > - [Kế hoạch tổng thể MapGen](MapGen_ImplementationPlan.md)
 > - [Đặc tả Data Texture RGBA32](MapGen_DataTexture_Specification.md)
-> - [Giáo trình Toán & Thuật toán MapGen](MapGen_Noise_RNG_Curriculum.md)
+> - [Giáo trình Toán & Thuật toán MapGen](Archive/2026-10-04/MapGen_Noise_RNG_Curriculum.md)
 
 ---
 
@@ -369,3 +371,5 @@ r_mỏ ∈ [ R_tâm_trống (7.0)  ..  0.28 ⋅ min(MapWidth, MapHeight) ]
 ```
 
 Mỗi bước đều tuân thủ nguyên tắc: **Nêu rõ file tạo/sửa ➔ Viết mã nguồn sạch sẽ, không comment rườm rà ➔ Xác thực logic cùng User trước khi sang bước tiếp theo.**
+
+

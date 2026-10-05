@@ -76,6 +76,7 @@ public partial struct MovementAgentTargetSystem : ISystem
             var buffer = FieldNodeLookup[move.FieldEntity];
 
             int2 gridPos = GridHelper.WorldToGrid(pos, Grid);
+            if (!NaturalBlockedTargetResolver.IsCellInBounds(gridPos, Grid)) return;
             int nodeIndex = GridHelper.GetNodeIndex(gridPos, Grid);
             int unitIsland = GridIslands[nodeIndex].islandID;
 

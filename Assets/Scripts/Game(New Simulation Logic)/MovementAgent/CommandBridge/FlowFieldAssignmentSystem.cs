@@ -6,6 +6,7 @@ using Unity.Transforms;
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(MovementAgentPathRequestSystem))]
+[UpdateAfter(typeof(GridIslandSystem))]
 [UpdateBefore(typeof(IntegrationFieldSystem))]
 public partial struct FlowFieldAssignmentSystem : ISystem
 {
@@ -31,6 +32,7 @@ public partial struct FlowFieldAssignmentSystem : ISystem
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var gridCosts = SystemAPI.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray();
+        if (gridCosts.Length != grid.width * grid.height) return;
         var cacheEntity = SystemAPI.GetSingletonEntity<FlowFieldCache>();
         var cacheBuffer = SystemAPI.GetBuffer<FlowFieldCacheEntry>(cacheEntity);
         var fixedFrameCount = SystemAPI.GetSingleton<FixedFrameCount>();
@@ -127,6 +129,9 @@ public partial struct FlowFieldAssignmentSystem : ISystem
             // Reset trạng thái stuck khi nhận lệnh mới
             steering.ValueRW.stuckTime = 0;
             steering.ValueRW.lastPosition = SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position;
+            // FieldEntity can be an ECB temporary ID; playback must remap the
+            // agent reference as well as the cache and cleanup references.
+            ecb.SetComponent(entity, move.ValueRO);
         }
 
         foreach (var kvp in refCountDeltas)
@@ -147,6 +152,10 @@ public partial struct FlowFieldAssignmentSystem : ISystem
             }
         }
 
+        // Cache entries may refer to entities created by this ECB. Recording the
+        // buffer lets playback remap those temporary IDs to real entity IDs.
+        var recordedCache = ecb.SetBuffer<FlowFieldCacheEntry>(cacheEntity);
+        recordedCache.CopyFrom(cacheBuffer.AsNativeArray());
         ecb.Playback(state.EntityManager);
         ecb.Dispose();
         refCountDeltas.Dispose();

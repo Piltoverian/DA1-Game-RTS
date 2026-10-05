@@ -23,6 +23,9 @@ public static class MovementAgentAPI
         var agent= entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
         agent.currentworldtarget = worldTarget;
         agent.hastarget = true;
+        // The old navigation cell/field cannot represent a newly issued target.
+        // This also lets PathRequestSystem recover if a request was lost.
+        agent.targetResolutionKind = TargetResolutionKind.None;
         ecb.SetComponent(agentEntity, agent);
 
         // Luôn trigger TargetChangeRequest khi có lệnh đổi đích, thay vì phụ thuộc vào PathRequestSystem (vốn bỏ qua các lệnh di chuyển trong cùng 1 ô lưới)

@@ -1,5 +1,9 @@
 # Kiến Trúc Multiplayer Chuẩn Gaming & Lộ Trình Phát Triển
 
+MapGen Unity đã triển khai trong gameplay. Bắt đầu từ [mục lục các nhóm rule](MapGen_INDEX.md), sau đó mở phần tương ứng trong [file giải thích thuật toán](MapGen_Unity_Rules.md). Cách chạy Main và thay theme nằm trong [hướng dẫn gameplay](MapGen_Unity_ReadingGuide.md).
+
+Các lab HTML và kế hoạch port cũ phục vụ tham khảo lịch sử. Scene preview và các file test đã được dọn khỏi project.
+
 Tài liệu này quy hoạch toàn bộ kiến trúc hạ tầng mạng, quy trình cấm chọn (Ban/Pick) và mô hình đồng bộ cho dự án RTS trên nền tảng **Unity DOTS ECS**.
 
 ---
@@ -59,3 +63,4 @@ flowchart TD
 * 📄 **[Sprint0_CodeAudit.md](Sprint0_CodeAudit.md)**: Báo cáo kiểm toán toàn diện mã nguồn hiện tại, danh sách lỗi kiến trúc và giải pháp chi tiết cho Sprint 0.
 * 📄 **[MapGen_DataTexture_Specification.md](MapGen_DataTexture_Specification.md)**: Đặc tả kỹ thuật thuật toán sinh bản đồ theo mode, cân bằng bằng gói tài nguyên khởi đầu quanh mỗi base, mã hóa Texture RGBA, quy chuẩn chọn điểm Spawn và sinh thực thể vào ECS.
 * 📄 **[MapGen_ImplementationPlan.md](MapGen_ImplementationPlan.md)**: Kế hoạch triển khai hiện hành, đã đối chiếu với source; bao gồm các ràng buộc Grid, Building Placement, prefab authoring và tiêu chí nghiệm thu.
+

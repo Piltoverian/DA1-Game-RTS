@@ -25,6 +25,9 @@ partial struct CostChangeSystem : ISystem
         {
             var requestbuffer = SystemAPI.GetBuffer<CostChangeRequest>(entity);
             var costbuffer = SystemAPI.GetBuffer<GridNodeCost>(entity);
+            bool hasTerrain = state.EntityManager.HasBuffer<GridTerrain>(entity);
+            var terrain = hasTerrain ? state.EntityManager.GetBuffer<GridTerrain>(entity) : default;
+            bool useTerrain = hasTerrain && terrain.Length == costbuffer.Length;
            
             if (requestbuffer.Length == 0) continue;
             foreach(var request in requestbuffer)
@@ -43,7 +46,8 @@ partial struct CostChangeSystem : ISystem
                     {
                         int index = GridHelper.GetNodeIndex(new int2(x, y), grid.ValueRW);
                         GridNodeCost nodeCostNew = costbuffer[index];
-                        nodeCostNew.cost = request.newCost;
+                        // A dynamic blocker removal can never open a static cliff/mountain.
+                        nodeCostNew.cost = useTerrain && !terrain[index].walkable ? 255 : request.newCost;
                         costbuffer[index] = nodeCostNew;
                     }
                 }

@@ -1,5 +1,7 @@
 # Kế hoạch MapGen: Height, Walkability, Plateau và Ramp
 
+> **Cập nhật 2026-10-03:** Thuật toán Lab 5 đã được người dùng chốt. Bước tiếp theo là port nguyên thuật toán sang Unity theo [kế hoạch port](Archive/2026-10-04/MapGen_NextSteps_2026-10-03.md). Các mô tả thuật toán cũ bên dưới mâu thuẫn với [Lab 5](MapGen_Lab5_AcceptedAlgorithm.md) chỉ còn là lịch sử tham khảo, không dùng để triển khai. Kiểm tra tiếp theo nhằm đối chiếu bản C# và tích hợp gameplay; không yêu cầu thiết kế lại, sweep balance hoặc làm hash trước khi port.
+
 Ngày: 2026-10-02. Đây là đề xuất thay thế phần terrain generation trong kế hoạch cũ; chưa phải implementation. Giữ yêu cầu tài nguyên theo slot, setup ECS và ưu tiên Hạng mục B. Không suy diễn rằng các game tham khảo dùng cùng thuật toán nội bộ.
 
 > Đề xuất competitive cụ thể mới nhất: [MapGen_CompetitiveTerrain_Design.md](MapGen_CompetitiveTerrain_Design.md). Theo yêu cầu người dùng, thiết kế dùng terrain/noise không đối xứng, hỗ trợ N player và budget lợi thế từng spawn; có công thức height/noise/ramp, navigation và gates cân bằng. Trữ lượng tài nguyên thuộc prefab; bỏ density encoding trong đề xuất cũ.
@@ -98,3 +100,5 @@ Trước tiên dùng fixture nhỏ: cao nguyên phẳng đi được; cliff khô
 Sau đó chạy batch seed cho 128/256, 2/4 spawn khi config hỗ trợ. Ghi tỷ lệ fail theo stage, thời gian sinh, walkable ratio, vùng nhỏ, ramp width, shortest-path tới mỏ/tranh chấp và diện tích buildable quanh base. Ngưỡng cân bằng là tham số cần hiệu chỉnh bằng Play Mode; batch seed không chứng minh map vui hoặc cân bằng mọi chiến thuật.
 
 **Phạm vi coding tiếp theo:** mốc 1–3 với map mẫu hai tầng cố định. Chứng minh height và walkability hoạt động đúng trước khi mở rộng sang random layout và rải tài nguyên. Đây là thay đổi so với kế hoạch cũ bắt đầu bằng bảo vệ vòng base rồi threshold noise thành núi.
+
+

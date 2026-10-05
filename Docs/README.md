@@ -76,3 +76,4 @@ flowchart TD
 
 > [!TIP]
 > **Mẹo hữu ích:** Luôn chạy công cụ **Validate** trước khi test Play Mode để đảm bảo không có liên kết nào bị null hoặc ID bị trùng lặp.
+
