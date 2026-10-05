@@ -12,8 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aadcac072a804a0bb42b07a8f55feb5c, type: 3}
   m_Name: V17Theme
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTheme
-  material: {fileID: 2100000, guid: 528d49286afd3fc4da3349bbb264f950, type: 2}
-  mountainColor: {r: 0.396, g: 0.42, b: 0.396, a: 1}
   cliffStraight: {fileID: 21300000, guid: b5e97b63701647a4ebbf6e71dc2cb666, type: 3}
   cliffOuterCorner: {fileID: 21300000, guid: 177beb636db6b3f4e94311706d8fa565, type: 3}
   cliffInnerCorner: {fileID: 21300000, guid: 551571c24c7332149a0591701e17c787, type: 3}
@@ -23,3 +21,5 @@ MonoBehaviour:
   rampRight: {fileID: 21300000, guid: 40cad4b893de083409c14ef637a56dbb, type: 3}
   groundGrass: {fileID: 21300000, guid: c6c6657f3eea6cf489c7e0d50a1fc7bb, type: 3}
   groundSoil: {fileID: 21300000, guid: 554bdc78a883eff44a76026a4d5ba814, type: 3}
+  material: {fileID: 2100000, guid: 528d49286afd3fc4da3349bbb264f950, type: 2}
+  mountainColor: {r: 0, g: 1, b: 0, a: 1}
