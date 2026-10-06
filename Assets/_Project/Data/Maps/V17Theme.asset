@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aadcac072a804a0bb42b07a8f55feb5c, type: 3}
+  m_Name: V17Theme
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainTheme
+  cliffStraight: {fileID: 21300000, guid: b5e97b63701647a4ebbf6e71dc2cb666, type: 3}
+  cliffOuterCorner: {fileID: 21300000, guid: 177beb636db6b3f4e94311706d8fa565, type: 3}
+  cliffInnerCorner: {fileID: 21300000, guid: 551571c24c7332149a0591701e17c787, type: 3}
+  rampSingle: {fileID: 21300000, guid: 4c3a3789984aae841a72d67dd19e860e, type: 3}
+  rampLeft: {fileID: 21300000, guid: 0dc69341939ab3b4695955418d1380b3, type: 3}
+  rampMiddle: {fileID: 21300000, guid: 6d6fdb97c127d874cb388e24165b4d9a, type: 3}
+  rampRight: {fileID: 21300000, guid: 40cad4b893de083409c14ef637a56dbb, type: 3}
+  groundGrass: {fileID: 21300000, guid: c6c6657f3eea6cf489c7e0d50a1fc7bb, type: 3}
+  groundSoil: {fileID: 21300000, guid: 554bdc78a883eff44a76026a4d5ba814, type: 3}
+  material: {fileID: 2100000, guid: 528d49286afd3fc4da3349bbb264f950, type: 2}
+  mountainColor: {r: 0, g: 1, b: 0, a: 1}

@@ -197,6 +197,9 @@ PublishScripts/
 *.snupkg
 # The packages folder can be ignored because of Package Restore
 **/[Pp]ackages/*
+# Unity dependency definitions are source files, not NuGet cache.
+!/Packages/manifest.json
+!/Packages/packages-lock.json
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
@@ -378,4 +381,7 @@ FodyWeavers.xsd
 .vscode/
 *.csproj
 *.sln
+*.slnx
 *.user
+
+# Authored fixtures live in Assets/_Project/Tests and remain source files.

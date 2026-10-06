@@ -1,5 +1,7 @@
 # Hướng Dẫn Thiết Kế & Cấu Hình Dữ Liệu RTS (Designer Portal)
 
+Điểm vào toàn project: [README ở root](../README.md). Xem [sơ đồ thư mục](ProjectStructure.md) và [review/lịch sử kiểm tra](Reviews/README.md) trước khi dọn hoặc thay đổi cấu trúc. MapGen hiện hành tra cứu từ [MapGen_INDEX](MapGeneration/MapGen_INDEX.md).
+
 Chào mừng bạn đến với tài liệu hướng dẫn dành cho **Game Designer** và **Content Creator** của dự án RTS. 
 
 Toàn bộ hệ thống dữ liệu gameplay của dự án hiện đã được quy hoạch hoàn toàn vào kiến trúc **Game Data Registry & Blob Assets**, cho phép designer cấu hình linh hoạt thông qua ScriptableObject trên Unity Editor mà không cần can thiệp vào logic code của lập trình viên.
@@ -10,10 +12,38 @@ Toàn bộ hệ thống dữ liệu gameplay của dự án hiện đã được
 
 | Tài Liệu | Mục Đích & Nội Dung Chính | Dành Cho Ai |
 |---|---|---|
-| [1. Hướng Dẫn Cấu Hình ScriptableObject & Quy Tắc ID](DataRefactor/DesignerSetup.md) | Cách tạo ScriptableObject, quy tắc đặt tên, cấp phát ID cho Base qua công cụ tự động, và chạy bộ kiểm tra dữ liệu (`Validate Selected Registry`). | Designer tạo đơn vị/nhà mới, cân bằng chỉ số. |
-| [2. Cẩm Nang Tạo Asset & Thêm Kiểu Dữ Liệu](DataRefactor/DesignerTypeManual.md) | Hướng dẫn chi tiết từng bước: tạo Asset có sẵn (Attack, Gather, Build, Storage, Train, Research) và quy trình phối hợp với lập trình viên khi cần thêm một Ability hoàn toàn mới (ví dụ: Heal). | Designer & Gameplay Programmer. |
-| [3. Hướng Dẫn Authoring Trên Prefab & Scene](DataRefactor/EntityAuthoring.md) | Cách gắn `UnitAuthoring` và `BuildingAuthoring` lên GameObject/Prefab, cấu hình máu ban đầu (`initialHealth`), tiến độ xây dựng (`initialConstructionProgress`). | Level Designer, Technical Artist, Prefab Authoring. |
-| [4. Tham Khảo Cấu Trúc Blob Runtime](DataRefactor/BlobDefinitions.md) | Cấu trúc dữ liệu nhị phân (Blob) sau khi bake để lập trình viên tra cứu khi viết hoặc nâng cấp System. | Technical Designer, Programmer. |
+| [1. Hướng Dẫn Cấu Hình ScriptableObject & Quy Tắc ID](Guides/GameData/DesignerSetup.md) | Cách tạo ScriptableObject, quy tắc đặt tên, cấp phát ID cho Base qua công cụ tự động, và chạy bộ kiểm tra dữ liệu (`Validate Selected Registry`). | Designer tạo đơn vị/nhà mới, cân bằng chỉ số. |
+| [2. Cẩm Nang Tạo Asset & Thêm Kiểu Dữ Liệu](Guides/GameData/DesignerTypeManual.md) | Hướng dẫn chi tiết từng bước: tạo Asset có sẵn (Attack, Gather, Build, Storage, Train, Research) và quy trình phối hợp với lập trình viên khi cần thêm một Ability hoàn toàn mới (ví dụ: Heal). | Designer & Gameplay Programmer. |
+| [3. Hướng Dẫn Authoring Trên Prefab & Scene](Guides/GameData/EntityAuthoring.md) | Cách gắn `UnitAuthoring` và `BuildingAuthoring` lên GameObject/Prefab, cấu hình máu ban đầu (`initialHealth`), tiến độ xây dựng (`initialConstructionProgress`). | Level Designer, Technical Artist, Prefab Authoring. |
+| [4. Tham Khảo Cấu Trúc Blob Runtime](Guides/GameData/BlobDefinitions.md) | Cấu trúc dữ liệu nhị phân (Blob) sau khi bake để lập trình viên tra cứu khi viết hoặc nâng cấp System. | Technical Designer, Programmer. |
+
+---
+
+## 🌐 Mục Lục Tài Liệu Kỹ Thuật Multiplayer
+
+| Tài Liệu | Mục Đích & Nội Dung Chính | Dành Cho Ai |
+|---|---|---|
+| [1. Kiến Trúc Multiplayer Chuẩn Gaming](Multiplayer/README.md) | Bản thiết kế tổng thể kiến trúc 2 tầng (Meta & Simulation), Host-Authoritative qua Unity Relay, lộ trình 5 Sprint. | Toàn đội ngũ. |
+| [2. Sprint 0: Kiểm Toán Hạ Tầng Code](Multiplayer/Sprint0_CodeAudit.md) | Báo cáo chi tiết các điểm nghẽn mã nguồn (Player Identity, Match State, Data Contracts) và kế hoạch xử lý cho session tới. | Programmer, Technical Lead. |
+| [3. Đặc Tả Sinh Bản Đồ & Texture Data](MapGeneration/MapGen_DataTexture_Specification.md) | Sinh map theo mode, cân bằng gói tài nguyên khởi đầu quanh base, quota tài nguyên trung lập, Single Island Guarantee, mã hóa Texture RGBA và Player Spawn. | Programmer, Technical Designer. |
+| [4. Kế Hoạch Triển Khai MapGen](MapGeneration/MapGen_ImplementationPlan.md) | Kế hoạch hiện hành cho Hạng mục B, các ràng buộc theo source, file tác động, thứ tự triển khai và tiêu chí nghiệm thu. | Programmer, Technical Lead. |
+
+---
+
+## 🧭 Mục Lục Tài Liệu Hệ Thống Di Chuyển (Movement Agent & Pathfinding)
+
+> [!NOTE]
+> **Cập nhật tiến độ (2026-09-29):** Đã hoàn tất triển khai và tối ưu **`NaturalBlockedTargetResolver`** cùng cơ chế phân biệt vật cản công trình theo ô lưới (`BuildingBlockage`) và vật cản tự nhiên (`NaturalResolved`, `cost ≥ 255`):
+> - Tự động quét 4 hướng cố định (**Bắc → Đông → Nam → Tây**) từ điểm click vào núi/nước tự nhiên tới cạnh vào (entry edge) của ô walkable đầu tiên gần nhất.
+> - Tối ưu hiệu năng: Chỉ resolve **1 lần duy nhất** tại `FlowFieldAssignmentSystem` khi có `TargetChangeRequest`, lưu trạng thái (`navigationTargetCell`, `targetResolutionGeneration`, `targetResolutionKind`) vào `MovementAgentComponent`, loại bỏ hoàn toàn việc quét tia 4 hướng và copy `BlockageData` mỗi tick ở `MovementAgentPathRequestSystem` và `MovementAgentTargetSystem`.
+
+| Tài Liệu | Mục Đích & Nội Dung Chính | Dành Cho Ai |
+|---|---|---|
+| [1. Cẩm Nang Kỹ Thuật Movement Agent (2026)](Architecture/Movement/Manual/Movement_Manual_2026.md) | Luồng xử lý 7 bước từ lúc click chuột tới ORCA và Anti-Deadlock, giao tiếp với `MoveOverrideSystem`. | Programmer, Technical Designer. |
+| [2. Tổng Quan Kiến Trúc Movement Agent](Architecture/Movement/MovementAgent/Architecture_Overview.md) | Phân lớp L0–L3, vòng đời lệnh di chuyển, Spatial Indexing và Debug System. | Toàn đội ngũ kỹ thuật. |
+| [3. Cấu Trúc Dữ Liệu Agent (`MovementAgentComponent`)](Architecture/Movement/MovementAgent/AgentMovementData/MovementAgentComponent.md) | Chi tiết các trường dữ liệu, `TargetResolutionKind`, `navigationTargetCell`, `realTarget` và `currentworldtarget`. | Gameplay Programmer. |
+| [4. Bộ Giải Quyết Vật Cản Tự Nhiên (`GridHelper`)](Architecture/Movement/MovementAgent/Helpers/GridHelper.md) | Quy đổi tọa độ lưới và thuật toán `NaturalBlockedTargetResolver` (quét 4 hướng, kiểm tra `TryGetBlockageGridBounds`). | Gameplay Programmer. |
+| [5. Cầu Nối Lệnh & Gán Flow Field (`CommandBridge`)](Architecture/Movement/MovementAgent/CommandBridge/FlowFieldAssignmentSystem.md) | Quy trình resolve mục tiêu 1 lần, tra cứu Cache, quản lý Ref Count và phát hiện yêu cầu đường đi mới. | Gameplay Programmer. |
 
 ---
 
@@ -33,7 +63,7 @@ flowchart TD
 1. **Tạo ScriptableObject:** 
    - Nhấp chuột phải trong cửa sổ Project: `Create → ScriptableObjects → ...` để tạo các file thông số (Ability, UnitSO, BuildingSO, BasedSO, Job, Tech).
 2. **Đăng ký vào GameDataRegistry:**
-   - Mở asset `Assets/Resources/GameReg.asset`.
+   - Mở asset `Assets/_Project/Resources/GameReg.asset`.
    - Kéo asset vừa tạo vào đúng danh mục tương ứng (`Units`, `Buildings`, `Abilities`, `Jobs`, hoặc `Civs`).
 3. **Cấp phát ID:**
    - Trên Inspector của `GameDataRegistry`, bấm nút **`Assign Missing IDs`** để hệ thống tự động cấp phát ID chuẩn định dạng cho các Base mới, sau đó bấm `Ctrl + S` (`Save Project`).
@@ -48,3 +78,8 @@ flowchart TD
 
 > [!TIP]
 > **Mẹo hữu ích:** Luôn chạy công cụ **Validate** trước khi test Play Mode để đảm bảo không có liên kết nào bị null hoặc ID bị trùng lặp.
+
+
+## Registry presentation — cập nhật 2026-10-06
+
+Xem [Registry và dữ liệu UI](Guides/GameData/RegistryPresentation.md): singleton giữ asset `GameDataRegistry`, được gán từ `Awake`; các hàm tra cứu UI nằm trên asset. Workflow hiện tại giữ SubScene mở và không dùng fallback Resources.
