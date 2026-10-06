@@ -20,6 +20,7 @@ Dùng Sprite Single/Full Rect, giữ hướng gốc tương ứng của bộ V17
 
 ## Code đang dùng
 
+- GridHelper.cs: nguồn chung cho cell ↔ index và world ↔ cell; xem [quy ước chiều rộng hàng](MapGen_Unity_Rules.md#grid-helper) khi dùng buffer vertex hoặc chunk.
 - TerrainGeneration.cs: settings, spawn, noise/height, núi, cliff, ramp và kiểm tra candidate.
 - MapGenerator.cs / MapGenRNG.cs: Perlin, fBm và RNG.
 - TerrainVisualCompiler.cs: ánh xạ địa hình sang loại sprite và rotation.

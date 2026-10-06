@@ -4,7 +4,6 @@ using UnityEngine;
 public class ResourceAuthoring : MonoBehaviour
 {
     public ResourceType ResourceType = ResourceType.Gold;
-    public int Amount = 1000;
 
     class Baker : Baker<ResourceAuthoring>
     {
@@ -15,10 +14,11 @@ public class ResourceAuthoring : MonoBehaviour
             AddComponent(e, new ResourceNodeData
             {
                 Type = src.ResourceType,
-                Amount = src.Amount
+                Amount = 0 // Template stock is assigned by the spawning configuration.
             });
 
             AddComponent<ResourceNodeTag>(e);
+            AddComponent<ResourceNodePendingConfig>(e);
         }
     }
 }
@@ -32,3 +32,6 @@ public struct ResourceNodeData : IComponentData
 public struct ResourceNodeTag : IComponentData
 {
 }
+
+// An unconfigured template/placed node must not be treated as a depleted live mine.
+public struct ResourceNodePendingConfig : IComponentData { }

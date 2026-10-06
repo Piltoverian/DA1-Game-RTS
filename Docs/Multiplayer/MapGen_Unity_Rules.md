@@ -1,6 +1,6 @@
 # Các rule của terrain Unity
 
-Đối chiếu code C# ngày 2026-10-05. Tra cứu theo [mục lục](MapGen_INDEX.md). File này giải thích bản Unity đang dùng trong gameplay; lab HTML là nguồn tham khảo và có thể khác quy ước collision hiện tại.
+Đối chiếu code C# ngày 2026-10-06. Tra cứu theo [mục lục](MapGen_INDEX.md). File này giải thích bản Unity đang dùng trong gameplay; lab HTML là nguồn tham khảo và có thể khác quy ước collision hiện tại.
 
 <a id="grid-schema"></a>
 ## 1. Grid và dữ liệu một ô
@@ -13,6 +13,25 @@
 - `GridAuthoring` lấy bounds của plane vuông, có Renderer; `cellsize = bounds.size.x / số ô`. Generator chấp nhận width/height từ 16 đến 512; Inspector hiện có preset 64/128/256/512. Kích thước hợp lệ vẫn có thể thiếu chỗ cho spawn và terrain.
 
 Code: `GridComponent.cs → GridTerrain`; `GridAuthoring.GetGridDefinition`; `TerrainGeneration.ValidateSettings`.
+
+<a id="grid-helper"></a>
+### Quy ước dùng GridHelper để tính index
+
+Generator và renderer dùng chung [GridHelper.cs](<../../Assets/Scripts/Game(New Simulation Logic)/MovementAgent/Helpers/GridHelper.cs>). Không viết lại `y * width + x`, `% width` hoặc `/ width` tại từng chỗ đổi tọa độ và index.
+
+| Dữ liệu | Đổi tọa độ sang index | Chiều rộng hàng |
+|---|---|---|
+| Ô terrain/cost/island | `GetNodeIndex(cell, grid)` | `grid.width` |
+| Vertex height | `GetNodeIndex(vertex, stride)` | `stride = grid.width + 1` |
+| Chunk render | `GetNodeIndex(chunk, columns)` | `columns = ceil(grid.width / side)` |
+
+Đổi ngược dùng `GetGridPosFromIndex(index, grid)` hoặc overload nhận chiều rộng hàng tương ứng. Renderer đổi cell index → cell, chia tọa độ cell cho `side` để ra tọa độ chunk, rồi tính chunk index với `columns`.
+
+`WorldToGrid` dùng origin/cellsize và floor. `GridToWorld` trả tâm ô trên mặt phẳng XZ với Y = 0; caller xử lý offset Y của prefab hoặc layer render khi cần.
+
+Helper tính index không kiểm tra bounds. Caller phải kiểm tra tọa độ trước khi đọc buffer; không clamp một tọa độ ngoài map thành ô trong map. Các offset `+1`, `+stride` khi đọc bốn vertex kề nhau vẫn là offset trong buffer vertex, không phải một quy ước index khác.
+
+Phạm vi đã gom: sampling vertex, smoothing/fallback terrain, đọc cell khi dựng mesh, đổi cell index trong Quad và bucket index của chunk. Công thức và kết quả không đổi.
 
 <a id="noise-height"></a>
 ## 2. RNG, noise và tầng cao

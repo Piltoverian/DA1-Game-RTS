@@ -15,6 +15,7 @@ public partial struct ResourceNodeDepletedSystem : ISystem
         foreach (var (node, entity) in
                  SystemAPI.Query<RefRO<ResourceNodeData>>()
                      .WithAll<ResourceNodeTag>()
+                     .WithNone<ResourceNodePendingConfig>()
                      .WithEntityAccess())
         {
             if (node.ValueRO.Amount <= 0)

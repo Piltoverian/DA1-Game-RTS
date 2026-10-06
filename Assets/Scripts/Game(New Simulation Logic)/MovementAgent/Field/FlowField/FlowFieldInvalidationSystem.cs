@@ -8,6 +8,8 @@ using Unity.Mathematics;
 partial struct FlowFieldInvalidationSystem : ISystem
 {
     const int MinRecalcPerFrame = 12;
+    uint completedGeneration;
+    bool completed;
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -17,17 +19,23 @@ partial struct FlowFieldInvalidationSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        var snapshot = SystemAPI.GetSingleton<GridComponent>();
+        if (completed && completedGeneration == snapshot.generation) return;
         var grid = SystemAPI.GetSingletonRW<GridComponent>();
         NativeList<StaleFieldEntry> flowfieldEntities = new NativeList<StaleFieldEntry>(Allocator.Temp);
+        bool waitingForReady = false;
         foreach (var (flowfield, status,refcount, entity) in SystemAPI.Query<RefRW<FlowField>, RefRW<FlowFieldStatus>,RefRW<FlowFieldRefCount>>().WithEntityAccess())
         {
             if (flowfield.ValueRO.gridgeneration == grid.ValueRW.generation) continue;
-            if (status.ValueRO.Value!=FieldState.Ready) continue;
+            if (status.ValueRO.Value!=FieldState.Ready) { waitingForReady = true; continue; }
             flowfieldEntities.Add(new StaleFieldEntry { entity=entity,refCount=refcount.ValueRW.value});
         }
         if(flowfieldEntities.Length==0)
         {
+            completed = !waitingForReady;
+            completedGeneration = snapshot.generation;
             grid.ValueRW.RecalcPerframe = 0;
+            flowfieldEntities.Dispose();
             return;
         }
         if (grid.ValueRW.RecalcPerframe == 0)

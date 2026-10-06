@@ -1,3 +1,5 @@
+> **Unity 2026-10-06 — thay đổi trữ lượng theo yêu cầu người dùng:** Amount của mỏ chuyển sang config spawn (MapGenConfig.Resources.Catalog[].AmountPerMine); prefab/ResourceAuthoring không lưu Amount nữa. Mô tả nguồn trữ lượng prefab trong tài liệu lab bên dưới là lịch sử. Xem [resource config hiện tại](MapGen_ResourceSpawn_Config.md).
+
 > **Quota ramp mới:** mỗi đoạn face cliff thẳng liên tục cùng hướng/cặp level, tách tại góc, có mục tiêu `max(1, ceil(n/12))` ô mặt ramp. Đếm chiều rộng mặt ramp, không đếm corridor/landing. Bổ sung sau repair và thống nhất núi; ưu tiên rộng cấu hình, cho phép thu đến 1 ô khi cần. Không khoét núi/góc hoặc phá khoảng cách nhóm ramp. Đoạn thiếu vị trí hợp lệ ghi `rampQuota.limited` với reason `geometry_or_ramp_spacing`, hiển thị số đoạn bị giới hạn trong HTML; không tuyên bố quota thay thế kiểm tra một island.
 > **Thay đổi theo yêu cầu người dùng 2026-10-04:** bỏ clearance và unit-radius bake. Một mask `walk` dùng chung cho mọi unit; không còn field `physical` hoặc `clearance` trong output/schema. Núi, cliff chưa mở ramp và footprint resource chặn trực tiếp; HeightLevel không thay thế walkability. Cost Unity = walk ? 1 : 255. Các mô tả clearance/radius bên dưới là lịch sử và được thay thế bởi quyết định này. Retry, ramp cardinal/spacing và một island vẫn giữ. Radius input cũ bị bỏ qua, không ảnh hưởng generation.
 # Thuật toán MapGen đã chọn — Lab 5
@@ -188,5 +190,6 @@ Rebuild lab bằng `python Docs/Multiplayer/Labs/Lab5/build_lab5.py`; mở `Labs
 ### Bổ sung vị trí sprite cliff — 2026-10-03
 
 Mọi sprite cliff thuộc ô phía cao sát viền HeightLevel, kể cả connector góc ở đỉnh chung. Không dùng cliffMask collision phía thấp làm danh sách ô vẽ. Ramp thay face ở highCell; lowCell là đầu tiếp cận thấp. rampFaceGroups từ bake xuất thêm highCells, giữ cells cho collision/cửa mở. Spacing kiểm tra cả hai phía để chuyển nơi vẽ không gây chạm ramp. Không thay đổi HeightLevel hoặc thêm collision để nối góc hình ảnh.
+
 
 

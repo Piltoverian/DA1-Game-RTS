@@ -12,15 +12,20 @@ using Unity.Transforms;
 [UpdateAfter(typeof(TransformSystemGroup))]
 public partial struct BlockageGridBakeSystem : ISystem
 {
+    EntityQuery pendingBake;
+    EntityQuery pendingCleanup;
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
+        pendingBake = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalTransform, BlockageNeedBakeTag>().WithNone<Prefab>().Build();
+        pendingCleanup = SystemAPI.QueryBuilder().WithAll<BlockageCleanupData>().WithNone<BlockageData>().Build();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (pendingBake.IsEmpty && pendingCleanup.IsEmpty) return;
         if (!SystemAPI.TryGetSingletonEntity<GridComponent>(out Entity gridEntity))
             return;
 
@@ -31,7 +36,7 @@ public partial struct BlockageGridBakeSystem : ISystem
         var ecb = new EntityCommandBuffer(Allocator.Temp);
 
         // 1. TỰ ĐỘNG NẠP COST KHI CÓ BLOCKAGE MỚI XUẤT HIỆN
-        foreach (var (blockage, transform, entity) in 
+        foreach (var (blockage, transform, entity) in
                  SystemAPI.Query<RefRO<BlockageData>, RefRO<LocalTransform>>()
                      .WithAll<BlockageNeedBakeTag>()
                      .WithNone<Prefab>()
@@ -58,7 +63,7 @@ public partial struct BlockageGridBakeSystem : ISystem
         }
 
         // 2. TỰ ĐỘNG HOÀN TRẢ COST KHI BLOCKAGE BỊ XÓA (CLEANUP)
-        foreach (var (cleanup, entity) in 
+        foreach (var (cleanup, entity) in
                  SystemAPI.Query<RefRO<BlockageCleanupData>>()
                      .WithNone<BlockageData>()
                      .WithEntityAccess())

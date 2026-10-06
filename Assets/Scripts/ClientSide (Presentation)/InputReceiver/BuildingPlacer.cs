@@ -211,10 +211,13 @@ public class BuildingPlacer : MonoBehaviour
     {
         if (entityManager != default)
         {
-            var query = entityManager.CreateEntityQuery(typeof(GridComponent));
+            using var query = entityManager.CreateEntityQuery(typeof(GridComponent));
             if (!query.IsEmpty)
             {
                 var grid = query.GetSingleton<GridComponent>();
+                if (selectedBuildingPrefab != Entity.Null && entityManager.HasComponent<GridFootprint>(selectedBuildingPrefab))
+                    return (Vector3)GridSnapperMath.Snap(new float3(hitPoint.x, 0, hitPoint.z), grid,
+                        entityManager.GetComponentData<GridFootprint>(selectedBuildingPrefab).Cells);
                 float width = currentLocalRect.MaxPoint.x - currentLocalRect.MinPoint.x;
                 float depth = currentLocalRect.MaxPoint.y - currentLocalRect.MinPoint.y;
                 float3 anchorWorld = new float3(hitPoint.x - width * 0.5f, 0, hitPoint.z - depth * 0.5f);
@@ -242,11 +245,7 @@ public class BuildingPlacer : MonoBehaviour
         var grid = entityManager.GetComponentData<GridComponent>(gridEntity);
         var costBuffer = entityManager.GetBuffer<GridNodeCost>(gridEntity);
 
-        float2 worldMin = new float2(rootPosition.x + currentLocalRect.MinPoint.x, rootPosition.z + currentLocalRect.MinPoint.y);
-        float2 worldMax = new float2(rootPosition.x + currentLocalRect.MaxPoint.x, rootPosition.z + currentLocalRect.MaxPoint.y);
-
-        int2 minGrid = GridHelper.WorldToGrid(new float3(worldMin.x + 0.05f, 0, worldMin.y + 0.05f), grid);
-        int2 maxGrid = GridHelper.WorldToGrid(new float3(worldMax.x - 0.05f, 0, worldMax.y - 0.05f), grid);
+        if (!PlayerSpawnPlacement.TryFootprint(grid, rootPosition, currentLocalRect, out int2 minGrid, out int2 maxGrid)) return false;
 
         var bucketQuery = entityManager.CreateEntityQuery(typeof(MovementAgentBucket));
         bool hasUnitBucket = !bucketQuery.IsEmpty;

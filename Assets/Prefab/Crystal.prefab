@@ -342,7 +342,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceAuthoring
   ResourceType: 0
-  Amount: 1000
 --- !u!114 &7789239051558378192
 MonoBehaviour:
   m_ObjectHideFlags: 0

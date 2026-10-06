@@ -14,9 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameDataRegistry
   Units:
   - {fileID: 11400000, guid: ccfa1565c12a1aa4f9b17010dd0503c1, type: 2}
+  - {fileID: 11400000, guid: 1a800c6fdd09428e90c2a3f092f98107, type: 2}
   Buildings:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: b06f3c6b18ad40a3afacf4fef6517343, type: 2}
   Abilities:
   - {fileID: 11400000, guid: 9fbcd506527868b4c9901751c549b12a, type: 2}
-  Jobs: []
-  Civs: []
+  - {fileID: 11400000, guid: 105fee079b464db1ab49f872225e0fc2, type: 2}
+  - {fileID: 11400000, guid: 69dbab5cc1a74175a6093327993d14d8, type: 2}
+  - {fileID: 11400000, guid: 74e860504dc24a1f992027746a1262ce, type: 2}
+  Jobs:
+  - {fileID: 11400000, guid: 4678e18aea174fa382a016da853e1b8c, type: 2}
+  Civs:
+  - {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}

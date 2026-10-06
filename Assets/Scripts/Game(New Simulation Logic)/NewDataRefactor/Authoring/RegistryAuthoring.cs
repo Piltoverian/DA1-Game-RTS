@@ -381,6 +381,7 @@ public class RegistryAuthoring : MonoBehaviour
                 blob.ID = authoring.Id;
                 blob.TechTreeID = authoring.TechTree.Id;
                 var unlocks = builder.Allocate(ref blob.UnitUnlocks, authoring.UnitUnlocks.Count);
+
                 for (int i = 0; i < authoring.UnitUnlocks.Count; i++)
                 {
                     var entry = authoring.UnitUnlocks[i];
@@ -389,6 +390,8 @@ public class RegistryAuthoring : MonoBehaviour
                     unlocks[i].UnitID = entry.unitDefinition.basedSO.ID;
                     BakeTechIds(ref builder, ref unlocks[i].Prerequisites, entry.Prerequisites);
                 }
+                blob.StartWorkerPrefab = PrefabIndex(authoring.StartWorker, et);
+                blob.TownHallPrefab = PrefabIndex(authoring.TownHallPrefab, et);
                 AddBlobToReg<CivBlob>(et, ref builder);
             }
             finally { builder.Dispose(); }

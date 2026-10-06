@@ -43,10 +43,7 @@ GameObject:
   - component: {fileID: 3510181012055626075}
   - component: {fileID: 3120659631628476173}
   - component: {fileID: 8938032757841855522}
-  - component: {fileID: 4998375966112270383}
   - component: {fileID: 1886302293370438287}
-  - component: {fileID: 3651251647398371339}
-  - component: {fileID: -4530266368495814317}
   - component: {fileID: 2495065102718132284}
   - component: {fileID: 8872956124483862666}
   - component: {fileID: 2203044320395782523}
@@ -54,7 +51,6 @@ GameObject:
   - component: {fileID: 7877267614454000441}
   - component: {fileID: 5509022415770935601}
   - component: {fileID: 4590490605873051776}
-  - component: {fileID: 8419645162335630273}
   m_Layer: 6
   m_Name: FriendUnit WithComand
   m_TagString: Untagged
@@ -94,8 +90,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f33c4c47847f13842bd29f25374c5648, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnitAuthoring
+  unitDef: {fileID: 11400000, guid: ccfa1565c12a1aa4f9b17010dd0503c1, type: 2}
   playerID: 1
-  unitName: Soldier
+  initialHealth: -1
 --- !u!114 &8938032757841855522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -108,21 +105,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3c1a20afe62fc14996bf54de148069f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FriendAuthoring
---- !u!114 &4998375966112270383
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382223461976398644}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 249bc7e24c4c0054ebba311cc38d233c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FindTargetAuthoring
-  range: 20
-  playerID: 2
-  timerMax: 2
 --- !u!114 &1886302293370438287
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -136,33 +118,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TargetAuthoring
   targetGameObject: {fileID: 0}
---- !u!114 &3651251647398371339
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382223461976398644}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45ac3d5d547ca7649a60ae51e0ca56a3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ShootAttackAuthoring
-  definition: {fileID: 11400000, guid: 9fbcd506527868b4c9901751c549b12a, type: 2}
---- !u!114 &-4530266368495814317
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382223461976398644}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d41fa50fb38186f438ccc57265681f30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HealthAuthoring
-  healthAmount: 100
-  maxHealthAmount: 100
 --- !u!114 &2495065102718132284
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -270,19 +225,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99d2af4db75bbc04c894b35a339cb7bf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SetupUnitMoverDefaultPositionAuthoring
---- !u!114 &8419645162335630273
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382223461976398644}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 97244c9565e59494db83018977959239, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CommandListAuthoring
-  CommandList: []
 --- !u!1 &3977954335700049857
 GameObject:
   m_ObjectHideFlags: 0
@@ -721,7 +663,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  - {fileID: 2100000, guid: 0ed9a8419c3ed6c4d812c63c5f587e5f, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

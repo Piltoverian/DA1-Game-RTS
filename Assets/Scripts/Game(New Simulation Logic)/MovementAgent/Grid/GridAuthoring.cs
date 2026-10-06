@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class GridAuthoring : MonoBehaviour
 {
+    public MapGenConfig Config;
     public float MincellSize = 1f;
     public MapType mapType = MapType.Medium;
 
@@ -17,8 +18,9 @@ public class GridAuthoring : MonoBehaviour
         var renderer = GetComponent<Renderer>();
         if (!renderer) throw new System.InvalidOperationException("GridAuthoring requires a Renderer");
         Bounds bounds = renderer.bounds;
-        int size = (int)mapType;
-        if (MincellSize <= 0 || bounds.size.x / MincellSize < size || bounds.size.z / MincellSize < size)
+        int size = (int)(Config ? Config.MapSize : mapType);
+        float minimum = Config ? Config.MinimumCellSize : MincellSize;
+        if (minimum <= 0 || bounds.size.x / minimum < size || bounds.size.z / minimum < size)
             throw new System.InvalidOperationException("Plane is too small for requested grid");
         if (math.abs(bounds.size.x - bounds.size.z) > .001f * math.max(bounds.size.x, bounds.size.z))
             throw new System.InvalidOperationException("GridAuthoring needs a square, axis-aligned Plane");
@@ -39,6 +41,7 @@ public class GridAuthoring : MonoBehaviour
     {
         public override void Bake(GridAuthoring authoring)
         {
+            if (authoring.Config) DependsOn(authoring.Config);
             Entity entity = GetEntity(TransformUsageFlags.Renderable);
             
             GridComponent gridComponent = authoring.GetGridDefinition();
@@ -49,11 +52,11 @@ public class GridAuthoring : MonoBehaviour
             var terrainBuffer = AddBuffer<GridTerrain>(entity);
 
 
-            if (authoring.generateTerrain)
+            if (authoring.Config ? authoring.Config.GenerateTerrain : authoring.generateTerrain)
             {
                 // TerrainMapRenderer renders the baked cells; retain the plane collider.
                 AddComponent<Unity.Rendering.DisableRendering>(entity);
-                var terrain = TerrainGeneration.Generate(gridComponent, authoring.terrainSettings);
+                var terrain = TerrainGeneration.Generate(gridComponent, authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings);
                 foreach (var cell in terrain.cells) terrainBuffer.Add(cell);
                 var spawns = AddBuffer<GridSpawnCell>(entity);
                 for (int player = 0; player < terrain.spawns.Length; player++)

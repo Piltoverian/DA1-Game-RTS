@@ -12,9 +12,9 @@ public partial struct GridIslandSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach (var (grid, entity) in SystemAPI.Query<RefRW<GridComponent>>().WithEntityAccess())
+        foreach (var (grid, entity) in SystemAPI.Query<RefRO<GridComponent>>().WithEntityAccess())
         {
-            if (grid.ValueRW.islandGeneration == grid.ValueRW.generation)
+            if (grid.ValueRO.islandGeneration == grid.ValueRO.generation)
                 continue;
            
             var costBuffer = SystemAPI.GetBuffer<GridNodeCost>(entity);
@@ -22,6 +22,7 @@ public partial struct GridIslandSystem : ISystem
             int width = grid.ValueRO.width;
             int height = grid.ValueRO.height;
             int totalNodes = width * height;
+            if (costBuffer.Length != totalNodes || islandBuffer.Length != totalNodes) continue;
 
             NativeArray<bool> visited = new NativeArray<bool>(totalNodes, Allocator.Temp);
             NativeQueue<int2> queue = new NativeQueue<int2>(Allocator.Temp);
@@ -92,8 +93,9 @@ public partial struct GridIslandSystem : ISystem
 
             visited.Dispose();
             queue.Dispose();
-            grid.ValueRW.islandGeneration = grid.ValueRW.generation;
-            state.Enabled = false;
+            var updated = grid.ValueRO;
+            updated.islandGeneration = updated.generation;
+            SystemAPI.SetComponent(entity, updated);
 
         }
     }

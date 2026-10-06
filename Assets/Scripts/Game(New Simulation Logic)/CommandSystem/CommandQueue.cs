@@ -67,6 +67,7 @@ partial struct CommandQueue : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var e = SystemAPI.GetSingletonEntity<CommandQueueComponent>();
         var commandBuffer = state.EntityManager.GetBuffer<CommandQueueElement>(e);
 

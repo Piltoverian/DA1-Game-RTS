@@ -9,6 +9,7 @@ public partial struct ProductionSystem : ISystem
 {
     public void OnUpdate(ref SystemState state)
     {
+        if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         var ecb = new EntityCommandBuffer(Allocator.Temp);
         foreach (var pending in SystemAPI.Query<DynamicBuffer<PlayerPendingTech>>())

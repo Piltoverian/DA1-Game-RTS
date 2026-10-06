@@ -633,7 +633,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceNodeAuthoring
   ResourceType: 0
-  Amount: 1000
 --- !u!65 &1453519309
 BoxCollider:
   m_ObjectHideFlags: 0

@@ -9,6 +9,10 @@ public struct CivBlob : IGameBlobAsset
 
     public FixedString64Bytes GetID() => ID;
     public FixedString64Bytes getID() => GetID();
+
+    public int TownHallPrefab;
+
+    public int StartWorkerPrefab;
 }
 
 public struct CivUnitUnlockBlob

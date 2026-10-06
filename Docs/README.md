@@ -1,5 +1,7 @@
 # Hướng Dẫn Thiết Kế & Cấu Hình Dữ Liệu RTS (Designer Portal)
 
+Điểm vào toàn project: [README ở root](../README.md). Xem [sơ đồ thư mục](ProjectStructure.md) và [review/lịch sử kiểm tra](Reviews/README.md) trước khi dọn hoặc thay đổi cấu trúc. MapGen hiện hành tra cứu từ [MapGen_INDEX](Multiplayer/MapGen_INDEX.md).
+
 Chào mừng bạn đến với tài liệu hướng dẫn dành cho **Game Designer** và **Content Creator** của dự án RTS. 
 
 Toàn bộ hệ thống dữ liệu gameplay của dự án hiện đã được quy hoạch hoàn toàn vào kiến trúc **Game Data Registry & Blob Assets**, cho phép designer cấu hình linh hoạt thông qua ScriptableObject trên Unity Editor mà không cần can thiệp vào logic code của lập trình viên.

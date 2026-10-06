@@ -15,6 +15,7 @@ public partial struct BuildingPlacementSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         if (!SystemAPI.TryGetSingletonEntity<GridComponent>(out Entity gridEntity))
             return;
@@ -75,6 +76,8 @@ public partial struct BuildingPlacementSystem : ISystem
             }
 
             StartEndRect localRect;
+            if (em.HasComponent<GridFootprint>(req.PrefabEntity))
+                req.Position = GridSnapperMath.Snap(req.Position, grid, em.GetComponentData<GridFootprint>(req.PrefabEntity).Cells);
             int customCost = 255;
             if (em.HasComponent<BlockageData>(req.PrefabEntity))
             {
@@ -216,11 +219,8 @@ public partial struct BuildingPlacementSystem : ISystem
         bool hasUnitBucket,
         NativeParallelMultiHashMap<int, Entity> unitBucket)
     {
-        float2 worldMin = new float2(rootPosition.x + localRect.MinPoint.x, rootPosition.z + localRect.MinPoint.y);
-        float2 worldMax = new float2(rootPosition.x + localRect.MaxPoint.x, rootPosition.z + localRect.MaxPoint.y);
-
-        int2 minGrid = GridHelper.WorldToGrid(new float3(worldMin.x + 0.05f, 0, worldMin.y + 0.05f), grid);
-        int2 maxGrid = GridHelper.WorldToGrid(new float3(worldMax.x - 0.05f, 0, worldMax.y - 0.05f), grid);
+        if (!PlayerSpawnPlacement.TryFootprint(grid, rootPosition, localRect, out int2 minGrid, out int2 maxGrid))
+            return false;
 
         for (int x = minGrid.x; x <= maxGrid.x; x++)
         {
@@ -243,11 +243,8 @@ public partial struct BuildingPlacementSystem : ISystem
 
     private static void ReserveGridArea(GridComponent grid, DynamicBuffer<GridNodeCost> costBuffer, float3 rootPosition, StartEndRect localRect, int cost)
     {
-        float2 worldMin = new float2(rootPosition.x + localRect.MinPoint.x, rootPosition.z + localRect.MinPoint.y);
-        float2 worldMax = new float2(rootPosition.x + localRect.MaxPoint.x, rootPosition.z + localRect.MaxPoint.y);
-
-        int2 minGrid = GridHelper.WorldToGrid(new float3(worldMin.x + 0.05f, 0, worldMin.y + 0.05f), grid);
-        int2 maxGrid = GridHelper.WorldToGrid(new float3(worldMax.x - 0.05f, 0, worldMax.y - 0.05f), grid);
+        if (!PlayerSpawnPlacement.TryFootprint(grid, rootPosition, localRect, out int2 minGrid, out int2 maxGrid))
+            return;
 
         for (int x = minGrid.x; x <= maxGrid.x; x++)
         {

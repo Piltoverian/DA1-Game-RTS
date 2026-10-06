@@ -1,6 +1,6 @@
 # Kế hoạch spawn nhà và quân
 
-Trạng thái: kế hoạch, chưa triển khai. Dựa trên facility gameplay hiện có, ngày 2026-10-05.
+Trạng thái: đã chuẩn bị bootstrap đầu trận ngày 2026-10-06; cần cấu hình và nghiệm thu Main. Xem [Player bootstrap chung](PlayerBootstrap.md). Tìm vị trí production và replication multiplayer vẫn chưa triển khai.
 
 ## 1. Phạm vi
 
@@ -8,7 +8,7 @@ Trạng thái: kế hoạch, chưa triển khai. Dựa trên facility gameplay h
 
 Giữ luật mọi unit dùng chung walkable. Spawn không thêm clearance, physicalWalkable hoặc cơ chế cân bằng tuyệt đối.
 
-Mọi phép đổi cell ↔ index và world ↔ cell dùng GridHelper.GetNodeIndex/GetGridPosFromIndex/WorldToGrid/GridToWorld; helper spawn không tự viết lại công thức index.
+Mọi phép đổi cell ↔ index và world ↔ cell dùng GridHelper.GetNodeIndex/GetGridPosFromIndex/WorldToGrid/GridToWorld; helper spawn không tự viết lại công thức index. Caller kiểm tra bounds trước khi đọc buffer; xem [quy ước GridHelper](MapGen_Unity_Rules.md#grid-helper).
 
 ## 2. Dữ liệu và facility sử dụng
 
@@ -26,7 +26,7 @@ Mọi phép đổi cell ↔ index và world ↔ cell dùng GridHelper.GetNodeInd
 
 GridSpawnCell.playerId hiện được ghi bằng chỉ số 0..players-1 khi bake. Không mặc định chỉ số này luôn là ID mạng hoặc identity của người chơi. Cần mapping rõ ràng; nếu player chọn spawn, mỗi slot chỉ được cấp cho một player.
 
-Cấu hình tối thiểu dự kiến: StartingBuildingId; các cặp UnitDefinitionId/Count; mapping PlayerId/SpawnSlot. Giữ registry hiện tại làm nguồn prefab. Chưa cần một catalog prefab song song.
+Cấu hình hiện tại: `PlayerBootstrapSettings` chung cho mọi player (số worker, tài nguyên, tuổi, bán kính bố trí); roster chỉ chứa PlayerId/SpawnSlot/Civ. `CivBlob.TownHallPrefab` và `StartWorkerPrefab` trỏ vào registry prefab hiện có. Không có số worker/tài nguyên riêng cho từng civ/player.
 
 ## 3. Rule đặt nhà đầu trận
 
@@ -99,6 +99,7 @@ Xác nhận trực tiếp trong Main bằng các tình huống: nhiều player; 
 
 ## 9. Chỉ mục code hiện có
 
+- [GridHelper: tọa độ và index](<../../Assets/Scripts/Game(New Simulation Logic)/MovementAgent/Helpers/GridHelper.cs>).
 - [GridSpawnCell và schema](<../../Assets/Scripts/Game(New Simulation Logic)/MovementAgent/Grid/GridComponent.cs>).
 - [Registry lookup và lệnh Build từ UI](<../../Assets/Scripts/ClientSide (Presentation)/InputReceiver/BuildingPlacer.cs>).
 - [BuildingPlacementSystem](<../../Assets/Scripts/Game(New Simulation Logic)/System/Construction/BuildingPlacementSystem.cs>).
