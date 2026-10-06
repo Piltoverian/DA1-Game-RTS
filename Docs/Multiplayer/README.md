@@ -1,8 +1,12 @@
 # Kiến Trúc Multiplayer Chuẩn Gaming & Lộ Trình Phát Triển
 
-MapGen Unity đã triển khai trong gameplay. Bắt đầu từ [mục lục các nhóm rule](MapGen_INDEX.md), sau đó mở phần tương ứng trong [file giải thích thuật toán](MapGen_Unity_Rules.md). Cách chạy Main và thay theme nằm trong [hướng dẫn gameplay](MapGen_Unity_ReadingGuide.md).
+## Quyết định hiện hành — 2026-10-06
 
-Các lab HTML và kế hoạch port cũ phục vụ tham khảo lịch sử. Scene preview và các file test đã được dọn khỏi project.
+Server tạo map một lần và truyền dữ liệu kết quả cho client; client dựng map và xác nhận ready trước khi server bắt đầu trận. Multiplayer là giai đoạn triển khai tiếp theo. Xem [Server tạo map và đồng bộ tải trận](ServerMapLoading.md) cho trách nhiệm, protocol dự kiến và tiêu chí nghiệm thu. Quyết định này chưa được triển khai trong code.
+
+MapGen Unity đã triển khai trong gameplay. Bắt đầu từ [mục lục các nhóm rule](../MapGeneration/MapGen_INDEX.md), sau đó mở phần tương ứng trong [file giải thích thuật toán](../MapGeneration/MapGen_Unity_Rules.md). Cách chạy Main và thay theme nằm trong [hướng dẫn gameplay](../MapGeneration/MapGen_Unity_ReadingGuide.md).
+
+Lab và archive MapGen đã được xóa theo yêu cầu chủ project. Tra cứu bản Unity hiện hành qua mục lục và hướng dẫn gameplay ở trên.
 
 Tài liệu này quy hoạch toàn bộ kiến trúc hạ tầng mạng, quy trình cấm chọn (Ban/Pick) và mô hình đồng bộ cho dự án RTS trên nền tảng **Unity DOTS ECS**.
 
@@ -44,7 +48,7 @@ flowchart TD
 ## 🚀 3. Lộ Trình Triển Khai 5 Sprint
 
 > [!IMPORTANT]
-> **Thứ tự triển khai hiện hành (2026-09-27):** Ưu tiên hoàn thành **Hạng mục B — MapGen, Data Texture và Player Spawn** theo [MapGen_ImplementationPlan.md](MapGen_ImplementationPlan.md). Công việc Sprint 0 về player identity, match contracts và match lifecycle được giữ trong backlog để thực hiện sau khi Hạng mục B được nghiệm thu. Bảng 5 Sprint bên dưới vẫn là lộ trình Multiplayer tổng thể.
+> **Snapshot thứ tự triển khai (2026-09-27), đã được thay bởi quyết định 2026-10-06 ở đầu tài liệu:** Ưu tiên hoàn thành **Hạng mục B — MapGen, Data Texture và Player Spawn** theo [MapGen_ImplementationPlan.md](../MapGeneration/MapGen_ImplementationPlan.md). Công việc Sprint 0 về player identity, match contracts và match lifecycle được giữ trong backlog để thực hiện sau khi Hạng mục B được nghiệm thu. Bảng 5 Sprint bên dưới vẫn là lộ trình Multiplayer tổng thể.
 
 | Sprint | Tên Giai Đoạn | Mục Tiêu Chính & Sản Phẩm Đầu Ra |
 | :--- | :--- | :--- |
@@ -58,9 +62,8 @@ flowchart TD
 
 ## 📚 Danh Mục Tài Liệu Chi Tiết
 
-* **[MapGen_Lab5_AcceptedAlgorithm.md](MapGen_Lab5_AcceptedAlgorithm.md)**: Thuật toán MapGen người dùng đã chọn ngày 2026-10-02: common Y, noise lượng tử, núi liền mạch, cliff/ramp bake vào walkable, cluster cùng mức và kiểm tra đường; cấu hình thử và bàn giao session tiếp theo.
 
 * 📄 **[Sprint0_CodeAudit.md](Sprint0_CodeAudit.md)**: Báo cáo kiểm toán toàn diện mã nguồn hiện tại, danh sách lỗi kiến trúc và giải pháp chi tiết cho Sprint 0.
-* 📄 **[MapGen_DataTexture_Specification.md](MapGen_DataTexture_Specification.md)**: Đặc tả kỹ thuật thuật toán sinh bản đồ theo mode, cân bằng bằng gói tài nguyên khởi đầu quanh mỗi base, mã hóa Texture RGBA, quy chuẩn chọn điểm Spawn và sinh thực thể vào ECS.
-* 📄 **[MapGen_ImplementationPlan.md](MapGen_ImplementationPlan.md)**: Kế hoạch triển khai hiện hành, đã đối chiếu với source; bao gồm các ràng buộc Grid, Building Placement, prefab authoring và tiêu chí nghiệm thu.
+* 📄 **[MapGen_DataTexture_Specification.md](../MapGeneration/MapGen_DataTexture_Specification.md)**: Đặc tả kỹ thuật thuật toán sinh bản đồ theo mode, cân bằng bằng gói tài nguyên khởi đầu quanh mỗi base, mã hóa Texture RGBA, quy chuẩn chọn điểm Spawn và sinh thực thể vào ECS.
+* 📄 **[MapGen_ImplementationPlan.md](../MapGeneration/MapGen_ImplementationPlan.md)**: Kế hoạch triển khai hiện hành, đã đối chiếu với source; bao gồm các ràng buộc Grid, Building Placement, prefab authoring và tiêu chí nghiệm thu.
 

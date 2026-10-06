@@ -384,9 +384,4 @@ FodyWeavers.xsd
 *.slnx
 *.user
 
-# Authored MapGen test assets referenced by scenes and registry
-!/Assets/Temp/
-/Assets/Temp/*
-!/Assets/Temp/MapGenTest/
-!/Assets/Temp/MapGenTest/**
-!/Assets/Temp/MapGenTest.meta
+# Authored fixtures live in Assets/_Project/Tests and remain source files.

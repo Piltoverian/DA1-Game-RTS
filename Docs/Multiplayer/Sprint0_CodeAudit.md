@@ -1,16 +1,18 @@
 # Sprint 0: Báo Cáo Kiểm Toán Hạ Tầng Code (Code Infrastructure Audit)
 
+> **Cập nhật 2026-10-06:** Multiplayer là giai đoạn tiếp theo; đã chọn [server tạo map và truyền kết quả](ServerMapLoading.md). Audit bên dưới là snapshot: cần đối chiếu lại code, đặc biệt player identity đã được sửa cho test local; chưa thay thế identity từ session mạng.
+
 > **Mục đích**: Rà soát toàn bộ mã nguồn C# và ECS Systems hiện tại để phát hiện các điểm nghẽn kiến trúc, các vị trí hardcode, và chuẩn bị sẵn các hợp đồng dữ liệu (Data Contracts) trước khi bắt tay vào tích hợp mạng ở Sprint 1. Phần dữ liệu ScriptableObjects/Civs sẽ do Game Designer cấu hình sau.
 
 > [!NOTE]
-> **Cập nhật ưu tiên 2026-09-27:** Các đầu việc Sprint 0 trong tài liệu này đã được chuyển vào backlog. Nhóm hiện ưu tiên Hạng mục B theo [MapGen_ImplementationPlan.md](MapGen_ImplementationPlan.md), sau đó mới quay lại `LocalPlayerManager`, data contracts và match lifecycle. Nội dung audit bên dưới vẫn là backlog kỹ thuật hợp lệ.
+> **Snapshot ưu tiên 2026-09-27 (đã được thay bởi cập nhật ở trên):** Các đầu việc Sprint 0 trong tài liệu này đã được chuyển vào backlog. Nhóm hiện ưu tiên Hạng mục B theo [MapGen_ImplementationPlan.md](../MapGeneration/MapGen_ImplementationPlan.md), sau đó mới quay lại `LocalPlayerManager`, data contracts và match lifecycle. Nội dung audit bên dưới vẫn là backlog kỹ thuật hợp lệ.
 
 ---
 
 ## 🚨 1. Các Điểm Nghẽn & Lỗi Kiến Trúc Được Phát Hiện
 
 ### ① Lỗi Định danh Người chơi Cục bộ (Local Player Identity)
-* **Vị trí**: `Assets/Scripts/ClientSide (Presentation)/InputReceiver/GameManager/Manager/SelectManager.cs` (Dòng 25-26).
+* **Vị trí**: `Assets/_Project/Scripts/Runtime/Presentation/Input/GameManager/Manager/SelectManager.cs` (Dòng 25-26).
 * **Đoạn code hiện tại**:
   ```csharp
   PlayerContextAuthoring playerContextAuthoring = FindAnyObjectByType<PlayerContextAuthoring>();
@@ -24,7 +26,7 @@
 ---
 
 ### ② Thiếu Cơ chế Đóng Băng Mô phỏng Trước Trận Đấu (Match State Lifecycle)
-* **Vị trí**: Toàn bộ hệ thống trong `Assets/Scripts/Game(New Simulation Logic)/System/`.
+* **Vị trí**: Toàn bộ hệ thống trong `Assets/_Project/Scripts/Runtime/Simulation/`.
 * **Vấn đề cốt tử**:
   * Khi SubScene vừa được nạp, toàn bộ các system ECS (`ShootAttackSystem`, `WorkerGatherSystem`, `ProductionSystem`, `MovementAgentPathRequestSystem`) đều chạy ngay lập tức.
   * Nếu máy Host load xong trong 2 giây còn máy Client mất 8 giây, thì trong 6 giây chênh lệch, nông dân của Host đã đi khai thác tài nguyên và quân Host đã tràn sang phá nhà Client trước khi Client kịp nhìn thấy bản đồ.

@@ -7,15 +7,15 @@ Theo lần kiểm tra của chủ project, gameplay chạy được tới tạo 
 ## Điểm bắt đầu
 
 - [Tài liệu và sơ đồ project](Docs/ProjectStructure.md).
-- [Hướng dẫn chạy Main](Docs/Multiplayer/MapGen_Unity_ReadingGuide.md).
-- [MapGen hiện hành](Docs/Multiplayer/MapGen_INDEX.md).
-- [Cấu hình dữ liệu cho designer](Docs/DataRefactor/README.md).
+- [Hướng dẫn chạy Main](Docs/MapGeneration/MapGen_Unity_ReadingGuide.md).
+- [MapGen hiện hành](Docs/MapGeneration/MapGen_INDEX.md).
+- [Cấu hình dữ liệu cho designer](Docs/Guides/GameData/README.md).
 - [Review và lịch sử kiểm tra](Docs/Reviews/README.md).
 
 ## Quy ước quản lý
 
 `Assets`, `Packages`, `ProjectSettings` là nội dung nguồn của Unity. Giữ `.meta` đi cùng asset khi đổi tên hoặc di chuyển. `Library`, `Temp` ở root, `obj`, `Logs`, solution và csproj là dữ liệu cục bộ/sinh tự động.
 
-`Assets/Temp/MapGenTest` chứa fixture có reference từ scene/registry, được giữ trong Git. Thư mục này khác với `Temp` ở root. Không dọn cache theo tên thư mục mà bỏ qua reference.
+`Assets/_Project/Tests/Fixtures/MapGeneration` chứa fixture có reference từ scene/registry, được giữ trong Git. Thư mục này khác với `Temp` ở root. Không dọn cache theo tên thư mục mà bỏ qua reference.
 
-Tài liệu mô tả code hiện hành là điểm tra cứu chính. Kế hoạch multiplayer, kế hoạch port và lab là thiết kế/tham khảo; không mặc định là chức năng đã triển khai hoặc đã nghiệm thu.
+Tài liệu mô tả code hiện hành là điểm tra cứu chính. Kế hoạch multiplayer và tài liệu kế hoạch cũ là thiết kế/tham khảo; không mặc định là chức năng đã triển khai hoặc đã nghiệm thu.

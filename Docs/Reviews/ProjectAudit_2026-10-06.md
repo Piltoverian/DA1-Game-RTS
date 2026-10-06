@@ -24,7 +24,7 @@ P1 = cần xử lý trước mốc tích hợp/build tiếp theo; P2 = lỗi ho�
 
 ### A02 — P1 — Input/UI phụ thuộc authoring trong SubScene (xác nhận code; chưa tái hiện Player)
 
-- Vị trí: `Assets/Scripts/ClientSide (Presentation)/InputReceiver/GameManager/Manager/SelectManager.cs:25,91,114`; `MonoBehaviours/UnitController.cs:132`; `UI/UnitImage.cs:16` cùng cây presentation.
+- Vị trí: `Assets/_Project/Scripts/Runtime/Presentation/Input/GameManager/Manager/SelectManager.cs:25,91,114`; `MonoBehaviours/UnitController.cs:132`; `UI/UnitImage.cs:16` cùng cây presentation.
 - `FindAnyObjectByType<PlayerContextAuthoring>()` được gọi một lần rồi dereference `currentContext.playerId`. Khi authoring không có trong scene runtime, hoặc SubScene đóng, context có thể null. Khi có nhiều authoring, kết quả tìm không thể hiện người chơi cục bộ mà người dùng đã chọn.
 - Hậu quả: chọn quân/ra lệnh/UI có thể lỗi hoặc sử dụng sai player. `PlayerContextAuthoring.cs:10` còn mặc định ID 0, trong khi fixture Main mô tả roster 1–4.
 - Xử lý: tạo nguồn LocalPlayerId độc lập, bind bằng roster/session; UI đọc snapshot ECS theo ID. Chỉ bật input khi world và các singleton cần thiết đã sẵn sàng.
@@ -32,7 +32,7 @@ P1 = cần xử lý trước mốc tích hợp/build tiếp theo; P2 = lỗi ho�
 
 ### A03 — P1 — Đạn có thể dao động qua mục tiêu mà không hit (xác nhận bằng logic)
 
-- Vị trí: `Assets/Scripts/Game(New Simulation Logic)/System/Combat/BulletMoverSystem.cs:75–88`.
+- Vị trí: `Assets/_Project/Scripts/Runtime/Simulation/Combat/BulletMoverSystem.cs:75–88`.
 - Code di chuyển cả bước `speed * dt`, rồi chỉ snap nếu khoảng cách sau lớn hơn khoảng cách trước. Vượt qua mục tiêu nhưng vẫn gần hơn không được snap.
 - Ví dụ tái hiện toán học: khoảng cách 0.6, bước 1.0, ngưỡng hit 0.2. Đạn đi qua còn cách 0.4, không hit; frame tiếp theo đi ngược còn cách 0.6 rồi snap. Với trường hợp khoảng cách 0.5 và bước 1.0, khoảng cách trước/sau bằng nhau nên có thể dao động mãi giữa hai phía ngoài ngưỡng hit.
 - Xử lý: giới hạn bước theo khoảng cách còn lại, hoặc xét giao đoạn di chuyển với vùng hit. Xác định rõ thiết kế homing/collision.
@@ -40,7 +40,7 @@ P1 = cần xử lý trước mốc tích hợp/build tiếp theo; P2 = lỗi ho�
 
 ### A04 — P2 — Resource cache ghi vượt length và bỏ sót thay đổi cấu trúc (xác nhận)
 
-- Vị trí: `Assets/Scripts/Game(New Simulation Logic)/System/PlayerContext/PlayerContextSyncSystem.cs:95–108`, `SyncResource:84–92`.
+- Vị trí: `Assets/_Project/Scripts/Runtime/Simulation/Players/PlayerContextSyncSystem.cs:95–108`, `SyncResource:84–92`.
 - Nhánh `i >= cacheBuffer.Length` gọi `SyncResource`, nhưng hàm đó vẫn ghi `buffer[index]` mà không resize/add. Điều kiện phát hiện mismatch tự dẫn tới truy cập ngoài giới hạn.
 - Chỉ so Amount, không so Type; không nhận biết buffer ngắn đi. Đổi resource type với cùng Amount hoặc xóa entry có thể không cập nhật UI.
 - Cache được cập nhật trước khi kiểm tra channel có tồn tại; nếu phát event thất bại, thay đổi đã bị đánh dấu là đồng bộ và có thể không được phát lại.
@@ -66,7 +66,7 @@ P1 = cần xử lý trước mốc tích hợp/build tiếp theo; P2 = lỗi ho�
 ### A07 — P2 — Player Build đang chọn SampleScene (cấu hình xác nhận; ý định cần đối chiếu)
 
 - Vị trí: `ProjectSettings/EditorBuildSettings.asset:8–10`.
-- Chỉ thấy SampleScene bật trong cấu hình này, trong khi `Assets/Temp/MapGenTest/README.md` và smoke script kiểm tra Main.
+- Chỉ thấy SampleScene bật trong cấu hình này, trong khi `Assets/_Project/Tests/Fixtures/MapGeneration/README.md` và smoke script kiểm tra Main.
 - Rủi ro: build bằng cấu hình mặc định có thể mở scene khác scene đã nghiệm thu. Chưa kiểm tra cấu hình Build Profile riêng có override hay không.
 - Xử lý: ghi rõ scene khởi động chuẩn, đối chiếu Build Profile đang dùng và đưa scene đó vào quy trình build.
 - Nghiệm thu: build thực tế mở đúng scene và bootstrap đúng roster/config.
@@ -88,11 +88,11 @@ P1 = cần xử lý trước mốc tích hợp/build tiếp theo; P2 = lỗi ho�
 ### A10 — P3 — 5 warning compiler hiện tại
 
 - `CoreECS/Authoring/Building/Combat/ShootVictimAuthoring.cs:16`: CS0618 dùng AddComponent overload obsolete. Chuyển sang overload nhận Entity rõ ràng.
-- `Assets/Resources/InfoIconMapping.cs:42,43,49,50`: bốn CS0649 ở field struct được Unity serialize. Có thể là cảnh báo hợp lệ do compiler không biết dữ liệu Inspector; không coi chúng mặc định là lỗi null. Kiểm tra asset mapping trước khi sửa/suppress có phạm vi.
+- `Assets/_Project/Scripts/Runtime/Presentation/UI/InfoIconMapping.cs:42,43,49,50`: bốn CS0649 ở field struct được Unity serialize. Có thể là cảnh báo hợp lệ do compiler không biết dữ liệu Inspector; không coi chúng mặc định là lỗi null. Kiểm tra asset mapping trước khi sửa/suppress có phạm vi.
 
 ### A11 — P3 — Runtime source kéo NUnit và thiếu ranh giới assembly
 
-`SelectManager.cs:2`, `GameManager.cs:2`, `InputTracker.cs:2`, `Events/EventBus.cs:1`, `Events/ResourceChangeEvent/ResourceChangeListener.cs:1`, `Assets/Resources/InfoIconMapping.cs:1` có using NUnit trong code runtime. Assembly-CSharp.csproj hiện tham chiếu nunit.framework. Không thấy asmdef riêng dưới Assets trong lần tìm kiếm.
+`SelectManager.cs:2`, `GameManager.cs:2`, `InputTracker.cs:2`, `Events/EventBus.cs:1`, `Events/ResourceChangeEvent/ResourceChangeListener.cs:1`, `Assets/_Project/Scripts/Runtime/Presentation/UI/InfoIconMapping.cs:1` có using NUnit trong code runtime. Assembly-CSharp.csproj hiện tham chiếu nunit.framework. Không thấy asmdef riêng dưới Assets trong lần tìm kiếm.
 
 Xóa import không sử dụng và đặt tests trong test assembly rõ ràng; không giả định dependency NUnit này đã làm Player build thất bại vì chưa chạy Player build. Tách runtime/editor/tests khi có nhu cầu dependency cụ thể, tránh refactor thư mục lớn chỉ để làm đẹp.
 
@@ -108,7 +108,7 @@ Xóa import không sử dụng và đặt tests trong test assembly rõ ràng; k
 - Sprint0 vẫn đúng về authoring identity; ghi nó là backlog không làm rủi ro biến mất.
 - README fixture ghi Play Mode Main chưa test lại sau thay đổi config-only stock. Smoke menu Editor hữu ích nhưng chưa thay thế bộ regression chạy tự động.
 - Build report cũ ghi 0 warning khác kết quả hiện tại. Cần gắn report với commit/config/Unity version/thời điểm và loại kiểm tra.
-- Assets/Temp/MapGenTest đang được scene/registry dùng và gitignore có exception cố ý; không xóa thư mục này như cache. Chuyển sang tên Tests/Fixtures chỉ khi kiểm kê reference và giữ meta/GUID.
+- Assets/_Project/Tests/Fixtures/MapGeneration đang được scene/registry dùng và gitignore có exception cố ý; không xóa thư mục này như cache. Chuyển sang tên Tests/Fixtures chỉ khi kiểm kê reference và giữ meta/GUID.
 - Nhiều scene/prefab/code/docs đang modified hoặc untracked. Đây không phải lỗi gameplay, nhưng cần checkpoint toàn bộ file cần thiết để người khác tái tạo được trạng thái đã kiểm thử.
 
 ## Thứ tự xử lý và tiêu chí hoàn tất
