@@ -5,18 +5,10 @@ using UnityEngine;
 using Object=UnityEngine.Object;
 
 // Imports the checked-in material library; offline generation tooling has been retired.
-[InitializeOnLoad]
 public static class TerrainMaterialAuthoring
 {
     public const string ThemePath="Assets/_Project/Data/Theme/SO/JadeSlateTerrainTheme.asset";
     public const string Folder="Artifacts/TerrainVisual";
-    static TerrainMaterialAuthoring(){EditorApplication.update+=Tick;}
-    static void Tick(){
-        if(EditorApplication.isCompiling||EditorApplication.isUpdating||!File.Exists(Folder+"/authoring-request.txt"))return;
-        string command=File.ReadAllText(Folder+"/authoring-request.txt").Trim();File.Delete(Folder+"/authoring-request.txt");
-        try{if(command=="build")Build();else if(command=="promote")Promote();else throw new Exception("Unknown material command "+command);}
-        catch(Exception e){File.WriteAllText(Folder+"/failure.txt",e.ToString());Debug.LogException(e);}
-    }
     [MenuItem("RTS/Terrain/Import Jade Slate Material Library")]
     public static void Build(){
         if(EditorApplication.isPlayingOrWillChangePlaymode)throw new Exception("Stop Play before import.");

@@ -11,20 +11,36 @@ using Unity.Rendering;
 public partial class TerrainVisualOffsetSystem : SystemBase
 {
     EntityQuery renderQuery;
+    EntityQuery matrixQuery;
     Dictionary<Entity,float4x4> baseline;
     Dictionary<Entity,float4x4> displayed;
+    readonly HashSet<Entity> live=new HashSet<Entity>();
+    readonly List<Entity> stale=new List<Entity>();
     void EnsureCaches(){baseline??=new Dictionary<Entity,float4x4>();displayed??=new Dictionary<Entity,float4x4>();}
     bool wasActive;
-    int frame;
     // Restore before physics/simulation reads LocalToWorld on the next frame.
     // Static collider entities can also carry render data, so presentation matrices
     // must not leak into PhysicsWorld or blockage calculations.
     public void RestoreLogicalMatrices() {
-        if(!wasActive)return;EnsureCaches();Dependency.Complete();
+        if(!wasActive || World==null || !World.IsCreated)return;
+        EnsureCaches();Dependency.Complete();
         EntityManager.CompleteDependencyBeforeRW<LocalToWorld>();
-        foreach(var entry in displayed){if(!EntityManager.Exists(entry.Key)||!EntityManager.HasComponent<LocalToWorld>(entry.Key))continue;var current=EntityManager.GetComponentData<LocalToWorld>(entry.Key).Value;if(current.Equals(entry.Value)&&baseline.TryGetValue(entry.Key,out var original))EntityManager.SetComponentData(entry.Key,new LocalToWorld{Value=original});}
+        // Enumerate the current world, never probe cached entity handles after a
+        // structural change (death, resource depletion or subscene unloading).
+        using var entities=matrixQuery.ToEntityArray(Allocator.Temp);
+        live.Clear();
+        foreach(var entity in entities){
+            if(!displayed.TryGetValue(entity,out var previous))continue;
+            live.Add(entity);
+            var current=EntityManager.GetComponentData<LocalToWorld>(entity).Value;
+            if(current.Equals(previous)&&baseline.TryGetValue(entity,out var original))
+                EntityManager.SetComponentData(entity,new LocalToWorld{Value=original});
+        }
+        stale.Clear();
+        foreach(var entity in displayed.Keys)if(!live.Contains(entity))stale.Add(entity);
+        foreach(var entity in stale){baseline.Remove(entity);displayed.Remove(entity);}
     }
-    protected override void OnCreate(){EnsureCaches();renderQuery=GetEntityQuery(ComponentType.ReadWrite<LocalToWorld>(),ComponentType.ReadOnly<MaterialMeshInfo>(),ComponentType.Exclude<DisableRendering>());}
+    protected override void OnCreate(){EnsureCaches();renderQuery=GetEntityQuery(ComponentType.ReadWrite<LocalToWorld>(),ComponentType.ReadOnly<MaterialMeshInfo>(),ComponentType.Exclude<DisableRendering>());matrixQuery=GetEntityQuery(new EntityQueryDesc{All=new[]{ComponentType.ReadWrite<LocalToWorld>()},Options=EntityQueryOptions.IncludeDisabledEntities|EntityQueryOptions.IncludePrefab});}
     protected override void OnUpdate() {
         if(World!=World.DefaultGameObjectInjectionWorld)return;
         EnsureCaches();
@@ -43,7 +59,6 @@ public partial class TerrainVisualOffsetSystem : SystemBase
             if(surface!=null)original.c3.y+=surface.Sample(original.c3.x,original.c3.z);
             EntityManager.SetComponentData(entity,new LocalToWorld{Value=original});displayed[entity]=original;
         }
-        if(++frame%120==0){var stale=new List<Entity>();foreach(var entry in baseline)if(!EntityManager.Exists(entry.Key))stale.Add(entry.Key);foreach(var entity in stale){baseline.Remove(entity);displayed.Remove(entity);}}
         // Restore ordinary matrices when the terrain presentation is disabled.
         if(surface==null){baseline.Clear();displayed.Clear();}
         wasActive=surface!=null;

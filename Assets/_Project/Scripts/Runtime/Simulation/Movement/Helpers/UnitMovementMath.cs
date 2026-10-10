@@ -77,6 +77,7 @@ public static class UnitMovementMath
         GridComponent grid,
         float searchRadius)
     {
+        if(grid.cellsize<=0||searchRadius<=0||gridCosts.Length!=grid.width*grid.height||!math.all(math.isfinite(worldPos)))return float2.zero;
         int2 centralCell = GridHelper.WorldToGrid(worldPos, grid);
         float2 gradient = float2.zero;
         int searchSteps = (int)math.ceil(searchRadius / grid.cellsize);
@@ -85,16 +86,26 @@ public static class UnitMovementMath
         {
             for (int y = -searchSteps; y <= searchSteps; y++)
             {
-                if (x == 0 && y == 0) continue;
-
                 int2 neighbor = centralCell + new int2(x, y);
                 if (neighbor.x < 0 || neighbor.x >= grid.width || neighbor.y < 0 || neighbor.y >= grid.height) continue;
 
                 int idx = GridHelper.GetNodeIndex(neighbor, grid);
                 if (gridCosts[idx].cost >= 255 || gridCosts[idx].cost == int.MaxValue) // Là vật cản
                 {
-                    float3 obstacleWorldPos = GridHelper.GridToWorld(neighbor, grid);
-                    float2 diff = new float2(worldPos.x - obstacleWorldPos.x, worldPos.z - obstacleWorldPos.z);
+                    // A blocked cell occupies an area, not just its centre.
+                    // On coarse maps its centre can be outside the avoidance
+                    // radius even while the unit is touching the obstacle.
+                    float2 minimum=new float2(grid.origin.x+neighbor.x*grid.cellsize,grid.origin.z+neighbor.y*grid.cellsize);
+                    float2 maximum=minimum+grid.cellsize;
+                    float2 point=new float2(worldPos.x,worldPos.z);
+                    float2 diff=point-math.clamp(point,minimum,maximum);
+                    if(math.lengthsq(diff)<1e-10f){
+                        // If already inside/on a blocked cell, escape through
+                        // the nearest side instead of ignoring the current cell.
+                        float4 distances=new float4(point.x-minimum.x,maximum.x-point.x,point.y-minimum.y,maximum.y-point.y);
+                        int side=0;for(int s=1;s<4;s++)if(distances[s]<distances[side])side=s;
+                        diff=(side==0?new float2(-1,0):side==1?new float2(1,0):side==2?new float2(0,-1):new float2(0,1))*.001f;
+                    }
                     float distSq = math.lengthsq(diff);
 
                     if (distSq < searchRadius * searchRadius)

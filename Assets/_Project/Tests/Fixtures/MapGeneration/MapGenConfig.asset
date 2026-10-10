@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9cdb83b15ab487a85bcd6403f820778, type: 3}
   m_Name: MapGenConfig
   m_EditorClassIdentifier: Assembly-CSharp::MapGenConfig
-  MapSize: 512
+  MapSize: 256
   MinimumCellSize: 1
   GenerateTerrain: 1
   Terrain:

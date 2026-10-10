@@ -72,6 +72,14 @@ public static class TerrainPresentationValidation
                 var system=world.CreateSystemManaged<TerrainVisualOffsetSystem>();
                 var staticEntity=em.CreateEntity(typeof(LocalToWorld),typeof(MaterialMeshInfo));em.SetComponentData(staticEntity,new LocalToWorld{Value=float4x4.Translate(new float3(32,0,32))});
                 for(int frame=0;frame<120;frame++){system.RestoreLogicalMatrices();if(em.GetComponentData<LocalToWorld>(unit).Position.y!=0||em.GetComponentData<LocalToWorld>(staticEntity).Position.y!=0)throw new Exception("Visual height leaked into simulation matrices");int i=(frame*31)%map.cells.Length;var center=GridHelper.GridToWorld(new int2(i%64,i/64),map.grid);em.SetComponentData(unit,LocalTransform.FromPosition(center));system.Update();float expected=surface.Sample(center.x,center.z);if(em.GetComponentData<LocalTransform>(unit).Position.y!=0||math.abs(em.GetComponentData<LocalToWorld>(unit).Position.y-expected)>.001f||math.abs(em.GetComponentData<LocalToWorld>(child).Position.y-expected-.3f)>.001f)throw new Exception("Render offset drift or simulation height mutation");system.Update();if(math.abs(em.GetComponentData<LocalToWorld>(unit).Position.y-expected)>.001f)throw new Exception("Offset accumulated");}
+                // Cached render handles must remain safe after structural changes.
+                em.DestroyEntity(staticEntity);
+                em.RemoveComponent<LocalToWorld>(child);
+                em.AddComponent<Disabled>(unit);
+                system.RestoreLogicalMatrices();
+                if(math.abs(em.GetComponentData<LocalToWorld>(unit).Position.y)>.001f)throw new Exception("Disabled entity was not restored");
+                em.RemoveComponent<Disabled>(unit);
+                system.Update();
                 surface.Deactivate();system.Update();if(math.abs(em.GetComponentData<LocalToWorld>(unit).Position.y)>.001f)throw new Exception("Offset not restored");surface.Activate();
             }finally{World.DefaultGameObjectInjectionWorld=oldWorld;}
         }

@@ -69,7 +69,7 @@ Kế hoạch R2 dùng stable typed ID unmanaged khi bake entity và lookup catal
 - ID chỉ cấp trong graph registry được chọn. Thêm reference qua Inspector Registry tự cấp GUID string cho definitions mới reachable còn thiếu ID; ID có sẵn luôn giữ nguyên, trùng ID chỉ báo lỗi.
 - Reference thêm bên trong Base/Train/Civ/TechTree, registry cũ hoặc chỉnh bằng script: dùng nút Assign Missing IDs trên Registry. Không cấp ID khi import/reload/Validate. Không có sổ ID hoặc quét toàn project. Unit/Building dùng ID của Base.
 - Apply hỗ trợ Undo và đánh dấu assets dirty; lưu bằng Save Project. Xóa reference không xóa ID. Nếu ID đã cấp bị xóa nhầm, khôi phục bằng Undo/Git trước khi cấp bổ sung. Duplicate có ID trùng không tự sửa.
-- Source được phân loại trong NewDataRefactor: DefinitionScript/ (schema), Validation/ (read-only runtime API), Authoring/ (RefactoredUnitAuthoring), Baking/ (helpers còn rỗng), Editor/Identity/ (RegistryDefinitionIds), Editor/Registry/ (GameDataRegistryEditor). Di chuyển kèm .meta, giữ GUID. R0Audit vẫn ở Assets/_Project/Scripts/Editor/Audits.
+- Source được phân loại trong NewDataRefactor: DefinitionScript/ (schema), Validation/ (read-only runtime API), Authoring/ (RefactoredUnitAuthoring), Baking/ (helpers còn rỗng), Editor/Identity/ (RegistryDefinitionIds), Editor/Registry/ (GameDataRegistryEditor). Di chuyển kèm .meta, giữ GUID. Audit snapshot R0 cũ đã được xóa; dùng validation của GameDataRegistryEditor.
 - Chưa nghiệm thu Unity Inspector/Undo/save-reload. R1 chưa đóng; baking chưa triển khai. Phần lịch sử nói ID tooling chưa có được thay thế bởi cập nhật này.
 
 

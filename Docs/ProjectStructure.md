@@ -41,7 +41,7 @@ Scene cũ được giữ để đối chiếu. Build Settings giữ scene đã c
 - [Multiplayer roadmap](Multiplayer/README.md).
 - [Review và kiểm tra](Reviews/README.md).
 
-Docs/MapGeneration giữ topology, Unity/config, spawn và resource. [Docs/TerrainVisualizer](TerrainVisualizer/README.md) là bộ nghiên cứu độc lập cho projection, artwork/atlas, renderer, picking/ECS và lab. History chỉ giữ redirect; archive nội dung lỗi thời đã được loại khỏi repository. Theme hiện hành là JadeSlateTerrainTheme; TerrainVisualLab thay các harness trial cũ. Tài liệu movement đã rời Assets; meta cũ giữ để đối chiếu lịch sử.
+Docs/MapGeneration giữ topology, Unity/config, spawn và resource. [Docs/TerrainVisualizer](TerrainVisualizer/README.md) là bộ nghiên cứu độc lập cho projection, artwork/atlas, renderer, picking/ECS và lab. History chỉ giữ redirect; archive nội dung lỗi thời đã được loại khỏi repository. Theme hiện hành là JadeSlateTerrainTheme; các harness tự chạy dùng một lần đã được xóa. Tài liệu movement đã rời Assets; meta cũ giữ để đối chiếu lịch sử.
 
 ## Dọn và khôi phục
 

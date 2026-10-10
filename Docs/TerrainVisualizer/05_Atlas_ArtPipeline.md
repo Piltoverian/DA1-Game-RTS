@@ -23,10 +23,10 @@ Ramp/cap lấy vật liệu theo UV mặt và sáng theo normal từ heights, li
 Ramp mask1..E dùng đất nung cam nâu(185,112,66) phủ toàn mặt tới mép, giữ chi tiết độ sáng của vật liệu nguồn; dải giữa theo hướng lên dốc sáng thêm tối đa4%, bán rộng0.30UV. Ramp không blend về cỏ ở biên để tránh viền xanh. Mask0/F phẳng không đổi; alpha, pivot và hình học giữ nguyên. [Ảnh Main](../../Artifacts/TerrainVisual/main-current/ramp-8.png).
 
 1. Dùng 78 PNG hiện hành đã lưu trong Assets; giữ canvas, alpha, pivot và metadata. Khi đổi artwork, chuẩn bị PNG tương thích bằng công cụ authoring bên ngoài.
-2. Refresh Unity; RTS/Terrain/Import Jade Slate Material Library hoặc ghi build vào Artifacts/TerrainVisual/authoring-request.txt.
+2. Refresh Unity; RTS/Terrain/Import Jade Slate Material Library.
 3. Importer [TerrainMaterialAuthoring](../../Assets/_Project/Tests/Editor/MapGeneration/TerrainMaterialAuthoring.cs) cấu hình texture và chạy fixture canonical.
 4. Lab regression, Main capture theo chương06.
-5. Ghi promote vào authoring-request để gán theme đã kiểm tra; backup Main và từ chối save nếu scene có sửa khác chưa lưu.
+5. Chọn RTS/Terrain/Use Validated Jade Slate In Main để gán theme đã kiểm tra; backup Main và từ chối save nếu scene có sửa khác chưa lưu.
 
 [Bộ mẫu](../../ArtSource/Terrain/AtlasTemplates/manifest.json) và [viewer](../../ArtSource/Terrain/TerrainReferenceKit/index.html) giữ ảnh JadeSlate hiện hành. ZIP và công cụ rebuild đã loại bỏ. Sample/mask dùng kiểm tra geometry.
 

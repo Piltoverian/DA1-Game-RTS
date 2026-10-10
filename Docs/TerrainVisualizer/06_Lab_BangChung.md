@@ -2,14 +2,7 @@
 
 ## Harness và protocol
 
-[TerrainVisualLab](../../Assets/_Project/Tests/Editor/MapGeneration/TerrainVisualLab.cs) đọc Artifacts/TerrainVisual/request.txt sau compile/import. Chỉ hai command:
-
-- regression: stock scale/named slots, offset/restore, mountain integration, resource planner, canonical reference và JadeSlate render.
-- main-current: Main ở Edit mode và dùng JadeSlate; Play, đợi Ready,60warmup+180sample, capture spawn/flat/ramp/mountain/cliff zoom8/18/40 tại1280×720, Stop. Không save Main/camera Play.
-
-Gate fixture hash77764F5FF38714982D0B5D6E71B39364FA95D032B01ADBBE4044C924623A60B2,2040resources. Nếu config MapGen đổi có chủ ý phải review/update fixture, không bỏ gate. Một request file duy nhất; không ghi đè command đang chạy. Failure.txt và timestamp dùng phân biệt lượt mới với PASS cũ.
-
-Authoring vật liệu thuộc command file riêng, xem chương05. Đã bỏ harness/command của old trial, layout promotion, old baseline/candidate và offset-cause.
+Harness TerrainVisualLab và cơ chế request file đã được xóa trong đợt dọn repository. Chạy các validation terrain qua menu RTS/Terrain trong Unity; nhập và gán JadeSlate qua menu TerrainMaterialAuthoring. Các số liệu bên dưới là bằng chứng lịch sử, không phải kết quả của lần chạy hiện tại.
 
 ## Câu hỏi và bằng chứng
 

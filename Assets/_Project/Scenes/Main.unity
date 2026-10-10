@@ -372,11 +372,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82284fc1dad91984aac6fc63acec54dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlowFieldDebugDrawer
-  mode: 0
+  mode: 5
   drawStep: 1
   arrowScale: 0.5
   showLabel: 0
   targetFieldIndex: 0
+  movementViewRadius: 24
+  drawThroughTerrain: 1
+  movementPlaneY: 0.03
+  alignToVisibleTerrain: 1
 --- !u!4 &321679047
 Transform:
   m_ObjectHideFlags: 0
