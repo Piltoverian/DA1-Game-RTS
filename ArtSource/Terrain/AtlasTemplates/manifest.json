@@ -1,0 +1,1150 @@
+{
+  "cell": [
+    128,
+    128
+  ],
+  "columns": 4,
+  "origin": "top-left",
+  "pivot_pixels_top_left": [
+    64,
+    80
+  ],
+  "camera_pitch": 30,
+  "camera_yaw": 45,
+  "tier_pixels": 32,
+  "runtime": "Individual readable PNGs; these authoring sheets are not assigned directly to TerrainTheme.",
+  "sheets": {
+    "ground": {
+      "size": [
+        512,
+        1024
+      ],
+      "entries": [
+        {
+          "name": "ground-0",
+          "rect": [
+            0,
+            0,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-1",
+          "rect": [
+            128,
+            0,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-2",
+          "rect": [
+            256,
+            0,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-3",
+          "rect": [
+            384,
+            0,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-4",
+          "rect": [
+            0,
+            128,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-5",
+          "rect": [
+            128,
+            128,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-6",
+          "rect": [
+            256,
+            128,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-7",
+          "rect": [
+            384,
+            128,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-8",
+          "rect": [
+            0,
+            256,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-9",
+          "rect": [
+            128,
+            256,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-10",
+          "rect": [
+            256,
+            256,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-11",
+          "rect": [
+            384,
+            256,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-12",
+          "rect": [
+            0,
+            384,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-13",
+          "rect": [
+            128,
+            384,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-14",
+          "rect": [
+            256,
+            384,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-15",
+          "rect": [
+            384,
+            384,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-16",
+          "rect": [
+            0,
+            512,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-17",
+          "rect": [
+            128,
+            512,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-18",
+          "rect": [
+            256,
+            512,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-19",
+          "rect": [
+            384,
+            512,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-20",
+          "rect": [
+            0,
+            640,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-21",
+          "rect": [
+            128,
+            640,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-22",
+          "rect": [
+            256,
+            640,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-23",
+          "rect": [
+            384,
+            640,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-24",
+          "rect": [
+            0,
+            768,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-25",
+          "rect": [
+            128,
+            768,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-26",
+          "rect": [
+            256,
+            768,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-27",
+          "rect": [
+            384,
+            768,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-28",
+          "rect": [
+            0,
+            896,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-29",
+          "rect": [
+            128,
+            896,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-30",
+          "rect": [
+            256,
+            896,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "ground-31",
+          "rect": [
+            384,
+            896,
+            128,
+            128
+          ],
+          "mask": "ground-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        }
+      ]
+    },
+    "tops": {
+      "size": [
+        512,
+        512
+      ],
+      "entries": [
+        {
+          "name": "top-0",
+          "rect": [
+            0,
+            0,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-1",
+          "rect": [
+            128,
+            0,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-2",
+          "rect": [
+            256,
+            0,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-3",
+          "rect": [
+            384,
+            0,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-4",
+          "rect": [
+            0,
+            128,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-5",
+          "rect": [
+            128,
+            128,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-6",
+          "rect": [
+            256,
+            128,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-7",
+          "rect": [
+            384,
+            128,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-8",
+          "rect": [
+            0,
+            256,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-9",
+          "rect": [
+            128,
+            256,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-A",
+          "rect": [
+            256,
+            256,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-B",
+          "rect": [
+            384,
+            256,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-C",
+          "rect": [
+            0,
+            384,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-D",
+          "rect": [
+            128,
+            384,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-E",
+          "rect": [
+            256,
+            384,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "top-F",
+          "rect": [
+            384,
+            384,
+            128,
+            128
+          ],
+          "mask": "tops-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        }
+      ]
+    },
+    "cliffs": {
+      "size": [
+        512,
+        384
+      ],
+      "entries": [
+        {
+          "name": "cliff-0-4",
+          "rect": [
+            0,
+            0,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-0-8",
+          "rect": [
+            128,
+            0,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-0-C",
+          "rect": [
+            256,
+            0,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-0-D",
+          "rect": [
+            384,
+            0,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-0-E",
+          "rect": [
+            0,
+            128,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-1-4",
+          "rect": [
+            128,
+            128,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-1-8",
+          "rect": [
+            256,
+            128,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-1-C",
+          "rect": [
+            384,
+            128,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-1-D",
+          "rect": [
+            0,
+            256,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "cliff-1-E",
+          "rect": [
+            128,
+            256,
+            128,
+            128
+          ],
+          "mask": "cliffs-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        }
+      ]
+    },
+    "mountains": {
+      "size": [
+        512,
+        512
+      ],
+      "entries": [
+        {
+          "name": "mountain-cap-0",
+          "rect": [
+            0,
+            0,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-1",
+          "rect": [
+            128,
+            0,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-2",
+          "rect": [
+            256,
+            0,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-3",
+          "rect": [
+            384,
+            0,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-4",
+          "rect": [
+            0,
+            128,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-5",
+          "rect": [
+            128,
+            128,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-6",
+          "rect": [
+            256,
+            128,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-7",
+          "rect": [
+            384,
+            128,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-8",
+          "rect": [
+            0,
+            256,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-9",
+          "rect": [
+            128,
+            256,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-A",
+          "rect": [
+            256,
+            256,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-B",
+          "rect": [
+            384,
+            256,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-C",
+          "rect": [
+            0,
+            384,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-D",
+          "rect": [
+            128,
+            384,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-E",
+          "rect": [
+            256,
+            384,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "mountain-cap-F",
+          "rect": [
+            384,
+            384,
+            128,
+            128
+          ],
+          "mask": "mountains-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        }
+      ]
+    },
+    "decorations": {
+      "size": [
+        512,
+        128
+      ],
+      "entries": [
+        {
+          "name": "decor-0",
+          "rect": [
+            0,
+            0,
+            128,
+            128
+          ],
+          "mask": "decorations-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "decor-1",
+          "rect": [
+            128,
+            0,
+            128,
+            128
+          ],
+          "mask": "decorations-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "decor-2",
+          "rect": [
+            256,
+            0,
+            128,
+            128
+          ],
+          "mask": "decorations-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        },
+        {
+          "name": "decor-3",
+          "rect": [
+            384,
+            0,
+            128,
+            128
+          ],
+          "mask": "decorations-mask.png",
+          "pivot": [
+            0.5,
+            0.375
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -48,7 +48,7 @@ flowchart TD
 ## 🚀 3. Lộ Trình Triển Khai 5 Sprint
 
 > [!IMPORTANT]
-> **Snapshot thứ tự triển khai (2026-09-27), đã được thay bởi quyết định 2026-10-06 ở đầu tài liệu:** Ưu tiên hoàn thành **Hạng mục B — MapGen, Data Texture và Player Spawn** theo [MapGen_ImplementationPlan.md](../MapGeneration/MapGen_ImplementationPlan.md). Công việc Sprint 0 về player identity, match contracts và match lifecycle được giữ trong backlog để thực hiện sau khi Hạng mục B được nghiệm thu. Bảng 5 Sprint bên dưới vẫn là lộ trình Multiplayer tổng thể.
+> **Snapshot thứ tự triển khai (2026-09-27), đã được thay bởi quyết định 2026-10-06 ở đầu tài liệu:** Ưu tiên hoàn thành **Hạng mục B — MapGen, Data Texture và Player Spawn** theo [MapGen_INDEX.md](../MapGeneration/MapGen_INDEX.md). Công việc Sprint 0 về player identity, match contracts và match lifecycle được giữ trong backlog để thực hiện sau khi Hạng mục B được nghiệm thu. Bảng 5 Sprint bên dưới vẫn là lộ trình Multiplayer tổng thể.
 
 | Sprint | Tên Giai Đoạn | Mục Tiêu Chính & Sản Phẩm Đầu Ra |
 | :--- | :--- | :--- |
@@ -65,5 +65,5 @@ flowchart TD
 
 * 📄 **[Sprint0_CodeAudit.md](Sprint0_CodeAudit.md)**: Báo cáo kiểm toán toàn diện mã nguồn hiện tại, danh sách lỗi kiến trúc và giải pháp chi tiết cho Sprint 0.
 * 📄 **[MapGen_DataTexture_Specification.md](../MapGeneration/MapGen_DataTexture_Specification.md)**: Đặc tả kỹ thuật thuật toán sinh bản đồ theo mode, cân bằng bằng gói tài nguyên khởi đầu quanh mỗi base, mã hóa Texture RGBA, quy chuẩn chọn điểm Spawn và sinh thực thể vào ECS.
-* 📄 **[MapGen_ImplementationPlan.md](../MapGeneration/MapGen_ImplementationPlan.md)**: Kế hoạch triển khai hiện hành, đã đối chiếu với source; bao gồm các ràng buộc Grid, Building Placement, prefab authoring và tiêu chí nghiệm thu.
+* 📄 **[MapGen_INDEX.md](../MapGeneration/MapGen_INDEX.md)**: Mục lục terrain hiện hành: thuật toán, grid, sprite isometric, resource và kiểm chứng.
 

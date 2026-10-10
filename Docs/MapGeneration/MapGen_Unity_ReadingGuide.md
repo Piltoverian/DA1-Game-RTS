@@ -1,30 +1,55 @@
-# Terrain gameplay trong Unity
+# Hướng dẫn sử dụng terrain trong Unity
 
-Pipeline hiện tại chỉ phục vụ gameplay; scene preview, menu preview/check, debug hook, Gizmos và harness Tests/TerrainPort đã được bỏ.
+Cập nhật 2026-10-09. Main dùng SharedVertexSlopes, theme canonical, camera orthographic và mesh terrain phẳng. Cao độ là dữ liệu logic/presentation; movement và physics giữ Y=0.
 
-## Chạy trong Main
+## Chạy Main
 
-1. GridAuthoring trên plane trong EntitySubscene bật generateTerrain và có terrainSettings.
-2. Baker gọi TerrainGeneration.Generate, ghi GridTerrain và GridSpawnCell vào entity grid. Plane gốc bị DisableRendering nhưng vẫn giữ collider.
-3. GridInitSystem tạo cost/island từ walkable rồi tắt sau lần khởi tạo đầu tiên.
-4. TerrainMapRenderer trong Main chờ subscene có grid đã bake, gọi TerrainVisualCompiler và tạo mesh theo chunk. Renderer không sinh một map riêng.
-5. MovementAgent dùng grid cost/island và flowfield hiện có.
+1. Mở Assets/_Project/Scenes/Main.unity, chờ import/compile.
+2. Kiểm tra Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset. Đây là config Main đang dùng dù nằm trong Tests.
+3. TerrainMapRenderer dùng Theme/SO/XianxiaIsometricTheme.asset. Runtime chỉ có canonical sprites và stock URP Unlit; không cần chọn mode hoặc bật flag render.
+4. Sau sửa config/generator, Stop Play và rebake subscene chứa GridAuthoring trước khi Play. Không kỳ vọng baked grid tự đổi trong phiên Play.
+5. Renderer chờ ECS grid rồi dựng atlas/mesh; không gen map thứ hai. Camera pitch30°, yaw45°, orthographic. frameRampOnLoad tìm khu vực có ramp/cliff/núi khi có khu vực phù hợp.
 
-Cliff bị chặn ở ô cao có sprite cliff, kể cả góc lõm. Ramp mở đường xuyên dải cliff phía cao. Các kiểm tra bảo vệ spawn, núi, crossing, khoảng cách ramp và một đảo walkable vẫn nằm trong generator; chúng quyết định candidate có hợp lệ cho gameplay hay không.
+## Thay đổi thường dùng
 
-## Thay texture
+| Thay đổi | Nơi chỉnh | Bước tiếp theo |
+|---|---|---|
+| Seed, số ô, player, vùng spawn | MapGenConfig | Rebake, Play lại |
+| Height/noise/cliff band/ramp width | Terrain settings | Rebake, validation |
+| Màu đất/dốc/vách/núi | PNG/TerrainTheme | Import, Stop/Play lại |
+| Zoom/showcase | IsometricTerrainCamera/renderer | Kiểm tra khung nhìn Main |
 
-Tạo asset qua Create > RTS > Terrain Theme hoặc duplicate V17Theme.asset. Gán các Sprite theo tên trong nhóm Cliffs, Ramps và Ground, rồi gán theme vào TerrainMapRenderer trong Main. Theme có cliffStraight, cliffOuterCorner, cliffInnerCorner, rampSingle, rampLeft, rampMiddle, rampRight, groundGrass và groundSoil; không dùng array trong Inspector.
+Cellsize = chiều rộng bounds grid chia số ô. Plane rộng1000, map512 cho 1.953125. MinimumCellSize là giới hạn kiểm tra, không thay công thức. Không đặt cellsize riêng trong art pack. Rise theo tỷ lệ sprite và camera; xem [schema](MapGen_TextureSchema.md).
 
-Dùng Sprite Single/Full Rect, giữ hướng gốc tương ứng của bộ V17. Material mặc định nằm ở Assets/_Project/Data/Maps/Terrain.mat. Đổi theme không đổi dữ liệu địa hình hoặc thuật toán di chuyển.
+Camera/art có hợp đồng30°/45° và128/32. Zoom orthographic được phép theo component; tự đổi pitch/yaw không phải thao tác đổi texture.
 
-## Code đang dùng
+## Chọn bộ texture mới
 
-- GridHelper.cs: nguồn chung cho cell ↔ index và world ↔ cell; xem [quy ước chiều rộng hàng](MapGen_Unity_Rules.md#grid-helper) khi dùng buffer vertex hoặc chunk.
-- TerrainGeneration.cs: settings, spawn, noise/height, núi, cliff, ramp và kiểm tra candidate.
-- MapGenerator.cs / MapGenRNG.cs: Perlin, fBm và RNG.
-- TerrainVisualCompiler.cs: ánh xạ địa hình sang loại sprite và rotation.
-- TerrainTheme.cs: các trường Sprite có tên và material.
-- TerrainMapRenderer.cs: dựng mesh gameplay từ grid đã bake, giải phóng mesh/material khi component bị tắt hoặc hủy.
-- GridAuthoring.cs / GridInitSystem.cs: bake grid và khởi tạo cost/island.
+Nhân bản theme/PNG, gán đủ slot, chọn theme trên TerrainMapRenderer và lưu scene. Làm theo [hướng dẫn texture](MapGen_TextureAuthoring.md). Không dùng menu Use Reference sau đó vì menu sẽ gán lại bộ Reference.
 
+## Kiểm tra
+
+| Công cụ/menu | Nội dung |
+|---|---|
+| RTS / Tests / Validate Mountain Integration | Hai thuật toán, núi, spawn, connectivity |
+| Tools / MapGen / Test resource planner only | Snap footprint, khoảng cách núi, starting mines, seed |
+| RTS / Tests / Validate Stock Reference Sprites | Theme Reference, sprite rectangles, batches, vertexY0 |
+| RTS / Tests / Validate Selected Terrain Theme | Bộ theme được chọn, không cần ảnh nguồn offline |
+
+Stock Reference validation kiểm tra bộ Reference. Với bộ tùy chỉnh, chọn TerrainTheme trong Project rồi chạy RTS / Tests / Validate Selected Terrain Theme; sau đó kiểm tra Main dùng theme mới. Khi sửa gen, kiểm tra spawn, crossing ramp và một island walkable.
+
+## Chẩn đoán
+
+| Triệu chứng | Kiểm tra |
+|---|---|
+| Terrain mất/null texture | Theme, đủ16/10 slot, Read/Write, canvas128×128 và stock Unlit shader |
+| Nền vuông/xanh quanh ảnh | Alpha PNG, nền sheet tham khảo |
+| Ramp hở/lệch mép | Canvas, mask, góc, crop, metrics128/32 |
+| Map không đổi sau sửa config | Stop và rebake grid/subscene |
+| Núi lặp trong cụm | Hiện một ảnh mỗi ô; chưa có autotile núi |
+| Thiếu resource quota | Vị trí hợp lệ thiếu; đọc báo cáo, không ép spawn lên núi/ramp |
+| Unit xuyên vách khi nhìn | Giới hạn occlusion, không sửa chỉ bằng PNG |
+
+Xem [pipeline](MapGen_TerrainPresentation.md), [rules](MapGen_Unity_Rules.md), [config](MapGenConfig.md), [resource](MapGen_ResourceSpawn_Config.md) và [giới hạn](MapGen_CanonicalIsometricSprites.md).
+
+Cập nhật loại sprite trống: giữ16top,10cliff(mask4,8,C,D,E mỗi side),1núi;22PNGcliff alpha0 và field tương ứng đã xóa. Baker không tái tạo mask trống, renderer không pack/vẽ chúng. [Manifest cleanup](../Reviews/TerrainEmptySpriteCleanup_2026-10-09.json).

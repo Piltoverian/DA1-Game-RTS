@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "status": "prototype_artwork_uv_mapping_not_runtime_wired",
+  "camera": { "projection": "orthographic", "pitch": 30, "yaw": 45 },
+  "coordinateConvention": "sourceCorners are normalized PNG coordinates, origin top-left; top corners ordered cell(0,0),(1,0),(1,1),(0,1); wall corners ordered lowA,lowB,highB,highA",
+  "reference": { "cellWidthPx": 512, "flatDiamondHeightPx": 256, "heightPerCell": 0.35, "oneTierScreenRisePx": 109.74, "meshLocalY": 0 },
+  "artwork": [
+    { "id": "ground", "png": "ground.png", "size": [1774,887], "sourceCorners": [[0.5,0.069],[0.933,0.5],[0.5,0.932],[0.066,0.5]] },
+    { "id": "ramp", "png": "ramp.png", "size": [1482,1061], "sourceCorners": [[0.69,0.224],[0.977,0.327],[0.445,0.824],[0.05,0.681]] },
+    { "id": "cliff", "png": "cliff.png", "size": [1774,887], "sourceCorners": [[0.019,0.598],[0.977,0.974],[0.979,0.582],[0.019,0.052]] }
+  ],
+  "selection": [
+    { "id": "ground_flat", "artwork": "ground", "rule": "!surface.IsRamp(cell)", "cornerTierOffsets": [0,0,0,0] },
+    { "id": "ramp_d0", "artwork": "ramp", "rule": "draw.tile 3..6 && draw.rotation == 0", "highFactor": [1,1,0,0] },
+    { "id": "ramp_d1", "artwork": "ramp", "rule": "draw.tile 3..6 && draw.rotation == 1", "highFactor": [0,1,1,0] },
+    { "id": "ramp_d2", "artwork": "ramp", "rule": "draw.tile 3..6 && draw.rotation == 2", "highFactor": [0,0,1,1] },
+    { "id": "ramp_d3", "artwork": "ramp", "rule": "draw.tile 3..6 && draw.rotation == 3", "highFactor": [1,0,0,1] },
+    { "id": "cliff_edge", "artwork": "cliff", "rule": "edge endpoint height mismatch", "shapeFrom": "lowA, lowB, highB, highA; actual endpoint heights, including tapered side of a ramp" }
+  ],
+  "notes": [
+    "Source corner measurements are approximate; review borders before production.",
+    "Map source artwork UV onto actual projected quad. Do not use SquareUV or legacy 65x33 diamond UV for these PNGs.",
+    "One ramp image supplies four prototype surface mappings, not four independently lit artworks. Dedicated directional variants can replace each entry later.",
+    "Cliff corner joins use existing independent edge faces; no full cube sprite needed.",
+    "Do not assume ramp height delta is one tier: use actual CellHeight low/high values.",
+    "Do not add cliff grass top: ground is a separate draw.",
+    "Full PNG rect includes transparent padding; pivot must be derived from cell anchor and source quad, not rect center.",
+    "No collider, no simulation height change; shader is only texture/alpha and virtual depth.",
+    "Higher walls and mountain fractional heights can warp the reference face. For production, tier repeats or specific height variants may be preferable."
+  ]
+}

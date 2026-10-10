@@ -1,6 +1,6 @@
 # Hướng Dẫn Thiết Kế & Cấu Hình Dữ Liệu RTS (Designer Portal)
 
-Điểm vào toàn project: [README ở root](../README.md). Xem [sơ đồ thư mục](ProjectStructure.md) và [review/lịch sử kiểm tra](Reviews/README.md) trước khi dọn hoặc thay đổi cấu trúc. MapGen hiện hành tra cứu từ [MapGen_INDEX](MapGeneration/MapGen_INDEX.md).
+Điểm vào toàn project: [README ở root](../README.md). Xem [sơ đồ thư mục](ProjectStructure.md) và [review/lịch sử kiểm tra](Reviews/README.md) trước khi dọn hoặc thay đổi cấu trúc. MapGen hiện hành tra cứu từ [MapGen_INDEX](MapGeneration/MapGen_INDEX.md). Phép chiếu, sprite, atlas, surface, offset và lab có bộ nghiên cứu riêng tại [Terrain Visualizer](TerrainVisualizer/README.md).
 
 Chào mừng bạn đến với tài liệu hướng dẫn dành cho **Game Designer** và **Content Creator** của dự án RTS. 
 
@@ -25,8 +25,9 @@ Toàn bộ hệ thống dữ liệu gameplay của dự án hiện đã được
 |---|---|---|
 | [1. Kiến Trúc Multiplayer Chuẩn Gaming](Multiplayer/README.md) | Bản thiết kế tổng thể kiến trúc 2 tầng (Meta & Simulation), Host-Authoritative qua Unity Relay, lộ trình 5 Sprint. | Toàn đội ngũ. |
 | [2. Sprint 0: Kiểm Toán Hạ Tầng Code](Multiplayer/Sprint0_CodeAudit.md) | Báo cáo chi tiết các điểm nghẽn mã nguồn (Player Identity, Match State, Data Contracts) và kế hoạch xử lý cho session tới. | Programmer, Technical Lead. |
-| [3. Đặc Tả Sinh Bản Đồ & Texture Data](MapGeneration/MapGen_DataTexture_Specification.md) | Sinh map theo mode, cân bằng gói tài nguyên khởi đầu quanh base, quota tài nguyên trung lập, Single Island Guarantee, mã hóa Texture RGBA và Player Spawn. | Programmer, Technical Designer. |
-| [4. Kế Hoạch Triển Khai MapGen](MapGeneration/MapGen_ImplementationPlan.md) | Kế hoạch hiện hành cho Hạng mục B, các ràng buộc theo source, file tác động, thứ tự triển khai và tiêu chí nghiệm thu. | Programmer, Technical Lead. |
+| [3. Đặc Tả Sinh Bản Đồ & Texture Data](MapGeneration/MapGen_DataTexture_Specification.md) | GridTerrain ECS hiện hành, gen một tầng/ramp, resource và presentation; phân biệt với transport multiplayer chưa triển khai. | Programmer, Technical Designer. |
+| [4. Map Generation](MapGeneration/MapGen_INDEX.md) | Topology, grid, spawn và tài nguyên hiện hành. | Programmer, Technical Lead. |
+| [5. Terrain Visualizer — bộ nghiên cứu](TerrainVisualizer/README.md) | Kiến trúc, phép chiếu isometric, thuật toán visual, atlas, ECS/picking, phương pháp lab và nguồn nghiên cứu. | Renderer Programmer, Technical Artist, Designer. |
 
 ---
 
@@ -83,3 +84,5 @@ flowchart TD
 ## Registry presentation — cập nhật 2026-10-06
 
 Xem [Registry và dữ liệu UI](Guides/GameData/RegistryPresentation.md): singleton giữ asset `GameDataRegistry`, được gán từ `Awake`; các hàm tra cứu UI nằm trên asset. Workflow hiện tại giữ SubScene mở và không dùng fallback Resources.
+
+Terrain Visualizer: [bộ nghiên cứu](TerrainVisualizer/README.md) · [atlas/art](TerrainVisualizer/05_Atlas_ArtPipeline.md) · [lab và bằng chứng](TerrainVisualizer/06_Lab_BangChung.md). Tích hợp Main: [chạy Unity](MapGeneration/MapGen_Unity_ReadingGuide.md).

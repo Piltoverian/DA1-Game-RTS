@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aadcac072a804a0bb42b07a8f55feb5c, type: 3}
+  m_Name: JadeSlateTerrainTheme
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainTheme
+  topFlatMask0: {fileID: 2800000, guid: 641a0f94732b215498111ea914a4a153, type: 3}
+  flatGroundVariants:
+  - {fileID: 2800000, guid: a8d879a5a5e4a9b4ea134c99f81907af, type: 3}
+  - {fileID: 2800000, guid: 29cef4d9d53b4224592abb63d26de2f6, type: 3}
+  - {fileID: 2800000, guid: adf33e139cf73e84cbbc8f3507424325, type: 3}
+  - {fileID: 2800000, guid: f994fc0914d763e41b7fac9b32b722c4, type: 3}
+  - {fileID: 2800000, guid: b696de799aa13af4b91aad883f160e14, type: 3}
+  - {fileID: 2800000, guid: 86a79fefb3035c34d977fade5c0bc023, type: 3}
+  - {fileID: 2800000, guid: d46c00bc56e54ef4aab338c29cde14c0, type: 3}
+  - {fileID: 2800000, guid: 4b66008fc73bf1c43a12f9b1c51d6ba0, type: 3}
+  - {fileID: 2800000, guid: e4277d34bf6a33049a4ce61afb1946e4, type: 3}
+  - {fileID: 2800000, guid: 95a34dda5da54de46a0ba0a025a79aef, type: 3}
+  - {fileID: 2800000, guid: 6e1312c28c44f3f43b465e2839aa0771, type: 3}
+  - {fileID: 2800000, guid: 35382835aef3cb54a9a008c414fdcf55, type: 3}
+  - {fileID: 2800000, guid: 86f4e3bf1a35b9f4b88dc9ec4efef4d3, type: 3}
+  - {fileID: 2800000, guid: d62921115cee03c47bee7f87b7e009ab, type: 3}
+  - {fileID: 2800000, guid: 31cee449cb6d6204a91677ec53a78c9f, type: 3}
+  - {fileID: 2800000, guid: c3df599c1718ab042bace1c876b9e2f6, type: 3}
+  - {fileID: 2800000, guid: 2267f6c477a6c074d872db5963677c89, type: 3}
+  - {fileID: 2800000, guid: 9e856e484fe26d34eb17d02c1b8ffb13, type: 3}
+  - {fileID: 2800000, guid: b48415810a49f88459086de048ec86f2, type: 3}
+  - {fileID: 2800000, guid: 9eb635b1fb926674c8fa94acbe40160b, type: 3}
+  - {fileID: 2800000, guid: 26f3b92db5fe618469fdd2a0c2840ce6, type: 3}
+  - {fileID: 2800000, guid: 7f7963f4949065342b13bf3a66b34af6, type: 3}
+  - {fileID: 2800000, guid: e8ac66e0cca61064692492007b0db4c2, type: 3}
+  - {fileID: 2800000, guid: fc552adaa9e360140b378fbb804946d5, type: 3}
+  - {fileID: 2800000, guid: 5cadabf935c929649910003ff273cbee, type: 3}
+  - {fileID: 2800000, guid: 9c7bac1406f8e4744b10e5063d7003db, type: 3}
+  - {fileID: 2800000, guid: 44bff786c3362e148b0c8fc9cad0aa8f, type: 3}
+  - {fileID: 2800000, guid: 4eb7ce670c10c1142bb8015902ab4c77, type: 3}
+  - {fileID: 2800000, guid: 0c64c251315df6d4e8f21a29c79f5c72, type: 3}
+  - {fileID: 2800000, guid: b73af5e26863fd143a6134e021b372b7, type: 3}
+  - {fileID: 2800000, guid: c1997beb6e96b7e4abc101645f1b1405, type: 3}
+  - {fileID: 2800000, guid: e91becca7623a6f4eb9114096c465941, type: 3}
+  groundVisualSeed: 40
+  groundRegionCells: 18
+  groundPatternColumns: 4
+  smoothTextureSampling: 1
+  topHigh00Mask1: {fileID: 2800000, guid: 4f6850daf9c54a844a2b32a796017a49, type: 3}
+  topHigh10Mask2: {fileID: 2800000, guid: b63a0e9cfe87b044d96cba0c577e9aa0, type: 3}
+  topHigh00_10Mask3: {fileID: 2800000, guid: 725300726af18a04a97b43394e844777, type: 3}
+  topHigh11Mask4: {fileID: 2800000, guid: cef4a49b2714e5c4e8697e146423afaf, type: 3}
+  topHigh00_11Mask5: {fileID: 2800000, guid: 2f95014db16b71444a8bc45535178d29, type: 3}
+  topHigh10_11Mask6: {fileID: 2800000, guid: f1779941f99041f41bc27c84df351144, type: 3}
+  topHigh00_10_11Mask7: {fileID: 2800000, guid: bb301cd6b7b099b47b943449396b7335, type: 3}
+  topHigh01Mask8: {fileID: 2800000, guid: 54c1a564edeea45479ad2ea412e6b4c1, type: 3}
+  topHigh00_01Mask9: {fileID: 2800000, guid: dab64710009641749b2f0d4d0e1fdd1a, type: 3}
+  topHigh10_01MaskA: {fileID: 2800000, guid: ff8e9704319e51848b727ee482939eb7, type: 3}
+  topHigh00_10_01MaskB: {fileID: 2800000, guid: 402f501367e752f419ffe0348ef044c2, type: 3}
+  topHigh11_01MaskC: {fileID: 2800000, guid: 4b3dc8dee5110e8479fac2eeb375ba67, type: 3}
+  topHigh00_11_01MaskD: {fileID: 2800000, guid: 1ea37c72101f9b949abb49f153d9fe84, type: 3}
+  topHigh10_11_01MaskE: {fileID: 2800000, guid: 34d6cbb6a003e064cbb58cb12f9d7648, type: 3}
+  topHigh00_10_11_01MaskF: {fileID: 2800000, guid: 8caa018bf0a75cf4ca8b56e63e8aefc3, type: 3}
+  cliffNegativeZHighBMask4: {fileID: 2800000, guid: 7f43cf39aca4639459b00f4fd88df6d8, type: 3}
+  cliffNegativeZHighAMask8: {fileID: 2800000, guid: bada9077a3de0864da2152d19cd2112c, type: 3}
+  cliffNegativeZHighBHighAMaskC: {fileID: 2800000, guid: c515f6058abeaec4b8a8df9a2729896c, type: 3}
+  cliffNegativeZLowAHighBHighAMaskD: {fileID: 2800000, guid: d03371166435442459d4ab7ea495a732, type: 3}
+  cliffNegativeZLowBHighBHighAMaskE: {fileID: 2800000, guid: 312fa0d8870e530419fc90301f667352, type: 3}
+  cliffNegativeXHighBMask4: {fileID: 2800000, guid: 246e1b7bb392b39428f158c8fb0f464c, type: 3}
+  cliffNegativeXHighAMask8: {fileID: 2800000, guid: b740d0b68b225524fa5d04e5cf60d0ce, type: 3}
+  cliffNegativeXHighBHighAMaskC: {fileID: 2800000, guid: ba19d7c6c2d585747a0d941c524dadd6, type: 3}
+  cliffNegativeXLowAHighBHighAMaskD: {fileID: 2800000, guid: 7c54e88bd1d20064785e26264216eac1, type: 3}
+  cliffNegativeXLowBHighBHighAMaskE: {fileID: 2800000, guid: 02bb8301ec252ca46859f804aaff007d, type: 3}
+  mountainArtwork: {fileID: 0}
+  mountainSpritePivot: {x: 0.5, y: 0.15}
+  mountainCaps:
+  - {fileID: 2800000, guid: c7bf72a423f2e3244bf9915908538f34, type: 3}
+  - {fileID: 2800000, guid: 1256e86569405ea48a451bb30aa05dbe, type: 3}
+  - {fileID: 2800000, guid: c47bbda5990a14240b16759362a066a5, type: 3}
+  - {fileID: 2800000, guid: 5c2ee64475c94fb478173714146b40b8, type: 3}
+  - {fileID: 2800000, guid: 5ade1759753b7264eb2302d10c4775dc, type: 3}
+  - {fileID: 2800000, guid: 90e1472d626aa5f49805cd33b8f4a4b8, type: 3}
+  - {fileID: 2800000, guid: aa373f46cb8435e468df544d0962dc53, type: 3}
+  - {fileID: 2800000, guid: 381e933cd3673fa47b10dbe689e2f19e, type: 3}
+  - {fileID: 2800000, guid: 45fe165dedf863148a13204ba3d76a29, type: 3}
+  - {fileID: 2800000, guid: dcb52041295e9224698d237275738bf9, type: 3}
+  - {fileID: 2800000, guid: fbcd2232f06ccd745986d085b896429b, type: 3}
+  - {fileID: 2800000, guid: bcfc197aa15f3fa4fb2095c8e1c042c4, type: 3}
+  - {fileID: 2800000, guid: 32394e5d1ed8c6a4b95d43da549cadb3, type: 3}
+  - {fileID: 2800000, guid: e451842814e07b648b1c6df1c1b9c182, type: 3}
+  - {fileID: 2800000, guid: 1379eecb516acad489e6f5d100709b45, type: 3}
+  - {fileID: 2800000, guid: f4e398651bca8be4e834cca9d89e220d, type: 3}
+  mountainVisualTiers: 6
+  fringeDecorations:
+  - {fileID: 2800000, guid: 741b2f1bcac8ee94badbf192542e0be4, type: 3}
+  - {fileID: 2800000, guid: b231f829911e048409bfab9654f91d4b, type: 3}
+  - {fileID: 2800000, guid: 9dd01ec6ec5cb53438c1bd201167fc7e, type: 3}
+  - {fileID: 2800000, guid: 66c0e3987f936494d89372e0705e13ae, type: 3}
+  fringeDecorationDensity: 0.06
+  stockUnlitShader: {fileID: 4800000, guid: 650dd9526735d5b46b79224bc6e94025, type: 3}
+  groundArtwork: {fileID: 0}
+  rampArtwork: {fileID: 0}
+  cliffArtwork: {fileID: 0}
+  groundSpriteCorners: []
+  rampSpriteCorners: []
+  cliffSpriteCorners: []

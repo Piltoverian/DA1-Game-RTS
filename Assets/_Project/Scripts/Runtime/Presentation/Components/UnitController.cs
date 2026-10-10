@@ -83,7 +83,7 @@ public class UnitController : MonoBehaviour
         if (playerId < 0)
             return false;
 
-        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+        UnityEngine.Ray ray = TerrainVisualSurface.LogicalRay(Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition));
         if (!Physics.Raycast(ray, out UnityEngine.RaycastHit hit, 500f))
             return false;
 
@@ -215,7 +215,7 @@ public class UnitController : MonoBehaviour
 
         PhysicsWorldSingleton physicsWorld = physicalQuery.GetSingleton<PhysicsWorldSingleton>();
 
-        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+        UnityEngine.Ray ray = TerrainVisualSurface.LogicalRay(Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition));
 
         RaycastInput input = new RaycastInput
         {
@@ -266,7 +266,7 @@ public class UnitController : MonoBehaviour
         if (playerId < 0)
             return false;
 
-        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+        UnityEngine.Ray ray = TerrainVisualSurface.LogicalRay(Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition));
 
         Entity targetBuilding = FindUnderConstructionBuildingNearHit(entityManager, ray);
         if (targetBuilding == Entity.Null || !BuildingHelper.CanBuildOrRepair(entityManager, targetBuilding))

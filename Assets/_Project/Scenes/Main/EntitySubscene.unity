@@ -377,6 +377,7 @@ MonoBehaviour:
   mapType: 512
   generateTerrain: 1
   terrainSettings:
+    algorithm: 1
     seed: 30000
     players: 8
     protectedRadius: 20

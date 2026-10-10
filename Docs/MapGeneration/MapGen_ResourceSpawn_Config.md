@@ -1,6 +1,6 @@
 # Tài nguyên trên map: catalog, cluster và spawn
 
-Cập nhật 2026-10-06, sau khi chuyển trữ lượng sang config và gom bộ test. Tài liệu này mô tả code Unity hiện tại để đọc và góp ý, không phải chứng nhận balance kinh tế hay kết quả Play Mode.
+Cập nhật 2026-10-10, gồm config trữ lượng, snap footprint và vùng đệm núi/ramp. Tài liệu này mô tả code Unity hiện tại để đọc và góp ý, không phải chứng nhận balance kinh tế hay kết quả Play Mode.
 
 Cấu hình nằm trong **MapGenConfig > Resources** tại asset:
 [MapGenConfig.asset](../../Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset).
@@ -84,6 +84,8 @@ Planner reserve main cho mọi player trước các nhóm optional. Không đủ
 - Khoảng cách thẳng bằng nhau không bảo đảm đường đi/tốc độ khai thác/độ an toàn bằng nhau.
 - Seed mới hoặc cấu hình khác có thể làm main không đặt được; hiện không tự regenerate terrain sau lỗi main.
 
+Kiểm tra bổ sung 2026-10-10: Unity batchmode đã chạy PASS fixture planner với bốn hướng ramp, khoảng đệm một ô quanh footprint và đủ main cluster cho bốn player. Fixture phẳng vẫn đạt 16/16 cluster, 41 mỏ; fixture núi vẫn đạt 41 mỏ. Log: `Artifacts/SpawnSmoke/ramp-clearance-unity-approved.log`; báo cáo: `Artifacts/SpawnSmoke/resource-planner.txt`. Đây là kiểm tra planner riêng, chưa phải kiểm chứng hình ảnh trong Main.
+
 ## 5. Range nghĩa là gì?
 
 Các Vector2 Range có **X = min, Y = max**, nhân với grid.width (W). Đơn vị kết quả là ô grid, không phải world unit và không phải độ dài đường đi.
@@ -127,7 +129,7 @@ Snapshot này yêu cầu 452 cluster: 12 main bắt buộc chứa tổng 36 mỏ
 2. Bootstrap chờ terrain/cost/island sẵn sàng, resolve roster và reserve tất cả nhà trên lưới tạm.
 3. Planner chọn role, số member và recipe. Recipe chọn trước khi tìm vị trí; retry không reroll loại mỏ.
 4. Sample tâm và member; lấy kích thước từ GridFootprint/BlockageData của từng prefab.
-5. Footprint phải trống, cùng HeightLevel với tâm cluster, không đè núi/cliff/ramp/nhà/unit; không sát mốc base trong 3 ô.
+5. Footprint phải trống, cùng HeightLevel với tâm cluster, không đè núi/cliff/ramp/nhà/unit; không sát mốc base trong 3 ô. Vùng mở rộng một ô quanh toàn footprint không được chứa núi hoặc ô có RampId >= 0, gồm cả góc chéo; giữ thoáng chân và đỉnh ramp.
 6. Trial chỉ ghi cost 255 vào footprint từng mỏ. Vòng tròn cluster và các ô trống giữa member không bị block.
 7. Audit giữ đúng 1 island, mọi base còn nguồn đi được, mọi resource đã đặt có ô tiếp cận cùng tầng. Private cluster cần có đường từ base; secondary/advantage còn kiểm budget đường đi của lab.
 8. Sau khi toàn bộ main/nhà/worker plan hợp lệ mới instantiate từng prefab. Mỏ trung lập, không cộng population. AmountPerMine bắt buộc được ghi lên ResourceNodeData của instance và xóa ResourceNodePendingConfig trước khi mỏ hoạt động.
@@ -180,3 +182,9 @@ Nhập AmountPerMine trong catalog Resources của MapGenConfig; bootstrap khôn
 AmountPerMine=0 là lỗi cấu hình, không còn nghĩa “lấy lượng từ prefab”.
 Bộ test được chuyển kèm meta và giữ GUID; scene/registry không cần gán lại asset chỉ vì đổi đường dẫn.
 Kiểm tra sau di chuyển: 19 asset/prefab/scene tham chiếu đúng GUID, không duplicate; các block ResourceAuthoring trong prefab/scene không còn Amount serialized; 56 link tài liệu đã được kiểm tra.
+
+## Khoảng cách với núi
+
+Mỗi tài nguyên snap theo footprint grid. Toàn footprint phải là đất walkable cùng tầng, không mountain/cliff/ramp; các ô trong vùng mở rộng một ô quanh footprint cũng không được là núi hoặc ramp (RampId >= 0), kể cả góc chéo. Quy tắc này áp dụng mọi nhóm tài nguyên, giữ thoáng chân/đỉnh và cạnh ramp. Chỉ footprint mỏ được reserve cost; vùng đệm không chặn navigation. Sprite núi neo vào từng ô và rộng một diamond, không phóng to nhiều ô.
+
+Artwork núi mới phải giữ chân ảnh phù hợp một ô. Vùng đệm1ô không bảo đảm mọi ảnh quá rộng/cao sẽ không che mỏ; kiểm tra bộ mới trong Main. Thay PNG không đổi vị trí/footprint resource. [Hướng dẫn texture](MapGen_TextureAuthoring.md), [hướng dẫn Unity](MapGen_Unity_ReadingGuide.md).

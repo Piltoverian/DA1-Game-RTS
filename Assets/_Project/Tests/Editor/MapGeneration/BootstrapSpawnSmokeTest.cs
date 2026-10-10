@@ -292,6 +292,42 @@ public static class BootstrapSpawnSmokeTest
         var second = MapResourcePlanner.Plan(em, grid, terrain, costs, occupied, bases, config, prefabs, out var repeat);
         if (second.Count != first.Count || repeat.PlacedClusters != report.PlacedClusters) throw new Exception("Cluster seed is not deterministic.");
         for (int i = 0; i < first.Count; i++) if (math.any(first[i].Position != second[i].Position)) throw new Exception("Cluster positions are not deterministic.");
+        // Put both ends of a ramp beside a previously accepted mine. Each orientation must
+        // move that mine away and leave a one-cell approach margin for every resource.
+        int rampCases = 0;
+        for (int direction = 0; direction < 4; direction++)
+        {
+            for (int i = 0; i < terrain.Length; i++)
+            {
+                terrain[i] = new GridTerrain { walkable = true, RampId = -1, RampDirection = -1 };
+                costs[i] = new GridNodeCost { cost = 1 };
+            }
+            int2 step = GridTerrain.RampDirections[direction];
+            int2 low = first[0].Min + step;
+            int2 high = low + step;
+            terrain[low.y * grid.width + low.x] = new GridTerrain { walkable = true, RampId = 0, RampDirection = direction };
+            terrain[high.y * grid.width + high.x] = new GridTerrain { walkable = true, heightLevel = 1, RampId = 0, RampDirection = direction };
+            var rampPlan = MapResourcePlanner.Plan(em, grid, terrain, costs, occupied, bases, config, prefabs, out var rampReport);
+            if (rampReport.MainPlacedClusters != bases.Length) throw new Exception("Ramp fixture lost starting mines.");
+            foreach (var node in rampPlan)
+                for (int y = math.max(0, node.Min.y - 1); y <= math.min(grid.height - 1, node.Max.y + 1); y++)
+                    for (int x = math.max(0, node.Min.x - 1); x <= math.min(grid.width - 1, node.Max.x + 1); x++)
+                        if (terrain[y * grid.width + x].RampId >= 0) throw new Exception("Mine touches ramp entrance/exit margin.");
+            rampCases++;
+        }
+        // Mountain fixture: mines remain grid-snapped and outside the mountain's neighbouring cells.
+        for (int i = 0; i < terrain.Length; i++) terrain[i] = new GridTerrain { walkable = true, RampId = -1, RampDirection = -1 };
+        for(int i=0;i<costs.Length;i++)costs[i]=new GridNodeCost{cost=1};
+        for(int z=55;z<=72;z++)for(int x=55;x<=72;x++){
+            int i=z*grid.width+x;terrain[i]=new GridTerrain{isMountain=true,walkable=false,RampId=-1};costs[i]=new GridNodeCost{cost=255};
+        }
+        var mountainPlan=MapResourcePlanner.Plan(em,grid,terrain,costs,occupied,bases,config,prefabs,out var mountainReport);
+        if(mountainPlan.Count==0||mountainReport.MainPlacedClusters!=4)throw new Exception("Mountain fixture lost starting mines");
+        foreach(var node in mountainPlan){
+            if(math.any(math.abs(GridSnapperMath.Snap(node.Position,grid,1)-node.Position)>.0001f))throw new Exception("Mine is not snapped to its grid cell");
+            for(int z=math.max(0,node.Min.y-1);z<=math.min(grid.height-1,node.Max.y+1);z++)for(int x=math.max(0,node.Min.x-1);x<=math.min(grid.width-1,node.Max.x+1);x++)
+                if(terrain[z*grid.width+x].isMountain)throw new Exception("Mine touches mountain artwork margin");
+        }
         for (int i = 0; i < costs.Length; i++) { costs[i] = new GridNodeCost { cost = 255 }; terrain[i] = new GridTerrain { isMountain = true }; }
         bool mainRejected = false;
         try { MapResourcePlanner.Plan(em, grid, terrain, costs, occupied, bases, config, prefabs, out _); }
@@ -307,7 +343,7 @@ public static class BootstrapSpawnSmokeTest
         try { MapResourcePlanner.Plan(em, grid, terrain, costs, occupied, bases, config, prefabs, out _); }
         catch (InvalidOperationException) { stockRejected = true; }
         if (!stockRejected) throw new Exception("Zero config stock must fail, not fall back to prefab stock.");
-        File.WriteAllText("Artifacts/SpawnSmoke/resource-planner.txt", $"PASS: flat fixture {report.PlacedClusters}/16 clusters, {report.Nodes} nodes; seed determinism; fixed main distance, mine count and recipe per player; tier/stock catalog mapping from zero-stock templates; zero config stock rejected; footprint-only occupancy; unavailable main rejects full plan; blocked optional clusters report missing quota.");
+        File.WriteAllText("Artifacts/SpawnSmoke/resource-planner.txt", $"PASS: flat fixture {report.PlacedClusters}/16 clusters, {report.Nodes} nodes; {rampCases} ramp orientations with one-cell entrance/exit margin; mountain fixture {mountainPlan.Count} grid-snapped mines, one-cell mountain margin; seed determinism; fixed main distance, mine count and recipe per player; tier/stock catalog mapping from zero-stock templates; zero config stock rejected; footprint-only occupancy; unavailable main rejects full plan; blocked optional clusters report missing quota.");
     }
 
     static void Finish(string result)

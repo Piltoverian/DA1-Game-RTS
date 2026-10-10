@@ -1,5 +1,8 @@
 # Thiết kế terrain competitive: height, noise và walkability
 
+> Trạng thái 2026-10-09: tài liệu kế hoạch/lịch sử. Terrain đang chạy đã được đưa vào bản chính thức; xem [mục lục hiện hành](MapGen_INDEX.md), [pipeline](MapGen_TerrainPresentation.md) và [texture schema](MapGen_TextureSchema.md). Đề xuất dưới đây không thay thế schema hoặc renderer hiện tại.
+
+
 > **Cập nhật 2026-10-06:** MapGen Unity đã chạy ổn theo xác nhận của chủ project. Lab/archive đã xóa. Tra cứu thuật toán hiện hành tại [MapGen_Unity_Rules](MapGen_Unity_Rules.md) và [mục lục](MapGen_INDEX.md); các đề xuất cũ bên dưới không thay thế code hiện tại.
 
 Ngày 2026-10-02. Đề xuất kỹ thuật có thể triển khai; chưa có generator hoặc map hoàn chỉnh được nghiệm thu. Thiết kế này thay thế phần terrain của kế hoạch trước. Mọi hằng số dưới đây là preset khởi đầu của dự án, không phải hằng số StarCraft hay kết quả cân bằng đã chứng minh qua chơi.

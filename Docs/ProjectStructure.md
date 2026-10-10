@@ -41,10 +41,20 @@ Scene cũ được giữ để đối chiếu. Build Settings giữ scene đã c
 - [Multiplayer roadmap](Multiplayer/README.md).
 - [Review và kiểm tra](Reviews/README.md).
 
-Docs/MapGeneration giữ tài liệu Unity/config hiện hành và các kế hoạch còn lại; lab, nghiên cứu thử và archive MapGen đã được xóa. Tài liệu movement đã rời Assets; meta cũ giữ để đối chiếu lịch sử.
+Docs/MapGeneration giữ topology, Unity/config, spawn và resource. [Docs/TerrainVisualizer](TerrainVisualizer/README.md) là bộ nghiên cứu độc lập cho projection, artwork/atlas, renderer, picking/ECS và lab. History chỉ giữ redirect; archive nội dung lỗi thời đã được loại khỏi repository. Theme hiện hành là JadeSlateTerrainTheme; TerrainVisualLab thay các harness trial cũ. Tài liệu movement đã rời Assets; meta cũ giữ để đối chiếu lịch sử.
 
 ## Dọn và khôi phục
 
-[Báo cáo dọn project](Reviews/ProjectCleanup_2026-10-06.md) liệt kê các thay đổi. Archive/ProjectCleanup-2026-10-06 giữ template, ứng viên thừa và meta container rỗng. Không xóa cache đang dùng bởi Unity.
+[Quy trình Unity hiện hành](../Tools/README.md) dùng importer và validator Editor. Python, helper đóng gói và MarkdownReader WPF đã được loại bỏ.
+
+[Báo cáo dọn project](Reviews/ProjectCleanup_2026-10-06.md) là ghi chép lịch sử. Archive template/meta cũ đã được loại khỏi repository; cache đang dùng bởi Unity vẫn giữ cục bộ.
 
 Khi thêm nội dung, chọn nhóm theo trách nhiệm; tránh tên Temp/New/Refactor hoặc đặt asset trong Scripts. Khi di chuyển asset, giữ meta/GUID và kiểm tra serialized reference cùng đường tra cứu runtime.
+
+## Terrain chính thức (10/10/2026)
+
+- Gen/schema/theme/entry renderer: Scripts/Runtime/Simulation/MapGeneration.
+- Render chunk, visual surface và ECS offset/restore: Scripts/Runtime/Presentation/Terrain.
+- Hợp đồng core: 16 PNG top/ramp và 10 PNG cliff. Theme polished thêm 32 ground, 16 mountain cap và 4 decor; bộ Reference giữ vai trò fixture. Stock URP Unlit; không còn custom terrain shader.
+- Regression test: CanonicalTerrainValidation, TerrainPresentationValidation và StockIsometricSpriteValidation trong Tests/Editor/MapGeneration.
+- Terrain hiện hành dùng sprite isometric trên grid phẳng; xem [kiến trúc Terrain Visualizer](TerrainVisualizer/01_PhamVi_KienTruc.md). Việc tách docs không đổi đường dẫn các lớp runtime.

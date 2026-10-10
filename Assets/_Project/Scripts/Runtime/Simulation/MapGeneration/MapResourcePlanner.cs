@@ -77,6 +77,13 @@ public static class MapResourcePlanner
                     var footprint = em.GetComponentData<GridFootprint>(prefab);
                     float3 pos = GridSnapperMath.Snap(GridHelper.GridToWorld(cell, grid), grid, footprint.Cells);
                     if (!PlayerSpawnPlacement.TryFootprint(grid, pos, em.GetComponentData<BlockageData>(prefab).LocalRect, out var min, out var max)) continue;
+                    // Keep ramp entrances/exits and mountain artwork clear, including diagonal neighbours.
+                    // Check the entire footprint's one-cell margin; reserve only the mine footprint.
+                    bool nearMountainOrRamp=false;
+                    for(int y=math.max(0,min.y-1);y<=math.min(grid.height-1,max.y+1)&&!nearMountainOrRamp;y++)
+                        for(int x=math.max(0,min.x-1);x<=math.min(grid.width-1,max.x+1);x++)
+                            if(terrain[y*grid.width+x].isMountain || terrain[y*grid.width+x].RampId >= 0){nearMountainOrRamp=true;break;}
+                    if(nearMountainOrRamp)continue;
                     bool valid = true;
                     foreach (var node in trial)
                         if (math.distance((float2)cell, GridHelper.WorldToGrid(node.Position, grid)) < config.MemberSpacing ||
@@ -184,8 +191,12 @@ public static class MapResourcePlanner
         while (queue.Count > 0)
         {
             var cell = queue.Dequeue(); float d = distances[GridHelper.GetNodeIndex(cell, grid)] + 1;
-            foreach (var direction in GridTerrain.RampDirections)
+            // Keep the flood independent of the terrain renderer's static direction table.
+            for (int directionIndex = 0; directionIndex < 4; directionIndex++)
             {
+                int2 direction = directionIndex == 0 ? new int2(0, -1)
+                    : directionIndex == 1 ? new int2(1, 0)
+                    : directionIndex == 2 ? new int2(0, 1) : new int2(-1, 0);
                 int2 next = cell + direction;
                 if (!PlayerSpawnPlacement.InBounds(next, grid)) continue;
                 int i = GridHelper.GetNodeIndex(next, grid);

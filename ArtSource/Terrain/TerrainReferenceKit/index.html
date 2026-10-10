@@ -1,0 +1,79 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bộ mẫu terrain tu tiên</title><style>body{background:#172529;color:#edf4dc;font:17px system-ui;max-width:1500px;margin:32px auto;padding:20px}a{color:#8bd3ba}section{background:#25383d;padding:22px;border-radius:12px;margin:22px 0}img{max-width:100%;max-height:660px;background:repeating-conic-gradient(#425357 0% 25%,#35474b 0% 50%) 0/24px 24px}pre{white-space:pre-wrap;background:#172529;padding:18px;font-size:15px;line-height:1.5}</style>
+<h1>Bộ mẫu gen terrain tu tiên</h1><p>Chọn một nhóm → gửi SAMPLE + MASK → dùng prompt bên dưới. GUIDE và ảnh tổng quan chỉ để tham khảo.</p>
+<p><a href="00_Tong_quan.png">Xem ảnh tổng quan</a> · <a href="06_Phong_cach/xianxia-concept-reference.png">Concept phong cách</a></p>
+<section><h2>01 · Mặt đất</h2><p>32 ô · 512 × 1024</p>
+<a href="01_Mat_dat/ground-sample.png"><img src="01_Mat_dat/ground-sample.png" alt="Mặt đất"></a>
+<p><a href="01_Mat_dat/ground-sample.png" download>Ảnh SAMPLE</a> ·
+<a href="01_Mat_dat/ground-mask.png" download>Ảnh MASK</a> ·
+<a href="01_Mat_dat/ground-guide.png">Ảnh GUIDE</a></p>
+<p><a href="01_Mat_dat/PROMPT.md">Mở prompt</a></p><pre>Generate a flat square diffuse material for an original xianxia RTS.
+The sample/mask sheets explain geometry only; do NOT generate indexed tiles,
+isometric diamonds, standalone mountains or cliffs. Code builds those shapes.
+Use quiet jade/sage meadow or muted blue-grey slate as appropriate, calm colour
+fields, restrained hand-painted detail, even lighting, matching opposite edges.
+No text, grid, vignette, black background, characters, trees or buildings.
+For the current four-material specification, use ArtSource/Terrain/JadeSlate/prompt.md.
+
+Material role: Mặt đất. Geometry is handled by the project pipeline.
+</pre></section>
+<section><h2>02 · Terrain và ramp</h2><p>16 ô · 512 × 512</p>
+<a href="02_Terrain_va_ramp/tops-sample.png"><img src="02_Terrain_va_ramp/tops-sample.png" alt="Terrain và ramp"></a>
+<p><a href="02_Terrain_va_ramp/tops-sample.png" download>Ảnh SAMPLE</a> ·
+<a href="02_Terrain_va_ramp/tops-mask.png" download>Ảnh MASK</a> ·
+<a href="02_Terrain_va_ramp/tops-guide.png">Ảnh GUIDE</a></p>
+<p><a href="02_Terrain_va_ramp/PROMPT.md">Mở prompt</a></p><pre>Generate a flat square diffuse material for an original xianxia RTS.
+The sample/mask sheets explain geometry only; do NOT generate indexed tiles,
+isometric diamonds, standalone mountains or cliffs. Code builds those shapes.
+Use quiet jade/sage meadow or muted blue-grey slate as appropriate, calm colour
+fields, restrained hand-painted detail, even lighting, matching opposite edges.
+No text, grid, vignette, black background, characters, trees or buildings.
+For the current four-material specification, use ArtSource/Terrain/JadeSlate/prompt.md.
+
+Material role: Terrain và ramp. Geometry is handled by the project pipeline.
+</pre></section>
+<section><h2>03 · Vách cliff</h2><p>10 ô · 512 × 384</p>
+<a href="03_Vach_cliff/cliffs-sample.png"><img src="03_Vach_cliff/cliffs-sample.png" alt="Vách cliff"></a>
+<p><a href="03_Vach_cliff/cliffs-sample.png" download>Ảnh SAMPLE</a> ·
+<a href="03_Vach_cliff/cliffs-mask.png" download>Ảnh MASK</a> ·
+<a href="03_Vach_cliff/cliffs-guide.png">Ảnh GUIDE</a></p>
+<p><a href="03_Vach_cliff/PROMPT.md">Mở prompt</a></p><pre>Generate a flat square diffuse material for an original xianxia RTS.
+The sample/mask sheets explain geometry only; do NOT generate indexed tiles,
+isometric diamonds, standalone mountains or cliffs. Code builds those shapes.
+Use quiet jade/sage meadow or muted blue-grey slate as appropriate, calm colour
+fields, restrained hand-painted detail, even lighting, matching opposite edges.
+No text, grid, vignette, black background, characters, trees or buildings.
+For the current four-material specification, use ArtSource/Terrain/JadeSlate/prompt.md.
+
+Material role: Vách cliff. Geometry is handled by the project pipeline.
+</pre></section>
+<section><h2>04 · Núi ghép</h2><p>16 ô · 512 × 512</p>
+<a href="04_Nui_ghep/mountains-sample.png"><img src="04_Nui_ghep/mountains-sample.png" alt="Núi ghép"></a>
+<p><a href="04_Nui_ghep/mountains-sample.png" download>Ảnh SAMPLE</a> ·
+<a href="04_Nui_ghep/mountains-mask.png" download>Ảnh MASK</a> ·
+<a href="04_Nui_ghep/mountains-guide.png">Ảnh GUIDE</a></p>
+<p><a href="04_Nui_ghep/PROMPT.md">Mở prompt</a></p><pre>Generate a flat square diffuse material for an original xianxia RTS.
+The sample/mask sheets explain geometry only; do NOT generate indexed tiles,
+isometric diamonds, standalone mountains or cliffs. Code builds those shapes.
+Use quiet jade/sage meadow or muted blue-grey slate as appropriate, calm colour
+fields, restrained hand-painted detail, even lighting, matching opposite edges.
+No text, grid, vignette, black background, characters, trees or buildings.
+For the current four-material specification, use ArtSource/Terrain/JadeSlate/prompt.md.
+
+Material role: Núi ghép. Geometry is handled by the project pipeline.
+</pre></section>
+<section><h2>05 · Trang trí nhỏ</h2><p>4 ô · 512 × 128</p>
+<a href="05_Trang_tri/decorations-sample.png"><img src="05_Trang_tri/decorations-sample.png" alt="Trang trí nhỏ"></a>
+<p><a href="05_Trang_tri/decorations-sample.png" download>Ảnh SAMPLE</a> ·
+<a href="05_Trang_tri/decorations-mask.png" download>Ảnh MASK</a> ·
+<a href="05_Trang_tri/decorations-guide.png">Ảnh GUIDE</a></p>
+<p><a href="05_Trang_tri/PROMPT.md">Mở prompt</a></p><pre>Generate a flat square diffuse material for an original xianxia RTS.
+The sample/mask sheets explain geometry only; do NOT generate indexed tiles,
+isometric diamonds, standalone mountains or cliffs. Code builds those shapes.
+Use quiet jade/sage meadow or muted blue-grey slate as appropriate, calm colour
+fields, restrained hand-painted detail, even lighting, matching opposite edges.
+No text, grid, vignette, black background, characters, trees or buildings.
+For the current four-material specification, use ArtSource/Terrain/JadeSlate/prompt.md.
+
+Material role: Trang trí nhỏ. Geometry is handled by the project pipeline.
+</pre></section></html>

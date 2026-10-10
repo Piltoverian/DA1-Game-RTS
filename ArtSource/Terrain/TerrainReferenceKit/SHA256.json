@@ -1,0 +1,17 @@
+{
+  "01_Mat_dat/ground-sample.png": "ffcb02fe592d91e8a70cc9ff044deb5d3c3d2c0ed8e1bada56fe8efe344fa765",
+  "01_Mat_dat/ground-mask.png": "408a1a982a7d2ed4c3050ad22f5806685844db073bb1e80a13fec0b67f4ed51d",
+  "01_Mat_dat/ground-guide.png": "7c719e0f4480b0b7bb65ab02a6ddb0efa8120af952eb24f479be043970d7a81f",
+  "02_Terrain_va_ramp/tops-sample.png": "0fa200bc0b021d479a424d36bc87c93538d570bad2dd0b4af29894c6aa5d9b8d",
+  "02_Terrain_va_ramp/tops-mask.png": "e74c3b4678d9704423dfd250107f1184271cb61a6cfd00b9e04dbdb607a4cb4c",
+  "02_Terrain_va_ramp/tops-guide.png": "af6df494ca8a7e2ec24419a29dd8c958c4841627329061c6b4b84f859a61663f",
+  "03_Vach_cliff/cliffs-sample.png": "5e36fe658c3fd51283a2d4ff5dcadc2bdb1998898d3f90c61c6c2a9f5a02ccda",
+  "03_Vach_cliff/cliffs-mask.png": "c679080c7903d2925a397586663772568cbdd20827921b17949187adf9fd09e2",
+  "03_Vach_cliff/cliffs-guide.png": "1592ee296f97ca85213ca3208e674b56deb16d7c0477ef30ecb3b9ab171436f9",
+  "04_Nui_ghep/mountains-sample.png": "b79ed3f4b0749bde558f081b3693aea191eca2965a18d78c52cc2991e570add0",
+  "04_Nui_ghep/mountains-mask.png": "e74c3b4678d9704423dfd250107f1184271cb61a6cfd00b9e04dbdb607a4cb4c",
+  "04_Nui_ghep/mountains-guide.png": "aa3da12bc464d4498c9491b06ad673e6ab71473c770bed2bb5c2545b05188e9e",
+  "05_Trang_tri/decorations-sample.png": "ab1737cda1165206ca7bfe3d4a6c4d448a23341e1d6ee914fc8e0f88ea4f1dc5",
+  "05_Trang_tri/decorations-mask.png": "ef279d4f6215247be8a9f4f05d3c8f96f9fb9e6faf864ab8a98460d5a1adc7f1",
+  "05_Trang_tri/decorations-guide.png": "13fbaed7dec6059cd456f24b87c5fccf12af08efba9d250d539a9962ff79b8e5"
+}

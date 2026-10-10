@@ -16,6 +16,7 @@ MonoBehaviour:
   MinimumCellSize: 1
   GenerateTerrain: 1
   Terrain:
+    algorithm: 1
     seed: 40
     players: 8
     protectedRadius: 20
@@ -25,6 +26,13 @@ MonoBehaviour:
     levelStep: 1
     cliffCells: 1
     rampWidth: 3
+    mountainWavelength: 26
+    mountainThreshold: 0.2
+    mountainDensity: 0.85
+    mountainSpawnBuffer: 8
+    mountainMinimumClusterCells: 6
+    layoutClearings: 1
+    battlefieldRadius: 14
   PlayerBootstrap: {fileID: 11400000, guid: 8964479f7b4649f69ecf9687387ceebb, type: 2}
   Resources:
     Enabled: 1

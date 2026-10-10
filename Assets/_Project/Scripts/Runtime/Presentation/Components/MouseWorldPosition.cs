@@ -12,6 +12,8 @@ public class MouseWorldPosition : MonoBehaviour
     {
         Ray mouseCameraRay = Camera.main.ScreenPointToRay(Input.mousePosition);
 
+        if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(mouseCameraRay,out var logical,out _)) return logical;
+
         Plane plane = new Plane(Vector3.up, Vector3.zero);
 
         if (plane.Raycast(mouseCameraRay, out float rayLength))

@@ -34,6 +34,9 @@ public struct GridTerrain : IBufferElementData
         new int2(-1,  0), // 3
     };
     public int heightLevel;
+    // Shared-vertex mode: base tier plus NW/NE/SE/SW high-corner bits 1/2/4/8.
+    public bool UsesVertexCorners;
+    public byte CornerMask;
 
     public bool walkable;
 

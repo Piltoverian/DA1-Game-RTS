@@ -1,6 +1,6 @@
-# MapGenConfig dùng để thử Main
+# MapGenConfig: cấu hình map hiện hành
 
-Cập nhật 2026-10-06. Asset: [MapGenConfig.asset](../../Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset).
+Cập nhật 2026-10-09. Asset: [MapGenConfig.asset](../../Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset).
 
 GridAuthoring.Config và PlayerBootstrapAuthoring.MapConfig trong Main/EntitySubscene cùng tham chiếu asset này.
 Đổi config rồi rebake subscene trước khi Play. Khi có config, các trường config ưu tiên hơn các trường authoring cũ.
@@ -41,3 +41,11 @@ Thay config rồi rebake và bắt đầu trận mới; không tự cập nhật
 - Movement/spatial vẫn cập nhật mỗi tick vì unit di chuyển không cần đổi grid version.
 
 Xem [Grid snapper và resource spawn](GridSnapper_ResourceSpawn.md) cho footprint sau bake; xem [Player bootstrap](PlayerBootstrap.md) cho roster/population/Ready.
+
+## Terrain và texture
+
+Main dùng SharedVertexSlopes. Terrain settings đổi phân bố cao độ, spawn, cliff band và portal ramp; TerrainTheme đổi PNG hiển thị. Cellsize tính từ bounds/MapSize, không từ MinimumCellSize hoặc kích thước ảnh. Cao độ canonical theo metrics128/32 và camera30°; mesh và movement vẫnY=0.
+
+Các thông số núi gồm mountainWavelength, mountainThreshold, mountainDensity, mountainSpawnBuffer và mountainMinimumClusterCells. Mặc định trong code giữ hành vi cũ; preset Main sau lab dùng26/0,20/0,85/8/6. layoutClearings bật năm arena với battlefieldRadius14, vẫn phải qua portal/connectivity/spawn validation. [Giải thích công thức, proxy đánh giá và kết quả](TerrainPolish_Remaining.md).
+
+Sau đổi gen/config: Stop, rebake subscene và chạy validation. Sau đổi art: import, chọn theme và Play lại. [Hướng dẫn sử dụng](MapGen_Unity_ReadingGuide.md), [làm texture](MapGen_TextureAuthoring.md), [rules](MapGen_Unity_Rules.md).

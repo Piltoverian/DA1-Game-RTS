@@ -21,6 +21,7 @@ public static class TerrainVisualCompiler
     public static void Compile(GeneratedTerrain m)
     {
         m.draws.Clear();
+        if(m.cells.Length>0&&m.cells[0].UsesVertexCorners)return; // Shared corner masks are already baked.
         var ramps = new Dictionary<int, List<int>>();
         var slopeDirection = new int[m.cells.Length]; Array.Fill(slopeDirection, -1);
         // Identify the exact low/high crossing, not all cells in the ramp corridor.

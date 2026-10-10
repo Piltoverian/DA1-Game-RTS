@@ -1,0 +1,119 @@
+﻿{
+    "version":  1,
+    "pixelOrigin":  "top-left",
+    "layout":  [
+                   "ground-00",
+                   "ground-01",
+                   "ground-02",
+                   "ground-03",
+                   "ramp-00",
+                   "cliff-00"
+               ],
+    "width":  1536,
+    "padding":  4,
+    "schema":  "rts-terrain-material-atlas",
+    "runtimeIntegrated":  false,
+    "height":  1024,
+    "columns":  3,
+    "slotSize":  512,
+    "rows":  2,
+    "uvOrigin":  "bottom-left",
+    "regions":  [
+                    {
+                        "pixelRect":  {
+                                          "y":  4,
+                                          "width":  504,
+                                          "height":  504,
+                                          "x":  4
+                                      },
+                        "id":  "ground-00",
+                        "unityUV":  {
+                                        "uMin":  0.0029296875,
+                                        "uMax":  0.33040364583333331,
+                                        "vMax":  0.99560546875,
+                                        "vMin":  0.50439453125
+                                    },
+                        "slot":  0
+                    },
+                    {
+                        "pixelRect":  {
+                                          "y":  4,
+                                          "width":  504,
+                                          "height":  504,
+                                          "x":  516
+                                      },
+                        "id":  "ground-01",
+                        "unityUV":  {
+                                        "uMin":  0.33626302083333331,
+                                        "uMax":  0.66373697916666663,
+                                        "vMax":  0.99560546875,
+                                        "vMin":  0.50439453125
+                                    },
+                        "slot":  1
+                    },
+                    {
+                        "pixelRect":  {
+                                          "y":  4,
+                                          "width":  504,
+                                          "height":  504,
+                                          "x":  1028
+                                      },
+                        "id":  "ground-02",
+                        "unityUV":  {
+                                        "uMin":  0.66959635416666663,
+                                        "uMax":  0.9970703125,
+                                        "vMax":  0.99560546875,
+                                        "vMin":  0.50439453125
+                                    },
+                        "slot":  2
+                    },
+                    {
+                        "pixelRect":  {
+                                          "y":  516,
+                                          "width":  504,
+                                          "height":  504,
+                                          "x":  4
+                                      },
+                        "id":  "ground-03",
+                        "unityUV":  {
+                                        "uMin":  0.0029296875,
+                                        "uMax":  0.33040364583333331,
+                                        "vMax":  0.49560546875,
+                                        "vMin":  0.00439453125
+                                    },
+                        "slot":  3
+                    },
+                    {
+                        "pixelRect":  {
+                                          "y":  516,
+                                          "width":  504,
+                                          "height":  504,
+                                          "x":  516
+                                      },
+                        "id":  "ramp-00",
+                        "unityUV":  {
+                                        "uMin":  0.33626302083333331,
+                                        "uMax":  0.66373697916666663,
+                                        "vMax":  0.49560546875,
+                                        "vMin":  0.00439453125
+                                    },
+                        "slot":  4
+                    },
+                    {
+                        "pixelRect":  {
+                                          "y":  516,
+                                          "width":  504,
+                                          "height":  504,
+                                          "x":  1028
+                                      },
+                        "id":  "cliff-00",
+                        "unityUV":  {
+                                        "uMin":  0.66959635416666663,
+                                        "uMax":  0.9970703125,
+                                        "vMax":  0.49560546875,
+                                        "vMin":  0.00439453125
+                                    },
+                        "slot":  5
+                    }
+                ]
+}

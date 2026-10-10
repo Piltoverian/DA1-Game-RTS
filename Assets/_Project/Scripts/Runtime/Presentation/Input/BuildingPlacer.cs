@@ -193,15 +193,14 @@ public class BuildingPlacer : MonoBehaviour
         if (cam == null) return;
 
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        if (!Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
-        {
-            currentCanPlace = false;
-            SetGhostMaterial(false);
-            return;
-        }
-
-        currentSnappedPosition = SnapToGrid(hit.point);
-        currentGhost.transform.position = currentSnappedPosition;
+        Vector3 hitPoint;
+        if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(ray,out var logical,out _)) hitPoint=logical;
+        else if(Physics.Raycast(ray,out RaycastHit hit,500f,groundMask)) hitPoint=hit.point;
+        else {currentCanPlace=false;SetGhostMaterial(false);return;}
+        currentSnappedPosition=SnapToGrid(hitPoint);
+        Vector3 visiblePosition=currentSnappedPosition;
+        if(TerrainVisualSurface.Active!=null)visiblePosition.y+=TerrainVisualSurface.Active.Sample(visiblePosition.x,visiblePosition.z);
+        currentGhost.transform.position=visiblePosition;
 
         currentCanPlace = CanPlace(currentSnappedPosition) && CanAffordBuilding(selectedBuildingPrefab);
         SetGhostMaterial(currentCanPlace);

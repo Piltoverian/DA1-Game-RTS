@@ -1121,11 +1121,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6596251848600814478, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.92387956
+      value: 0.97629607
       objectReference: {fileID: 0}
     - target: {fileID: 6596251848600814478, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.38268343
+      value: 0.2164396
       objectReference: {fileID: 0}
     - target: {fileID: 6596251848600814478, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalRotation.y
@@ -1137,7 +1137,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6596251848600814478, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 45
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6596251848600814478, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -1196,8 +1196,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d4e9a4014904797b66a48735f9c272b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TerrainMapRenderer
-  theme: {fileID: 11400000, guid: c34b9b8962a9a954fba10a15eab5eefe, type: 2}
-  chunkSize: 16
+  theme: {fileID: 11400000, guid: ec74fc85daf9785479a6f38753d9c5b9, type: 2}
+  frameRampOnLoad: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

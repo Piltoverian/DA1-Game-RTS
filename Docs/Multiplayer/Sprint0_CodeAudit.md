@@ -5,7 +5,7 @@
 > **Mục đích**: Rà soát toàn bộ mã nguồn C# và ECS Systems hiện tại để phát hiện các điểm nghẽn kiến trúc, các vị trí hardcode, và chuẩn bị sẵn các hợp đồng dữ liệu (Data Contracts) trước khi bắt tay vào tích hợp mạng ở Sprint 1. Phần dữ liệu ScriptableObjects/Civs sẽ do Game Designer cấu hình sau.
 
 > [!NOTE]
-> **Snapshot ưu tiên 2026-09-27 (đã được thay bởi cập nhật ở trên):** Các đầu việc Sprint 0 trong tài liệu này đã được chuyển vào backlog. Nhóm hiện ưu tiên Hạng mục B theo [MapGen_ImplementationPlan.md](../MapGeneration/MapGen_ImplementationPlan.md), sau đó mới quay lại `LocalPlayerManager`, data contracts và match lifecycle. Nội dung audit bên dưới vẫn là backlog kỹ thuật hợp lệ.
+> **Snapshot ưu tiên 2026-09-27 (đã được thay bởi cập nhật ở trên):** Các đầu việc Sprint 0 trong tài liệu này đã được chuyển vào backlog. Nhóm hiện ưu tiên Hạng mục B theo [MapGen_INDEX.md](../MapGeneration/MapGen_INDEX.md), sau đó mới quay lại `LocalPlayerManager`, data contracts và match lifecycle. Nội dung audit bên dưới vẫn là backlog kỹ thuật hợp lệ.
 
 ---
 

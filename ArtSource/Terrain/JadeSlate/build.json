@@ -1,0 +1,12 @@
+{
+  "source_sha256": "49ee1b7d28201c9f37da299df2f005d03aa830975c4b7ce4ecea431568ba03b4",
+  "counts": {
+    "ground": 32,
+    "tops": 16,
+    "cliffs": 10,
+    "mountains": 16,
+    "decorations": 4
+  },
+  "method": "canonical triangle UV, continuous four-by-four grass banks, common grass edge blend on flat tiles only, periodic material sampling and geometric slope lighting; decorations retained from cleaned user source",
+  "ramp_readability": "masks1..E: full-face terracotta soil RGB185/112/66 including edges, source luminance detail and4% uphill centre highlight; flat masks0/F unchanged"
+}
