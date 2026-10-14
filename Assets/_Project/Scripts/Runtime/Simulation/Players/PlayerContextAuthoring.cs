@@ -8,6 +8,7 @@ using System.Collections.Generic;
 public class PlayerContextAuthoring : MonoBehaviour
 {
     public int playerId = 0;
+    [Min(-1)] public int teamId = -1;
     public CivDef civDef;
     [Tooltip("Bind to the player created by Map Settings instead of creating another context.")]
     public bool useBootstrapContext;
@@ -39,7 +40,8 @@ public class PlayerContextAuthoring : MonoBehaviour
                 authoring.playerId,
                 0,
                 authoring.age,
-                civKey
+                civKey,
+                authoring.teamId
             );
             AddComponent(entity, playerContext);
             AddBuffer<PlayerTechnology>(entity);

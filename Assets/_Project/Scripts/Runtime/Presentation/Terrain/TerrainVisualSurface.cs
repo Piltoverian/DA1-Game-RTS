@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using Unity.Mathematics;
 
-// Presentation-only height field. Navigation and physics still use the flat legacy grid.
+// Client terrain surface for picking; simulation samples its own grid/revision cache.
 public sealed class TerrainVisualSurface
 {
     public static TerrainVisualSurface Active { get; private set; }
@@ -10,31 +10,15 @@ public sealed class TerrainVisualSurface
     static void ResetSession(){Active=null;}
     public readonly GeneratedTerrain map;
     public readonly float rise;
-    readonly int minimum;
-    readonly int[] rampDirections;
+    readonly TerrainSurfaceData data;
     public TerrainVisualSurface(GeneratedTerrain source,float tierRise) {
-        map=source;rise=Mathf.Max(0,tierRise);minimum=int.MaxValue;
-        foreach(var cell in map.cells) minimum=Math.Min(minimum,cell.heightLevel);
-        rampDirections=new int[map.cells.Length];Array.Fill(rampDirections,-1);
-        foreach(var draw in map.draws)if(draw.tile>=3&&draw.tile<=6)rampDirections[draw.cell]=draw.rotation;
+        map=source;rise=Mathf.Max(0,tierRise);data=new TerrainSurfaceData(source,rise);
     }
     public void Activate(){Active=this;}
     public void Deactivate(){if(Active==this)Active=null;}
-    public bool IsRamp(int index) => map.cells[index].UsesVertexCorners ? map.cells[index].CornerMask!=0 : rampDirections[index] >= 0;
+    public bool IsRamp(int index) => data.IsRamp(index);
     public float CellHeight(int index,float fx,float fy) {
-        var cell=map.cells[index];float high=(cell.heightLevel-minimum)*rise;
-        if(cell.UsesVertexCorners) {
-            int mask=cell.CornerMask;
-            float nw=(mask&1)!=0?1:0,ne=(mask&2)!=0?1:0,se=(mask&4)!=0?1:0,sw=(mask&8)!=0?1:0;
-            return high+rise*(fy<=fx ? nw+(ne-nw)*fx+(se-ne)*fy : nw+(se-sw)*fx+(sw-nw)*fy);
-        }
-        int d=rampDirections[index];if(d<0)return high;
-        int x=index%map.grid.width,y=index/map.grid.width;
-        int2 low=new int2(x,y)-GridTerrain.RampDirections[d];
-        if(low.x<0||low.y<0||low.x>=map.grid.width||low.y>=map.grid.height)return high;
-        float lowHeight=(map.cells[low.y*map.grid.width+low.x].heightLevel-minimum)*rise;
-        float t=d==0?1-fy:d==1?fx:d==2?fy:1-fx;
-        return Mathf.LerpUnclamped(lowHeight,high,t);
+        return data.CellHeight(index,fx,fy);
     }
     public float Sample(float worldX,float worldZ) {
         float x=(worldX-map.grid.origin.x)/map.grid.cellsize,z=(worldZ-map.grid.origin.z)/map.grid.cellsize;
@@ -69,9 +53,5 @@ public sealed class TerrainVisualSurface
     }
     static bool Triangle(Ray ray,Vector3 a,Vector3 b,Vector3 c,out float distance) {
         distance=0;var e1=b-a;var e2=c-a;var p=Vector3.Cross(ray.direction,e2);float det=Vector3.Dot(e1,p);if(Mathf.Abs(det)<1e-7f)return false;float inv=1/det;var t=ray.origin-a;float u=Vector3.Dot(t,p)*inv;if(u<0||u>1)return false;var q=Vector3.Cross(t,e1);float v=Vector3.Dot(ray.direction,q)*inv;if(v<0||u+v>1)return false;distance=Vector3.Dot(e2,q)*inv;return distance>=0;
-    }
-    public static Ray LogicalRay(Ray ray) {
-        if(Active!=null&&Active.Raycast(ray,out _,out var visual))ray.origin-=Vector3.up*visual.y;
-        return ray;
     }
 }

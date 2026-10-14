@@ -372,7 +372,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82284fc1dad91984aac6fc63acec54dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlowFieldDebugDrawer
-  mode: 5
+  mode: 0
   drawStep: 1
   arrowScale: 0.5
   showLabel: 0
@@ -1200,8 +1200,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d4e9a4014904797b66a48735f9c272b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TerrainMapRenderer
-  theme: {fileID: 11400000, guid: ec74fc85daf9785479a6f38753d9c5b9, type: 2}
+  theme: {fileID: 11400000, guid: abf7ff7b1945a7a4bbbcbfb9f158a1fc, type: 2}
   frameRampOnLoad: 1
+  snapToLocalBaseOnLoad: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

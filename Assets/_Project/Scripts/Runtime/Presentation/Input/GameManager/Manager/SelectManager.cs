@@ -136,7 +136,6 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             foreach(var entity in entities){
                 if(em.GetComponentData<Selectable>(entity).playerID!=playerId)continue;
                 Vector3 position=(Vector3)em.GetComponentData<LocalTransform>(entity).Position;
-                position.y+=TerrainVisualSurface.Active.Sample(position.x,position.z);
                 Vector3 screen=cam.WorldToScreenPoint(position);
                 if(screen.z>0&&selectingRect.isContains(new float2(screen.x,screen.y)))em.SetComponentEnabled<Selected>(entity,true);
             }
@@ -171,7 +170,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     {
         public static RaycastInput GetRayCastInput(Vector2 screenPos, Camera cam, uint layerMaskFilter)
         {
-            UnityEngine.Ray ray = TerrainVisualSurface.LogicalRay(cam.ScreenPointToRay(screenPos));
+            UnityEngine.Ray ray = cam.ScreenPointToRay(screenPos);
             float3 start = ray.origin;
             float3 end = ray.origin + ray.direction * 1000f;
             RaycastInput raycastInput = new RaycastInput

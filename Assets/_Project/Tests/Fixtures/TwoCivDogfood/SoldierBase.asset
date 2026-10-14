@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a821538914da5a4b89f97bcc823bcfe, type: 3}
+  m_Name: SoldierBase
+  m_EditorClassIdentifier: Assembly-CSharp::BasedSO
+  ID: dogfood.soldier
+  Name: Test Soldier
+  MaxHP: 100
+  Icon: {fileID: 21300000, guid: 702a972822a5ac6428f47c7626994156, type: 3}
+  Prefab: {fileID: 3382223461976398644, guid: b770e44db12b9464e9c44181dd2b0129, type: 3}
+  WorkRate: 2.74
+  JobCapacity: 5
+  Abilities:
+  - {fileID: 11400000, guid: 9fbcd506527868b4c9901751c549b12a, type: 2}
+  Jobs: []

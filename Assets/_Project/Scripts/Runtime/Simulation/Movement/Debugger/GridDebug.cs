@@ -55,7 +55,7 @@ public class FlowFieldDebugDrawer : MonoBehaviour
                 int nx=x+(d==0?1:0),nz=z+(d==1?1:0);
                 if(!Open(x,z)||!Open(nx,nz))continue;
                 var a=terrain[i];var b=terrain[nz*grid.width+nx];
-                if(a.heightLevel!=b.heightLevel&&(math.abs(a.heightLevel-b.heightLevel)!=1||a.RampId<0||b.RampId<0))illegalTierEdges++;
+                if(a.heightLevel!=b.heightLevel){var high=a.heightLevel>b.heightLevel?a:b;int up=a.heightLevel<b.heightLevel?(d==0?1:2):(d==0?3:0);if(math.abs(a.heightLevel-b.heightLevel)!=1||high.RampId<0||high.RampDirection!=up)illegalTierEdges++;}
             }
         }
         using var agents=em.CreateEntityQuery(typeof(MovementAgentComponent),typeof(LocalTransform));

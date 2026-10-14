@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -38,6 +40,8 @@ public partial struct BuildingPlacementSystem : ISystem
         using var requests = query.ToEntityArray(Allocator.Temp);
         foreach (Entity reqEntity in requests)
         {
+            Debug.WriteLine(em.HasComponent<PlaceBuildingRequest>(reqEntity), "Entity in PlaceBuildingRequest query does not have PlaceBuildingRequest component");
+
             PlaceBuildingRequest req = em.GetComponentData<PlaceBuildingRequest>(reqEntity);
 
             if (req.PrefabEntity == Entity.Null || !em.Exists(req.PrefabEntity))
@@ -47,7 +51,6 @@ public partial struct BuildingPlacementSystem : ISystem
             }
 
             if (!em.HasComponent<BuildingComponent>(req.PrefabEntity) ||
-                !em.HasComponent<BuildingConstruction>(req.PrefabEntity) ||
                 !em.HasComponent<EntityOwner>(req.PrefabEntity) ||
                 !em.HasComponent<EntityHealth>(req.PrefabEntity) ||
                 !em.HasBuffer<EntityResourceCost>(req.PrefabEntity) ||
@@ -62,14 +65,17 @@ public partial struct BuildingPlacementSystem : ISystem
             if (em.HasBuffer<PlaceBuildingWorkerElement>(reqEntity))
                 foreach (var entry in em.GetBuffer<PlaceBuildingWorkerElement>(reqEntity))
                 {
-                    if (!em.Exists(entry.WorkerEntity) || !em.HasComponent<EntityOwner>(entry.WorkerEntity) || !em.HasBuffer<BuildOffer>(entry.WorkerEntity)
-                        || em.GetComponentData<EntityOwner>(entry.WorkerEntity).PlayerID != req.PlayerId) continue;
+                    if (!CommandAuthority.CanControl(em, req.PlayerId, entry.WorkerEntity)
+                        || !em.HasBuffer<BuildOffer>(entry.WorkerEntity)) continue;
                     foreach (var offer in em.GetBuffer<BuildOffer>(entry.WorkerEntity))
                         if (offer.DefinitionID == em.GetComponentData<BuildingComponent>(req.PrefabEntity).DefinitionID) allowed = true;
                 }
             if (!allowed) { ecb.DestroyEntity(reqEntity); continue; }
 
-            if (!CanAfford(em, req.PlayerId, req.PrefabEntity))
+            using var costs = new NativeList<ResourcePair>(Allocator.Temp);
+            foreach (var cost in em.GetBuffer<EntityResourceCost>(req.PrefabEntity))
+                costs.Add(new ResourcePair(cost.Type, cost.Amount));
+            if (!ResourcePayment.CanAfford(em, req.PlayerId, costs))
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
@@ -91,16 +97,36 @@ public partial struct BuildingPlacementSystem : ISystem
                 localRect.ExpandTo(new float2(1.5f, 1.5f));
             }
 
-            if (!IsAreaFree(grid, em.GetBuffer<GridNodeCost>(gridEntity), req.Position, localRect, hasUnitBucket, unitBucket))
+            var terrain = em.HasBuffer<GridTerrain>(gridEntity) ? em.GetBuffer<GridTerrain>(gridEntity).AsNativeArray() : default;
+            var gridCosts = em.HasBuffer<GridNodeCost>(gridEntity) ? em.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray() : default;
+            if (BuildingPlacementValidator.Validate(grid, terrain, gridCosts, req.Position, localRect, unitBucket, out _, out _)
+                != BuildingPlacementFailure.None)
             {
                 ecb.DestroyEntity(reqEntity);
                 continue;
             }
 
-            DeductCost(em, req.PlayerId, req.PrefabEntity);
-
             Entity building = em.Instantiate(req.PrefabEntity);
-            em.SetComponentData(building, new BuildingConstruction { Phase = ConstructionPhase.Planned });
+            if (!ResourcePayment.TryPay(em, req.PlayerId, costs, out var paid))
+            {
+                paid.Dispose();
+                em.DestroyEntity(building);
+                ecb.DestroyEntity(reqEntity);
+                continue;
+            }
+            bool reserved = false;
+            Entity commandQueueEntity = Entity.Null;
+            int commandQueueLength = -1;
+            try
+            {
+            using (var commandQuery = em.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>()))
+                if (commandQuery.CalculateEntityCount() == 1)
+                {
+                    commandQueueEntity = commandQuery.GetSingletonEntity();
+                    if (em.HasBuffer<CommandQueueElement>(commandQueueEntity))
+                        commandQueueLength = em.GetBuffer<CommandQueueElement>(commandQueueEntity).Length;
+                }
+            em.AddComponentData(building, new BuildingConstruction { Phase = ConstructionPhase.Planned , CompletedWork=0  });
             em.AddComponentData(building, new PopulationAccount { PlayerID = -1 });
 
             if (em.HasComponent<LocalTransform>(building))
@@ -138,8 +164,8 @@ public partial struct BuildingPlacementSystem : ISystem
                 em.AddComponent<BlockageNeedBakeTag>(building);
             }
 
+            reserved = true;
             ReserveGridArea(grid, em.GetBuffer<GridNodeCost>(gridEntity), req.Position, localRect, customCost);
-            gridModified = true;
 
             if (em.HasBuffer<PlaceBuildingWorkerElement>(reqEntity))
             {
@@ -147,7 +173,8 @@ public partial struct BuildingPlacementSystem : ISystem
                 for (int w = 0; w < workerBuffer.Length; w++)
                 {
                     Entity worker = workerBuffer[w].WorkerEntity;
-                    if (EntityCapabilities.CanBuild(em, worker, building) && em.HasComponent<BuilderComponent>(worker))
+                    if (CommandAuthority.CanControl(em, req.PlayerId, worker)
+                        && EntityCapabilities.CanBuild(em, worker, building) && em.HasComponent<BuilderComponent>(worker))
                     {
                         CommandDataHelper.AddCommandToQueue(
                             em,
@@ -161,84 +188,37 @@ public partial struct BuildingPlacementSystem : ISystem
             }
 
             ecb.DestroyEntity(reqEntity);
+            paid.Dispose();
+            gridModified = true;
+            }
+            catch (Exception ex)
+            {
+                if (commandQueueLength >= 0 && em.Exists(commandQueueEntity)
+                    && em.HasBuffer<CommandQueueElement>(commandQueueEntity))
+                    em.GetBuffer<CommandQueueElement>(commandQueueEntity).ResizeUninitialized(commandQueueLength);
+                if (reserved)
+                    ReserveGridArea(grid, em.GetBuffer<GridNodeCost>(gridEntity), req.Position, localRect, 1);
+                ResourcePayment.Refund(em, req.PlayerId, paid);
+                paid.Dispose();
+                if (em.Exists(building))
+                {
+                    if (em.HasComponent<PopulationAccount>(building)) em.RemoveComponent<PopulationAccount>(building);
+                    em.DestroyEntity(building);
+                }
+                ecb.DestroyEntity(reqEntity);
+                UnityEngine.Debug.LogWarning($"Building placement rolled back after publication failed: {ex.Message}");
+            }
         }
 
         if (gridModified)
         {
             grid.isDirty = true;
+            grid.topologyVersion++;
             em.SetComponentData(gridEntity, grid);
         }
 
         ecb.Playback(em);
         ecb.Dispose();
-    }
-
-    private static bool CanAfford(EntityManager em, int playerId, Entity prefabEntity)
-    {
-        if (playerId < 0)
-            return false;
-
-        if (!em.HasBuffer<EntityResourceCost>(prefabEntity))
-            return true;
-
-        var costBuffer = em.GetBuffer<EntityResourceCost>(prefabEntity);
-        for (int i = 0; i < costBuffer.Length; i++)
-        {
-            var cost = costBuffer[i];
-            if (PlayerContextHelper.GetPlayerResourceByType(em, playerId, cost.Type, out float currentAmount) != FunctionResult.Success)
-                return false;
-
-            if (currentAmount < cost.Amount)
-                return false;
-        }
-
-        return true;
-    }
-
-    private static void DeductCost(EntityManager em, int playerId, Entity prefabEntity)
-    {
-        if (playerId < 0 || !em.HasBuffer<EntityResourceCost>(prefabEntity))
-            return;
-
-        var costBuffer = em.GetBuffer<EntityResourceCost>(prefabEntity);
-        for (int i = 0; i < costBuffer.Length; i++)
-        {
-            var cost = costBuffer[i];
-            if (PlayerContextHelper.GetPlayerResourceByType(em, playerId, cost.Type, out float currentAmount) == FunctionResult.Success)
-            {
-                PlayerContextHelper.SetPlayerResource(em, playerId, cost.Type, currentAmount - cost.Amount);
-            }
-        }
-    }
-
-    private static bool IsAreaFree(
-        GridComponent grid,
-        DynamicBuffer<GridNodeCost> costBuffer,
-        float3 rootPosition,
-        StartEndRect localRect,
-        bool hasUnitBucket,
-        NativeParallelMultiHashMap<int, Entity> unitBucket)
-    {
-        if (!PlayerSpawnPlacement.TryFootprint(grid, rootPosition, localRect, out int2 minGrid, out int2 maxGrid))
-            return false;
-
-        for (int x = minGrid.x; x <= maxGrid.x; x++)
-        {
-            for (int y = minGrid.y; y <= maxGrid.y; y++)
-            {
-                if (x < 0 || x >= grid.width || y < 0 || y >= grid.height)
-                    return false;
-
-                int idx = GridHelper.GetNodeIndex(new int2(x, y), grid);
-                if (costBuffer[idx].cost != 1)
-                    return false;
-
-                if (hasUnitBucket && unitBucket.IsCreated && unitBucket.ContainsKey(idx))
-                    return false;
-            }
-        }
-
-        return true;
     }
 
     private static void ReserveGridArea(GridComponent grid, DynamicBuffer<GridNodeCost> costBuffer, float3 rootPosition, StartEndRect localRect, int cost)

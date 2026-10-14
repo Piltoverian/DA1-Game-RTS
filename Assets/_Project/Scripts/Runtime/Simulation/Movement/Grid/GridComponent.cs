@@ -9,7 +9,12 @@ public struct GridComponent : IComponentData
     public float3 origin;
     public uint generation;
     public uint islandGeneration;
+    // Updated immediately when walkability changes, independently of field heartbeat.
+    public uint topologyVersion;
+    public uint islandTopologyVersion;
+    public int islandCount;
     public bool isDirty;
+    public bool initialized;
     public int HeartbeatTimer;
     public int RecalcPerframe;
 }
@@ -47,6 +52,9 @@ public struct GridTerrain : IBufferElementData
     public int RampId;
 
     public int RampDirection;
+
+    // Generation placement only. Gameplay construction must not treat this as a ban.
+    public bool RampInfluence;
 
 }
 

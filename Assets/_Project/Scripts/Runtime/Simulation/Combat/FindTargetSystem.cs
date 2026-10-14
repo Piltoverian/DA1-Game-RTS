@@ -1,120 +1,62 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Physics;
+using Unity.Mathematics;
 using Unity.Transforms;
 
+// Gameplay acquisition is a circle on XZ, independent of collider/terrain height.
+[UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
 [UpdateBefore(typeof(ShootAttackSystem))]
 [BurstCompile]
 public partial struct FindTargetSystem : ISystem
 {
-    private ComponentLookup<EntityOwner> unitLookup;
-    private ComponentLookup<EntityHealth> healthLookup;
-
     public void OnCreate(ref SystemState state)
     {
-        unitLookup = state.GetComponentLookup<EntityOwner>(true);
-        healthLookup = state.GetComponentLookup<EntityHealth>(true);
-
-        state.RequireForUpdate<PhysicsWorldSingleton>();
+        state.RequireForUpdate<GridComponent>();
+        state.RequireForUpdate<UnitSpatialBucket>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        PhysicsWorldSingleton physicsWorld =
-            SystemAPI.GetSingleton<PhysicsWorldSingleton>();
-
-        CollisionWorld collisionWorld =
-            physicsWorld.CollisionWorld;
-
-        unitLookup.Update(ref state);
-        healthLookup.Update(ref state);
-
-        NativeList<DistanceHit> distanceHitList =
-            new NativeList<DistanceHit>(Allocator.Temp);
-
-        foreach (var (
-                     localTransform,
-                     findTarget,
-                     target, owner)
-                 in SystemAPI.Query<
-                     RefRO<LocalTransform>,
-                     RefRW<FindTarget>,
-                     RefRW<Target>, RefRO<EntityOwner>>())
+        var grid = SystemAPI.GetSingleton<GridComponent>();
+        if (grid.cellsize <= 0) return;
+        var bucket = SystemAPI.GetSingleton<UnitSpatialBucket>().Bucket;
+        var owners = SystemAPI.GetComponentLookup<EntityOwner>(true);
+        var health = SystemAPI.GetComponentLookup<EntityHealth>(true);
+        var transforms = SystemAPI.GetComponentLookup<LocalTransform>(true);
+        using var contexts = SystemAPI.QueryBuilder().WithAll<PlayerContext>().Build()
+            .ToComponentDataArray<PlayerContext>(Allocator.Temp);
+        foreach (var (transform, find, target, owner) in SystemAPI.Query<RefRO<LocalTransform>,
+            RefRW<FindTarget>, RefRW<Target>, RefRO<EntityOwner>>())
         {
-            Entity current = target.ValueRO.targetEntity;
-            if (current != Entity.Null && healthLookup.HasComponent(current) && healthLookup[current].CurrentHP > 0 && unitLookup.HasComponent(current) && unitLookup[current].PlayerID != owner.ValueRO.PlayerID) continue;
-            findTarget.ValueRW.timer -= SystemAPI.Time.DeltaTime;
-
-            if (findTarget.ValueRO.timer > 0f)
-                continue;
-
-            findTarget.ValueRW.timer = findTarget.ValueRO.timerMax;
-
-            distanceHitList.Clear();
-
-            CollisionFilter collisionFilter = new CollisionFilter
-            {
-                BelongsTo = PhysicsLayersDefine.Everything,
-
-                // Tìm cả EntityOwner và Building
-                CollidesWith =
-                    PhysicsLayersDefine.Units |
-                    PhysicsLayersDefine.Building,
-
-                GroupIndex = 0
-            };
-
-            bool hasHit = collisionWorld.OverlapSphere(
-                localTransform.ValueRO.Position,
-                findTarget.ValueRO.range,
-                ref distanceHitList,
-                collisionFilter
-            );
-
-            if (!hasHit)
-            {
-                target.ValueRW.targetEntity = Entity.Null;
-                continue;
+            var current = target.ValueRO.targetEntity;
+            if (current != Entity.Null && health.HasComponent(current) && health[current].CurrentHP > 0
+                && owners.HasComponent(current) && !PlayerContextHelper.AreAllies(contexts, owners[current].PlayerID, owner.ValueRO.PlayerID)) continue;
+            find.ValueRW.timer -= SystemAPI.Time.DeltaTime;
+            if (find.ValueRO.timer > 0) continue;
+            find.ValueRW.timer = find.ValueRO.timerMax;
+            float range = math.max(0, find.ValueRO.range);
+            float bestDistance = range * range;
+            Entity best = Entity.Null;
+            float2 position = transform.ValueRO.Position.xz;
+            // UnitSpatialSystem publishes the bucket after actuation in the fixed tick.
+            int2 center = GridHelper.WorldToGrid(transform.ValueRO.Position, grid);
+            int extent = (int)math.ceil(range / grid.cellsize);
+            int2 min = math.max(center - extent, 0);
+            int2 max = math.min(center + extent, new int2(grid.width - 1, grid.height - 1));
+            for (int z = min.y; z <= max.y; z++)
+            for (int x = min.x; x <= max.x; x++) {
+                if (!bucket.TryGetFirstValue(z * grid.width + x, out var candidate, out var iterator)) continue;
+                do {
+                    if (!health.HasComponent(candidate) || health[candidate].CurrentHP <= 0
+                        || !owners.HasComponent(candidate) || PlayerContextHelper.AreAllies(contexts, owners[candidate].PlayerID, owner.ValueRO.PlayerID)
+                        || !transforms.HasComponent(candidate)) continue;
+                    float distance = math.distancesq(position, transforms[candidate].Position.xz);
+                    if (distance <= bestDistance) { bestDistance = distance; best = candidate; }
+                } while (bucket.TryGetNextValue(out candidate, ref iterator));
             }
-
-            Entity bestTarget = Entity.Null;
-            float bestDistanceSq = float.MaxValue;
-
-            for (int i = 0; i < distanceHitList.Length; i++)
-            {
-                Entity hitEntity = distanceHitList[i].Entity;
-
-                if (!healthLookup.HasComponent(hitEntity))
-                    continue;
-
-                if (!IsWantedTarget(hitEntity, owner.ValueRO.PlayerID))
-                    continue;
-
-                float distanceSq = distanceHitList[i].Distance * distanceHitList[i].Distance;
-
-                if (distanceSq < bestDistanceSq)
-                {
-                    bestDistanceSq = distanceSq;
-                    bestTarget = hitEntity;
-                }
-            }
-
-            target.ValueRW.targetEntity = bestTarget;
+            target.ValueRW.targetEntity = best;
         }
-
-        distanceHitList.Dispose();
-    }
-
-    private bool IsWantedTarget(Entity entity, int wantedPlayerID)
-    {
-        if (unitLookup.HasComponent(entity))
-        {
-            return unitLookup[entity].PlayerID != wantedPlayerID && healthLookup[entity].CurrentHP > 0;
-        }
-
-        return false;
     }
 }
-

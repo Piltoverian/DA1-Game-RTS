@@ -5,7 +5,7 @@ Hệ thống này thực hiện việc phân tích địa hình để chia bản
 ---
 
 ## 1. Tại sao cần chia hòn đảo?
-Trong thuật toán Flow Field, nếu bạn đặt đích đến ở một hòn đảo và Unit ở một hòn đảo khác, Flow Field có thể dẫn Unit đi "húc đầu vào tường" vì nó chỉ tính toán hướng ngắn nhất mà không biết có đường đi thực sự hay không. Việc chia đảo giúp hệ thống `IntegrationFieldSystem` biết cách đặt các "Seeds" hợp lý.
+Trong thuật toán trường hướng Field, nếu bạn đặt đích đến ở một hòn đảo và Unit ở một hòn đảo khác, trường hướng Field có thể dẫn Unit đi "húc đầu vào tường" vì nó chỉ tính toán hướng ngắn nhất mà không biết có đường đi thực sự hay không. Việc chia đảo giúp hệ thống `IntegrationFieldSystem` biết cách đặt các "Seeds" hợp lý.
 
 ---
 

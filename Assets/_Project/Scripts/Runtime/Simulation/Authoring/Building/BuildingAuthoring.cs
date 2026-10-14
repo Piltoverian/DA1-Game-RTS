@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using RTS.DataValidation;
 
 [DisallowMultipleComponent]
 public class BuildingAuthoring : MonoBehaviour
@@ -21,6 +22,8 @@ public class BuildingAuthoring : MonoBehaviour
             DependsOn(authoring.buildingDef);
             if (authoring.buildingDef == null)
                 throw new InvalidOperationException("BuildingAuthoring requires a BuildingSO.");
+            if (!ResourceCostNormalizer.IsNormalized(authoring.buildingDef.Cost))
+                throw new InvalidOperationException($"BuildingSO '{authoring.buildingDef.name}' has invalid or duplicate costs. Run Registry Validate.");
             if (!math.isfinite(authoring.buildingDef.WorkLoad) || authoring.buildingDef.WorkLoad <= 0f)
                 throw new InvalidOperationException("BuildingSO.WorkLoad must be finite and positive.");
             float progress = authoring.initialConstructionProgress;

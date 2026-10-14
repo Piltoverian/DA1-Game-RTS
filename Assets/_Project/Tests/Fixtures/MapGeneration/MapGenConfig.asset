@@ -16,7 +16,6 @@ MonoBehaviour:
   MinimumCellSize: 1
   GenerateTerrain: 1
   Terrain:
-    algorithm: 1
     seed: 40
     players: 8
     protectedRadius: 20
@@ -26,6 +25,8 @@ MonoBehaviour:
     levelStep: 1
     cliffCells: 1
     rampWidth: 3
+    maximumRampCells: 12
+    smallIslandFillBudget: 0.02
     mountainWavelength: 26
     mountainThreshold: 0.2
     mountainDensity: 0.85

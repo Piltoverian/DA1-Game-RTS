@@ -9,7 +9,8 @@ using Unity.Transforms;
 /// Chạy trước CostChangeSystem để đẩy các yêu cầu đổi Cost vào buffer.
 /// </summary>
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(TransformSystemGroup))]
+// Footprints read LocalTransform.XZ directly; they do not need LocalToWorld propagation.
+[UpdateBefore(typeof(TransformSystemGroup))]
 public partial struct BlockageGridBakeSystem : ISystem
 {
     EntityQuery pendingBake;

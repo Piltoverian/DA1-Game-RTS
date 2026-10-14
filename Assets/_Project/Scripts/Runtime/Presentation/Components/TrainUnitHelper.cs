@@ -1,8 +1,8 @@
 using Unity.Entities;
 public static class TrainUnitHelper
 {
-    public static void TrainUnit(EntityManager entityManager, Entity buildingEntity, int indexInPrefabList)
-        => ProductionJobs.Enqueue(entityManager, buildingEntity, indexInPrefabList);
+    public static void TrainUnit(EntityManager entityManager, Entity buildingEntity, GameBlobReference progression, int playerId)
+        => CommandDataHelper.AddCommandToQueue(entityManager, playerId, buildingEntity, CommandType.Progression, progression: progression);
 }
 public static class BuildingHelper
 {

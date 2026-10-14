@@ -30,8 +30,8 @@ public partial struct ResetTargetSystem : ISystem
                 SystemAPI.GetComponent<LocalTransform>(targetEntity);
 
             float distanceSq = math.distancesq(
-                transform.ValueRO.Position,
-                targetTransform.Position);
+                transform.ValueRO.Position.xz,
+                targetTransform.Position.xz);
 
             if (distanceSq > findTarget.ValueRO.range * findTarget.ValueRO.range)
             {

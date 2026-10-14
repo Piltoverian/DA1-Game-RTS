@@ -86,7 +86,6 @@ public class BuildingPlacer : MonoBehaviour
         {
             if (!CanAffordBuilding(selectedBuildingPrefab))
                 return;
-
             PlaceBuilding(currentSnappedPosition, localPlayerId);
         }
     }
@@ -143,6 +142,7 @@ public class BuildingPlacer : MonoBehaviour
         else
         {
             currentGhost = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            currentGhost.SetActive(false);
             Collider col = currentGhost.GetComponent<Collider>();
             if (col != null) Destroy(col);
             float width = currentLocalRect.MaxPoint.x - currentLocalRect.MinPoint.x;
@@ -153,11 +153,23 @@ public class BuildingPlacer : MonoBehaviour
         currentGhostRenderers = currentGhost.GetComponentsInChildren<Renderer>(true);
         SetGhostMaterial(true);
         isPlacing = true;
+        UpdatePlacementPreview();
     }
 
     private GameObject CreateGhostFromPrefab(GameObject prefab)
     {
         GameObject ghostRoot = new GameObject("Ghost_" + prefab.name);
+        ghostRoot.SetActive(false);
+        var model = new GameObject("Snapped model").transform;
+        model.SetParent(ghostRoot.transform, false);
+        model.localScale = prefab.transform.lossyScale;
+        if (entityManager != default && entityManager.Exists(selectedBuildingPrefab)
+            && entityManager.HasComponent<PostTransformMatrix>(selectedBuildingPrefab))
+        {
+            var matrix = entityManager.GetComponentData<PostTransformMatrix>(selectedBuildingPrefab).Value;
+            model.localPosition = matrix.c3.xyz;
+            model.localScale = new Vector3(math.length(matrix.c0.xyz), math.length(matrix.c1.xyz), math.length(matrix.c2.xyz));
+        }
 
         MeshFilter[] meshFilters = prefab.GetComponentsInChildren<MeshFilter>(true);
         foreach (var mf in meshFilters)
@@ -165,11 +177,12 @@ public class BuildingPlacer : MonoBehaviour
             if (mf.sharedMesh == null) continue;
 
             GameObject part = new GameObject(mf.name);
-            part.transform.SetParent(ghostRoot.transform, false);
+            part.transform.SetParent(model, false);
 
             part.transform.localPosition = prefab.transform.InverseTransformPoint(mf.transform.position);
             part.transform.localRotation = Quaternion.Inverse(prefab.transform.rotation) * mf.transform.rotation;
-            part.transform.localScale = mf.transform.lossyScale;
+            part.transform.localScale = new Vector3(mf.transform.lossyScale.x / prefab.transform.lossyScale.x,
+                mf.transform.lossyScale.y / prefab.transform.lossyScale.y, mf.transform.lossyScale.z / prefab.transform.lossyScale.z);
 
             MeshFilter newMf = part.AddComponent<MeshFilter>();
             newMf.sharedMesh = mf.sharedMesh;
@@ -196,7 +209,7 @@ public class BuildingPlacer : MonoBehaviour
         Vector3 hitPoint;
         if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(ray,out var logical,out _)) hitPoint=logical;
         else if(Physics.Raycast(ray,out RaycastHit hit,500f,groundMask)) hitPoint=hit.point;
-        else {currentCanPlace=false;SetGhostMaterial(false);return;}
+        else {currentCanPlace=false;SetGhostMaterial(false);currentGhost.SetActive(false);return;}
         currentSnappedPosition=SnapToGrid(hitPoint);
         Vector3 visiblePosition=currentSnappedPosition;
         if(TerrainVisualSurface.Active!=null)visiblePosition.y+=TerrainVisualSurface.Active.Sample(visiblePosition.x,visiblePosition.z);
@@ -204,6 +217,7 @@ public class BuildingPlacer : MonoBehaviour
 
         currentCanPlace = CanPlace(currentSnappedPosition) && CanAffordBuilding(selectedBuildingPrefab);
         SetGhostMaterial(currentCanPlace);
+        currentGhost.SetActive(true);
     }
 
     private Vector3 SnapToGrid(Vector3 hitPoint)
@@ -235,91 +249,35 @@ public class BuildingPlacer : MonoBehaviour
 
     private bool CanPlace(Vector3 rootPosition)
     {
-        if (entityManager == default) return true;
-
-        var gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
-        if (gridQuery.IsEmpty) return true;
-
+        if (entityManager == default) return false;
+        using var gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
+        if (gridQuery.CalculateEntityCount() != 1) return false;
         Entity gridEntity = gridQuery.GetSingletonEntity();
         var grid = entityManager.GetComponentData<GridComponent>(gridEntity);
-        var costBuffer = entityManager.GetBuffer<GridNodeCost>(gridEntity);
-
-        if (!PlayerSpawnPlacement.TryFootprint(grid, rootPosition, currentLocalRect, out int2 minGrid, out int2 maxGrid)) return false;
-
-        var bucketQuery = entityManager.CreateEntityQuery(typeof(MovementAgentBucket));
-        bool hasUnitBucket = !bucketQuery.IsEmpty;
-        NativeParallelMultiHashMap<int, Entity> unitBucket = default;
-        if (hasUnitBucket)
-            unitBucket = bucketQuery.GetSingleton<MovementAgentBucket>().Bucket;
-
-        for (int x = minGrid.x; x <= maxGrid.x; x++)
-        {
-            for (int y = minGrid.y; y <= maxGrid.y; y++)
-            {
-                if (x < 0 || x >= grid.width || y < 0 || y >= grid.height)
-                    return false;
-
-                int idx = GridHelper.GetNodeIndex(new int2(x, y), grid);
-                if (costBuffer[idx].cost != 1)
-                    return false;
-
-                if (hasUnitBucket && unitBucket.ContainsKey(idx))
-                    return false;
-            }
-        }
-
-        return true;
+        if (!entityManager.HasBuffer<GridTerrain>(gridEntity) || !entityManager.HasBuffer<GridNodeCost>(gridEntity)) return false;
+        using var bucketQuery = entityManager.CreateEntityQuery(typeof(MovementAgentBucket));
+        var bucket = bucketQuery.CalculateEntityCount() == 1 ? bucketQuery.GetSingleton<MovementAgentBucket>().Bucket : default;
+        return BuildingPlacementValidator.Validate(grid, entityManager.GetBuffer<GridTerrain>(gridEntity).AsNativeArray(),
+            entityManager.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(), rootPosition, currentLocalRect, bucket, out _, out _)
+            == BuildingPlacementFailure.None;
     }
 
     private bool CanAffordBuilding(Entity buildingPrefab)
     {
-        if (buildingPrefab == Entity.Null || localPlayerId < 0)
-            return false;
-
-        if (entityManager == default || !entityManager.HasBuffer<EntityResourceCost>(buildingPrefab))
-            return true;
-
-        var costBuffer = entityManager.GetBuffer<EntityResourceCost>(buildingPrefab);
-        foreach (var cost in costBuffer)
-        {
-            if (PlayerContextHelper.GetPlayerResourceByType(entityManager, localPlayerId, cost.Type, out float currentAmount) != FunctionResult.Success)
-                return false;
-
-            if (currentAmount < cost.Amount)
-                return false;
-        }
-
-        return true;
+        if (buildingPrefab == Entity.Null || localPlayerId < 0 || entityManager == default
+            || !entityManager.Exists(buildingPrefab) || !entityManager.HasBuffer<EntityResourceCost>(buildingPrefab)) return false;
+        using var costs = new NativeList<ResourcePair>(Allocator.Temp);
+        foreach (var cost in entityManager.GetBuffer<EntityResourceCost>(buildingPrefab))
+            costs.Add(new ResourcePair(cost.Type, cost.Amount));
+        return ResourcePayment.CanAfford(entityManager, localPlayerId, costs);
     }
-
     private void PlaceBuilding(Vector3 rootPosition, int playerId)
     {
         if (selectedBuildingPrefab == Entity.Null || entityManager == default)
             return;
 
-        Entity worker = sourceWorkerEntity;
-        if (worker == Entity.Null || !entityManager.Exists(worker))
-        {
-            List<Entity> selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
-            foreach (Entity e in selectedEntities)
-            {
-                if (entityManager.HasComponent<BuilderComponent>(e) && entityManager.HasComponent<MoveOverride>(e))
-                {
-                    worker = e;
-                    break;
-                }
-            }
-        }
-
-        CommandDataHelper.AddCommandToQueue(
-            entityManager,
-            playerId,
-            worker,
-            CommandType.Build,
-            targetEntity: selectedBuildingPrefab,
-            position: rootPosition
-        );
-
+        List<Entity> sources = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
+        CommandDataHelper.AddPlanBuildToQueue(entityManager, playerId, sources, selectedBuildingPrefab, rootPosition);
         CancelPlacement();
     }
 

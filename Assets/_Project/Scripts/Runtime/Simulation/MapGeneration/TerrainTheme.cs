@@ -13,16 +13,10 @@ public class TerrainTheme : ScriptableObject
     [InspectorName("Flat ground (mask 0)")]
     [Tooltip("top-0.png; 128x128 readable PNG. No raised corners.") ]
     public Texture2D topFlatMask0;
-    [Tooltip("Optional flat-ground variations, with matching edges and lighting. Empty keeps the original theme.")]
-    public Texture2D[] flatGroundVariants = Array.Empty<Texture2D>();
     [Tooltip("Presentation-only seed. Does not consume the terrain or resource generator RNG.")]
     public int groundVisualSeed = 40;
     [Min(2), Tooltip("Scale of coherent lush/sparse ground patches in grid cells.")]
     public float groundRegionCells = 16;
-    [Min(0), Tooltip("Optional square continuous-material bank width. Two banks must each contain columns squared tiles.")]
-    public int groundPatternColumns;
-    [Tooltip("Smooth texture sampling for painted artwork. Original themes retain point filtering.")]
-    public bool smoothTextureSampling;
     [Header("Ramps - raised corners")]
     [InspectorName("00 high (mask 1)")]
     [Tooltip("top-1.png; 128x128 readable PNG. Raised corners: 00.") ]
@@ -105,28 +99,20 @@ public class TerrainTheme : ScriptableObject
     [Tooltip("cliff-1-E.png; endpoint bits lowA/lowB/highB/highA. LowB + HighB + HighA.") ]
     public Texture2D cliffNegativeXLowBHighBHighAMaskE;
 
-    [Header("Mountain")]
-    public Texture2D mountainArtwork;
-    public Vector2 mountainSpritePivot = new Vector2(.5f, .15f);
-    [Tooltip("Optional 16 canonical rock caps indexed by shared-corner height mask. Empty keeps legacy mountain art.")]
+    [Header("Mountain ranges")]
+    [Tooltip("16 imported rock caps, all with the same canvas height.")]
     public Texture2D[] mountainCaps = Array.Empty<Texture2D>();
-    [Range(1,6)] public int mountainVisualTiers = 3;
-    [Tooltip("Small non-colliding accents restricted to the resource-free mountain fringe.")]
-    public Texture2D[] fringeDecorations = Array.Empty<Texture2D>();
-    [Range(0,.2f)] public float fringeDecorationDensity = .06f;
-    [Header("Material")]
-    [Tooltip("Stock Universal Render Pipeline/Unlit shader; retained for player builds.")]
-    public Shader stockUnlitShader;
-
-    [Header("Optional offline authoring sources (not required for runtime)")]
-    public Texture2D groundArtwork;
-    public Texture2D rampArtwork;
-    public Texture2D cliffArtwork;
-    [Tooltip("Source PNG UVs with top-left origin; corners 00,10,11,01.")]
-    public Vector2[] groundSpriteCorners;
-    public Vector2[] rampSpriteCorners;
-    [Tooltip("Source PNG UVs with top-left origin; lowA,lowB,highB,highA.")]
-    public Vector2[] cliffSpriteCorners;
+    [Range(1,6)] public int mountainVisualTiers = 6;
+    [Header("Material atlas (RTS/Terrain/Material Atlas)")]
+    public Shader materialAtlasShader;
+    public Texture2D sourceMaterialAtlas;
+    public TerrainSpriteDepth[] spriteDepths = Array.Empty<TerrainSpriteDepth>();
+    [Tooltip("Imported manual colors use their own pixels instead of world-space material blending.")]
+    public Texture2D[] manualColorOverrides = Array.Empty<Texture2D>();
+    [Range(0.1f,1)] public float mountainFadeOpacity = .25f;
+    [Range(.1f,3)] public float mountainFadeRadiusCells = 1.5f;
+    [Range(1,4),Tooltip("Visual mountain tier scale. Reimport the source atlas after changing this; navigation heights remain unchanged.")]
+    public float mountainHeightScale = 4;
 
     public Texture2D GetTopSprite(int mask) => mask switch
     {
@@ -148,38 +134,6 @@ public class TerrainTheme : ScriptableObject
         15 => topHigh00_10_11_01MaskF,
         _ => throw new ArgumentOutOfRangeException(nameof(mask), mask, "Top mask must be 0..15")
     };
-
-    public Texture2D GetFlatGroundSprite(int x, int z)
-    {
-        if (flatGroundVariants == null || flatGroundVariants.Length == 0) return topFlatMask0;
-        // Two banks (lush/sparse), with smoothly varying probability across broad patches.
-        // A stable cell hash selects detail; no per-cell colour tint or directional flip.
-        uint hash;
-        unchecked
-        {
-            hash = (uint)x * 0x8da6b343u ^ (uint)z * 0xd8163841u ^ (uint)groundVisualSeed;
-            hash ^= hash >> 16; hash *= 0x7feb352du; hash ^= hash >> 15; hash *= 0x846ca68bu; hash ^= hash >> 16;
-        }
-        float scale = Mathf.Max(2, groundRegionCells);
-        float offset = (groundVisualSeed & 0xffff) * .03125f;
-        float patch = Mathf.PerlinNoise(x / scale + offset, z / scale + 173.375f);
-        if (groundPatternColumns > 0)
-        {
-            int columns = groundPatternColumns;
-            long bank = (long)columns * columns;
-            if (bank * 2 != flatGroundVariants.Length) throw new InvalidOperationException("Ground pattern requires two complete square material banks.");
-            int Mod(int value) => (int)(((long)value % columns + columns) % columns);
-            int index = Mod(x + (groundVisualSeed & 255)) + Mod(z + ((groundVisualSeed >> 8) & 255)) * columns;
-            bool worn = (hash & 0xffff) / 65535f < Mathf.SmoothStep(.08f, .92f, patch);
-            var patterned = flatGroundVariants[index + (worn ? (int)bank : 0)];
-            return patterned ? patterned : topFlatMask0;
-        }
-        int split = (flatGroundVariants.Length + 1) / 2;
-        bool sparse = flatGroundVariants.Length > 1 && (hash & 0xffff) / 65535f < Mathf.SmoothStep(.08f, .92f, patch);
-        int start = sparse ? split : 0, count = sparse ? flatGroundVariants.Length - split : split;
-        var texture = flatGroundVariants[start + (int)((hash >> 16) % (uint)count)];
-        return texture ? texture : topFlatMask0;
-    }
 
     public Texture2D GetWallSprite(int side, int mask)
     {
@@ -257,39 +211,46 @@ public class TerrainTheme : ScriptableObject
         }
         switch (side * 16 + mask)
         {
-
-
-
-
             case 4: cliffNegativeZHighBMask4 = texture; break;
-
-
-
             case 8: cliffNegativeZHighAMask8 = texture; break;
-
-
-
             case 12: cliffNegativeZHighBHighAMaskC = texture; break;
             case 13: cliffNegativeZLowAHighBHighAMaskD = texture; break;
             case 14: cliffNegativeZLowBHighBHighAMaskE = texture; break;
-
-
-
-
-
             case 20: cliffNegativeXHighBMask4 = texture; break;
-
-
-
             case 24: cliffNegativeXHighAMask8 = texture; break;
-
-
-
             case 28: cliffNegativeXHighBHighAMaskC = texture; break;
             case 29: cliffNegativeXLowAHighBHighAMaskD = texture; break;
             case 30: cliffNegativeXLowBHighBHighAMaskE = texture; break;
-
         }
+    }
+    public Texture2D GetGeometry(Texture2D color)
+    {
+        if(spriteDepths!=null)foreach(var pair in spriteDepths)if(pair.Color==color)return pair.Geometry;
+        return null;
+    }
+    public bool UsesManualColor(Texture2D color) => manualColorOverrides!=null&&Array.IndexOf(manualColorOverrides,color)>=0;
+
+    public bool IsRenderReady(out string reason)
+    {
+        reason=null;
+        if(!materialAtlasShader||materialAtlasShader.name!="RTS/Terrain Material Atlas"||!sourceMaterialAtlas)
+        { reason="Import a 3x2 material atlas with the terrain depth shader";return false; }
+        if(mountainCaps==null||mountainCaps.Length!=16||!mountainCaps[0])
+        { reason="Mountain caps require all 16 imported masks";return false; }
+        bool Valid(Texture2D color)
+        {
+            var geometry=GetGeometry(color);
+            return color&&color.isReadable&&geometry&&geometry.isReadable&&geometry.width==color.width&&geometry.height==color.height;
+        }
+        for(int mask=0;mask<16;mask++)
+        {
+            var cap=mountainCaps[mask];
+            if(!Valid(GetTopSprite(mask))||!Valid(cap)||cap.width!=CanvasPixels||cap.height!=mountainCaps[0].height)
+            { reason="Missing/mismatched color + geometry or mixed mountain cap heights at mask "+mask.ToString("X")+"; reconcile the manual slot or reimport";return false; }
+        }
+        for(int side=0;side<2;side++)foreach(int mask in new[]{4,8,12,13,14})if(!Valid(GetWallSprite(side,mask)))
+        { reason="Missing color + geometry for cliff "+side+"-"+mask.ToString("X")+"; reconcile the manual slot or reimport";return false; }
+        return true;
     }
 
     public static bool IsVisibleWallMask(int mask) => mask == 4 || mask == 8 || mask == 12 || mask == 13 || mask == 14;
@@ -307,4 +268,11 @@ public class TerrainTheme : ScriptableObject
             throw new InvalidOperationException("Canonical sprites require positive grid cell size and camera pitch30/yaw45");
         return cellSize * ((float)TierPixels / CanvasPixels) * Mathf.Sqrt(2) / Mathf.Cos(CameraPitch * Mathf.Deg2Rad);
     }
+}
+
+[Serializable]
+public struct TerrainSpriteDepth
+{
+    public Texture2D Color;
+    public Texture2D Geometry;
 }

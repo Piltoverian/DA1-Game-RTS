@@ -23,6 +23,7 @@ public static class MovementAgentAPI
         var agent= entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
         agent.currentworldtarget = worldTarget;
         agent.hastarget = true;
+        agent.stopReason = MovementStopReason.None;
         // The old navigation cell/field cannot represent a newly issued target.
         // This also lets PathRequestSystem recover if a request was lost.
         agent.targetResolutionKind = TargetResolutionKind.None;
@@ -72,6 +73,7 @@ public static class MovementAgentAPI
         agentComponent.hastarget = false;
         agentComponent.velocity = float3.zero;
         agentComponent.preferredVelocity = float3.zero;
+        agentComponent.stopReason = MovementStopReason.Paused;
         ecb.SetComponent(agentEntity, agentComponent);
 
         steeringComponent.isSettled = true;
@@ -94,6 +96,7 @@ public static class MovementAgentAPI
         }
 
         agentComponent.hastarget = true;
+        agentComponent.stopReason = MovementStopReason.None;
         ecb.SetComponent(agentEntity, agentComponent);
 
         if (entityManager.HasComponent<MovementSteeringComponent>(agentEntity))

@@ -1,71 +1,40 @@
-# Hướng Dẫn Đọc Code & Flow Hệ Thống Movement Agent
+# MovementAgent: đọc mã theo luồng
 
-Tài liệu này được viết ngắn gọn, đúng trọng tâm để bạn nắm lại dự án ngay lập tức sau một thời gian dài không đụng tới. Dưới đây là giải thích luồng chạy thực tế và cách tìm đúng file để đọc.
+Cập nhật 2026-10-12. [Tổng quan](Architecture_Overview.md) mô tả luồng xử lý hiện tại.
 
----
+## Lệnh và trường
 
-## 1. Code chạy ra làm sao? (Execution Pipeline)
+lối chơi dùng MovementAgentAPI hoặc MoveOverride. PathRequest/Assignment phân giải navigationTargetCell và dùng bộ nhớ đệm. currentworldtarget là đích yêu cầu; realTarget có thể là đích trực tiếp, ô resolved, viền nhà hoặc hạt giống cùng vùng liên thông.
 
-Hệ thống Movement hoạt động hoàn toàn tự động dựa trên ECS (Entity Component System). Khi bạn click chuột ra lệnh di chuyển (ví dụ: Worker đi hái khoáng), code sẽ chạy theo chuỗi tuần tự sau:
+Field tính khi tạo mới hoặc lưới sinh dữ liệu đổi, không phải chỉ một lần lúc xuất phát.
 
-1. **Nhận lệnh (Command Bridge):**
-   - Các hệ thống bên ngoài (như `WorkerGatherSystem`) gọi `MoveOverride` để báo cho Agent biết nó cần đi đâu. Khi có mục tiêu mới, component `TargetChangeRequest` được gắn vào Unit.
-   - *File liên quan:* `MovementAgentPathRequestSystem.cs`, `MoveOverrideSystem.cs`
+## FIFO cũ và ngăn hiện tại
 
-2. **Dàn trận (Formation):**
-   - **Chỉ chạy 1 lần duy nhất lúc xuất phát.**
-   - Quét tất cả Unit đang có lệnh di chuyển tới cùng 1 đích. Sau đó, nó sinh ra một mảng các vị trí (Slot) xếp theo hình vuông hoặc tròn xung quanh đích đến. Nó có cơ chế `IsValidSlot` để chủ động bỏ qua các tọa độ đè lên tòa nhà/vật cản (`cost >= 250`).
-   - Dùng thuật toán **Greedy** để chia phần. Mỗi Unit sẽ ôm một cái đích phụ này (`slotTarget`) để khi tới gần đích thật thì tách ra chiếm chỗ.
-   - *File liên quan:* `MovementAgentGroupFormationSystem.cs`
+FIFO cũ đưa tất cả hạt giống chi phí 0 vào cùng hàng đợi. Lấy ô ra, xét hàng xóm; khi chi phí mới tốt hơn thì cập nhật bestcost và thêm vào hàng đợi hàng xóm. Ô đã xử lý có thể được thêm vào hàng đợi lại, nhiều mục cùng một ô có thể cùng chờ. Khi lấy ra, FIFO đọc bestcost mới nhất rồi xét hàng xóm.
 
-3. **Tìm đường vĩ mô (Flow Field):**
-   - **Chỉ chạy 1 lần lúc xuất phát.**
-   - Tìm trong `Cache` xem đã có lưới (Flow Field) nào chỉ tới đích đó chưa, nếu chưa thì báo `IntegrationFieldSystem` tính lưới mới để lách qua các chướng ngại vật tĩnh (Tường, Vách đá).
-   - *File liên quan:* `FlowFieldAssignmentSystem.cs`
+ngăn giữ quy tắc cập nhật đó nhưng lấy khay chi phí thấp nhất trước. Mục lưu chi phí lúc thêm vào hàng đợi; nếu khác bestcost hiện tại thì bỏ mục cũ. Ví dụ A/80 được thay bằng A/35: xử lý A/35 trước rồi bỏ A/80. [Giải thích 269 khay](Field/IntegrationField/IntegrationFieldSystem.md).
 
-4. **Tính hướng đi tối ưu (Targeting):**
-   - **Chạy liên tục mỗi Frame.**
-   - Đọc vector từ lưới Flow Field để biết cần rẽ hướng nào qua chướng ngại vật.
-   - Khi tới gần đích (`formationRange`), nó bỏ Flow Field và chuyển sang đi thẳng vào `slotTarget` đã được chia phần ở Bước 2.
-   - *File liên quan:* `MovementAgentTargetSystem.cs`
+## Chuyển động
 
-5. **Né tránh đám đông (Local Avoidance - ORCA):**
-   - **Chạy liên tục mỗi Frame.**
-   - Nhận "Vận tốc mong muốn" từ Bước 4, đem đối chiếu với tất cả hàng xóm (neighbor) trong bán kính gần.
-   - Dùng thuật toán RVO2 (Reciprocal Velocity Obstacles) để bóp méo vận tốc sao cho các Unit không đụng nhau mà vẫn trượt lết được tới đích.
-   - *File liên quan:* `MovementAgentORCASystem.cs`
+mục tiêu chạy bước cố định, dùng hướng của ô chứa lính; không song tuyến tính. CalculateSafeFlowVelocity thử hướng về tâm ô kế hoặc tâm ô hiện tại nếu đường trường hướng từ vị trí lệch tâm có nguy cơ đâm góc.
 
-6. **Áp dụng vật lý & Chống kẹt (Actuator):**
-   - **Chạy liên tục mỗi Frame.**
-   - Đẩy các Unit văng ra (Separation Force) nếu lỡ bị đè lấn lên nhau ở cùng 1 frame.
-   - **Chống kẹt (Stuck Detection):** So sánh khoảng cách di chuyển vật lý của frame hiện tại với frame trước (`lastPosition`). Nếu thấy Unit lết quá chậm (do tông vào Building hoặc bị kẹt cứng), nó sẽ đếm giờ (`stuckTime`).
-   - Khi kẹt quá lâu, nó bắt Unit đó dừng hẳn (`isSettled = true`). Lúc này `MoveOverrideSystem` sẽ ngắt lệnh di chuyển, báo cho hệ thống bên trên biết là "Tôi không lết thêm được nữa, coi như đã tới nơi".
-   - *File liên quan:* `MovementAgentActuatorSystem.cs`
+Gần realTarget, hòa trộn trường hướng với hướng trực tiếp chỉ khi ClearSegment xác nhận đi được. arrivalRadius là vùng hãm; stoppingDistance là ngưỡng đến đích.
 
----
+ORCA tính velocity/separation. Actuator áp cả hai qua MoveAndSlide trên XZ. Kẹt xa đích giữ hastarget; chỉ settle vì crowd khi gần realTarget, có hàng xóm, ít tiến triển >0,5 s và đoạn tới đích clear.
 
-## 2. Cách đọc code như thế nào? (Where to look)
+isSettled có thể true khi lính đang chờ và hastarget vẫn true. Đọc hastarget/stopReason để xác định lệnh.
 
-Để không bị ngợp, hãy tuân theo quy tắc thư mục sau, cần sửa phần nào thì chui vào đúng Folder phần đó:
+## Nơi sửa mã
 
-### 2.1. Nơi chứa dữ liệu cốt lõi (Components)
-👉 *Thư mục:* `AgentMovementData/`
-- `MovementAgentComponent.cs`: Lưu vận tốc hiện tại, đích đến thực tế, và `slotTarget`.
-- `MovementSteeringComponent`: Lưu trạng thái có bị kẹt không (`stuckTime`), có dừng hẳn chưa (`isSettled`), và lưu lại vị trí frame cũ (`lastPosition`) để tính độ dời vật lý.
+| Phần | mã trong khi chạy chuyển động |
+|---|---|
+| Lệnh | CommandBridge/API, PathRequest, Assignment |
+| Cost | Field/IntegrationField/IntegrationFieldSystem, IntegrationBucketQueue |
+| Hướng ô | Field/FlowField/FlowDirectionSystem |
+| Goal và preferredVelocity | LocalAvoidance/Targeting/MovementAgentTargetSystem |
+| Né lính | LocalAvoidance/Avoidance/MovementAgentORCASystem, Helpers/ORCAMath |
+| Slide/separation | LocalAvoidance/Actuation/MovementAgentActuatorSystem, Helpers/GridObstacleAvoidance |
+| Height | Height/TerrainHeightSystem, PendingHeight |
+| dựng lại | Field/FlowField/FlowFieldInvalidationSystem |
 
-### 2.2. Khi muốn sửa logic Né tránh / Lách nhau
-👉 *Thư mục:* `LocalAvoidance/`
-- Nếu muốn chỉnh sửa thuật toán né nhau -> Đọc `Avoidance/MovementAgentORCASystem.cs` và file toán học `Helpers/ORCAMath.cs`.
-- Nếu thấy quân bị đè lên nhau, kẹt vào mép nhà mãi không thoát, hoặc nhận diện nhầm "isSettled" -> Đọc `Actuation/MovementAgentActuatorSystem.cs` (tập trung vào khối Anti-Deadlock).
-
-### 2.3. Khi muốn sửa thuật toán xếp Đội hình (Formation)
-👉 *Thư mục:* `LocalAvoidance/Formating/`
-- Đọc `MovementAgentGroupFormationSystem.cs`.
-- Xem các hàm `FindBoxSlotsWorld` và `FindCircleSlotsWorld` để biết cách nó đẻ ra mảng Slot xung quanh mục tiêu.
-- Xem vòng lặp `while (itAssign.MoveNext())` ở hàm `OnUpdate` để hiểu cách nó chia Slot (thuật toán Greedy) cho từng Unit lúc bắt đầu nhận lệnh.
-
-### 2.4. Khi code hệ thống khác (Harvesting, Combat) cần điều khiển Unit di chuyển
-👉 *Thư mục:* `CommandBridge/`
-- Tuyệt đối **KHÔNG** chọc thẳng thay đổi tọa độ `LocalTransform` hay thay đổi `MovementAgentComponent.velocity` của Unit.
-- Để cấp lệnh di chuyển, hãy dùng Helper API: Gọi `MovementAgentAPI.SetTarget(...)`.
-- Nếu hệ thống của bạn dùng ISystem (như `WorkerGatherSystem`), hãy Add/Enable component `MoveOverride` cho Unit. Hệ thống `MoveOverrideSystem` sẽ tự động cầu nối với Movement Agent. Tương tự, gọi `MovementAgentAPI.PauseAgent(...)` hoặc Disable `MoveOverride` để ép Agent tạm dừng (và `ResumeAgent` để tiếp tục di chuyển).
+Formation/Context Steering trong tài liệu cũ không thuộc thư mục khi chạy hiện tại.

@@ -8,7 +8,6 @@ using Unity.Entities;
 /// 
 /// Chạy cuối FixedStepSimulationSystemGroup để đảm bảo:
 ///   - FlowFieldAssignmentSystem đã gán FlowField
-///   - GroupFormationSystem đã gán slot
 ///   - Mọi system khác cần đọc request đều đã hoàn tất
 /// </summary>
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]

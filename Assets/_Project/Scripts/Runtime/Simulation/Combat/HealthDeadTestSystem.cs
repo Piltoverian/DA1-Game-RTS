@@ -50,6 +50,10 @@ public partial struct HealthDeadTestSystem : ISystem
 
             destroyedRoots.Add(rootEntity);
 
+            // Damage can arrive after ProductionSystem. Settle its ledger before destruction.
+            if (state.EntityManager.Exists(rootEntity) && state.EntityManager.HasBuffer<ProductionQueueElement>(rootEntity))
+                ProductionJobs.CancelAll(state.EntityManager, rootEntity, true);
+
             DestroyEntityWithLinkedGroup(
                 rootEntity,
                 linkedGroupLookup,

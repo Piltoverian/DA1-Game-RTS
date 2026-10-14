@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aadcac072a804a0bb42b07a8f55feb5c, type: 3}
+  m_Name: LunarTheme
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainTheme
+  topFlatMask0: {fileID: 2800000, guid: eaa0a3d2b21626743979a88e27c1ffaf, type: 3}
+  groundVisualSeed: 40
+  groundRegionCells: 16
+  topHigh00Mask1: {fileID: 2800000, guid: 49bab9e3160985c4cbbae0b8962f9ab5, type: 3}
+  topHigh10Mask2: {fileID: 2800000, guid: ebd7eeeecbafc534e8347ed3fb07a166, type: 3}
+  topHigh00_10Mask3: {fileID: 2800000, guid: a8bec216ae4798248a6ce4991a3517ff, type: 3}
+  topHigh11Mask4: {fileID: 2800000, guid: ee4f770bf00acaa40a241cd749c4ebdd, type: 3}
+  topHigh00_11Mask5: {fileID: 2800000, guid: fbc8a92261a075648bfbe1fc57ba5436, type: 3}
+  topHigh10_11Mask6: {fileID: 2800000, guid: bbbd427dc02359d49a060c4b62eb0935, type: 3}
+  topHigh00_10_11Mask7: {fileID: 2800000, guid: 98c0d1f2888295e4e8495ae338d3248f, type: 3}
+  topHigh01Mask8: {fileID: 2800000, guid: 0209a868e888f1d4cacad8e279ac997b, type: 3}
+  topHigh00_01Mask9: {fileID: 2800000, guid: c006466dad48b0e4d87948ee8b36e15c, type: 3}
+  topHigh10_01MaskA: {fileID: 2800000, guid: 656ebdc24156d844aab364df89f1a292, type: 3}
+  topHigh00_10_01MaskB: {fileID: 2800000, guid: 3b654e73cdbc4094490c870862844fb3, type: 3}
+  topHigh11_01MaskC: {fileID: 2800000, guid: 35fdf19793cd8bf4aab11265ed57f2e8, type: 3}
+  topHigh00_11_01MaskD: {fileID: 2800000, guid: 461d6f0a925439e478bbea27d9b82731, type: 3}
+  topHigh10_11_01MaskE: {fileID: 2800000, guid: 2a5bde4c46a0c0d4fb610a322e8486b8, type: 3}
+  topHigh00_10_11_01MaskF: {fileID: 2800000, guid: 4d065695d1e300c48aa92b239811b893, type: 3}
+  cliffNegativeZHighBMask4: {fileID: 2800000, guid: 8f4bfb82f0671f442ae47fb7668ce3ef, type: 3}
+  cliffNegativeZHighAMask8: {fileID: 2800000, guid: 50f9213791013cd43b94a1feb3aef054, type: 3}
+  cliffNegativeZHighBHighAMaskC: {fileID: 2800000, guid: da587bb9b6bac4b4cb193fa4d6f1fac0, type: 3}
+  cliffNegativeZLowAHighBHighAMaskD: {fileID: 2800000, guid: 16a6de1271a09d1468f191ea38832ba6, type: 3}
+  cliffNegativeZLowBHighBHighAMaskE: {fileID: 2800000, guid: f9d94231d49f4fe40b42813f6e77aa0a, type: 3}
+  cliffNegativeXHighBMask4: {fileID: 2800000, guid: 2da6b2fde3b8cf54a85151d771aa3314, type: 3}
+  cliffNegativeXHighAMask8: {fileID: 2800000, guid: b664339d15edf3347a5ca14fa7a6f008, type: 3}
+  cliffNegativeXHighBHighAMaskC: {fileID: 2800000, guid: a5199d6ad7171924dbf66cd2e971caec, type: 3}
+  cliffNegativeXLowAHighBHighAMaskD: {fileID: 2800000, guid: 485e2bfd55478f84dad8d03f15b23d46, type: 3}
+  cliffNegativeXLowBHighBHighAMaskE: {fileID: 2800000, guid: d4cc5439efdf19047b6d8bc5e6bde4a8, type: 3}
+  mountainCaps:
+  - {fileID: 2800000, guid: 4c9ac7403ca0b294ba6cd9b9402605f6, type: 3}
+  - {fileID: 2800000, guid: e094375e6b4aaaf4a905ca084f5fd404, type: 3}
+  - {fileID: 2800000, guid: 7f4edb442a34c0742ab6b93609d2e9e4, type: 3}
+  - {fileID: 2800000, guid: ba9701589fe012c468400470c59bdb38, type: 3}
+  - {fileID: 2800000, guid: e1982be6de4c1bb4e8f01374ea83606d, type: 3}
+  - {fileID: 2800000, guid: e3e9e5a501e7d7848b049ddb8838a170, type: 3}
+  - {fileID: 2800000, guid: ef0e748371e8c1743a2517cbc04d34f2, type: 3}
+  - {fileID: 2800000, guid: 31b79775ed020f440b94b4e6e5a4e24b, type: 3}
+  - {fileID: 2800000, guid: ae41b7196081a5b469d261f3f9d231e3, type: 3}
+  - {fileID: 2800000, guid: 4369cb39f5098114a89e26e9edbea20e, type: 3}
+  - {fileID: 2800000, guid: 2876d69a552a17145abd0aad9a6e2796, type: 3}
+  - {fileID: 2800000, guid: 173e7d7588c041247a0ee3418411f456, type: 3}
+  - {fileID: 2800000, guid: a6981aea7dcbd564daed1dd5601d6fba, type: 3}
+  - {fileID: 2800000, guid: 8e1d74d1ab1e85b4db419faf5d914a88, type: 3}
+  - {fileID: 2800000, guid: 337c9321d94620e47b954b0a45b26fb2, type: 3}
+  - {fileID: 2800000, guid: a5a2992215e08f343ac75b7e368061c9, type: 3}
+  mountainVisualTiers: 6
+  materialAtlasShader: {fileID: 4800000, guid: fc7906b7ceb60c148802a9c9cd7ff009, type: 3}
+  sourceMaterialAtlas: {fileID: 2800000, guid: 2c634a96400a551468ccec42f3b8e389, type: 3}
+  spriteDepths:
+  - Color: {fileID: 2800000, guid: eaa0a3d2b21626743979a88e27c1ffaf, type: 3}
+    Geometry: {fileID: 2800000, guid: 2e614a1559e4a724a8c6e71e721a999d, type: 3}
+  - Color: {fileID: 2800000, guid: 4c9ac7403ca0b294ba6cd9b9402605f6, type: 3}
+    Geometry: {fileID: 2800000, guid: d35fb4a55d0313a40aa0fb882b74d804, type: 3}
+  - Color: {fileID: 2800000, guid: 49bab9e3160985c4cbbae0b8962f9ab5, type: 3}
+    Geometry: {fileID: 2800000, guid: 4ba6d67d28526cc4dac59f3d4e3bf585, type: 3}
+  - Color: {fileID: 2800000, guid: e094375e6b4aaaf4a905ca084f5fd404, type: 3}
+    Geometry: {fileID: 2800000, guid: 404fb20287a2e384f91c362bb97a8d95, type: 3}
+  - Color: {fileID: 2800000, guid: ebd7eeeecbafc534e8347ed3fb07a166, type: 3}
+    Geometry: {fileID: 2800000, guid: d8aa88d4225697b4fb882a645fb14507, type: 3}
+  - Color: {fileID: 2800000, guid: 7f4edb442a34c0742ab6b93609d2e9e4, type: 3}
+    Geometry: {fileID: 2800000, guid: c4d28bc148470aa4990a62c5254dd3a5, type: 3}
+  - Color: {fileID: 2800000, guid: a8bec216ae4798248a6ce4991a3517ff, type: 3}
+    Geometry: {fileID: 2800000, guid: b008cef478bf0474ab9b2ec4ec40ed63, type: 3}
+  - Color: {fileID: 2800000, guid: ba9701589fe012c468400470c59bdb38, type: 3}
+    Geometry: {fileID: 2800000, guid: 9511a5667015fbd44963ed248a316710, type: 3}
+  - Color: {fileID: 2800000, guid: ee4f770bf00acaa40a241cd749c4ebdd, type: 3}
+    Geometry: {fileID: 2800000, guid: 0e485dbfb16a06b43aa5d6e0a2090b98, type: 3}
+  - Color: {fileID: 2800000, guid: e1982be6de4c1bb4e8f01374ea83606d, type: 3}
+    Geometry: {fileID: 2800000, guid: ca00e35a5ded02e489251e497244d24b, type: 3}
+  - Color: {fileID: 2800000, guid: fbc8a92261a075648bfbe1fc57ba5436, type: 3}
+    Geometry: {fileID: 2800000, guid: e878b50a9a3c2a44396ce2ca30c34cb9, type: 3}
+  - Color: {fileID: 2800000, guid: e3e9e5a501e7d7848b049ddb8838a170, type: 3}
+    Geometry: {fileID: 2800000, guid: b4cecf9e0985e5c46a60ebdefc449235, type: 3}
+  - Color: {fileID: 2800000, guid: bbbd427dc02359d49a060c4b62eb0935, type: 3}
+    Geometry: {fileID: 2800000, guid: 59e9fdd2081efbc4cbdd47c25075be33, type: 3}
+  - Color: {fileID: 2800000, guid: ef0e748371e8c1743a2517cbc04d34f2, type: 3}
+    Geometry: {fileID: 2800000, guid: 212f31ff41fdab8468734675677ccdbd, type: 3}
+  - Color: {fileID: 2800000, guid: 98c0d1f2888295e4e8495ae338d3248f, type: 3}
+    Geometry: {fileID: 2800000, guid: c05b87eb7ae360a46b0fbdd5fe4aeb58, type: 3}
+  - Color: {fileID: 2800000, guid: 31b79775ed020f440b94b4e6e5a4e24b, type: 3}
+    Geometry: {fileID: 2800000, guid: 09cc94d7c8815ff44bb6bff2095e6c56, type: 3}
+  - Color: {fileID: 2800000, guid: 0209a868e888f1d4cacad8e279ac997b, type: 3}
+    Geometry: {fileID: 2800000, guid: 53cc318d700c73242b7262f16c1506fd, type: 3}
+  - Color: {fileID: 2800000, guid: ae41b7196081a5b469d261f3f9d231e3, type: 3}
+    Geometry: {fileID: 2800000, guid: ee06c7358232a3c4f9039bbe298cb2ab, type: 3}
+  - Color: {fileID: 2800000, guid: c006466dad48b0e4d87948ee8b36e15c, type: 3}
+    Geometry: {fileID: 2800000, guid: 71198af9487501c4ebb8642eef572f00, type: 3}
+  - Color: {fileID: 2800000, guid: 4369cb39f5098114a89e26e9edbea20e, type: 3}
+    Geometry: {fileID: 2800000, guid: ffebd12df89a8504aa7bd11b8ef8c750, type: 3}
+  - Color: {fileID: 2800000, guid: 656ebdc24156d844aab364df89f1a292, type: 3}
+    Geometry: {fileID: 2800000, guid: d8c41cbff2e71dd46a7bc0caf7377896, type: 3}
+  - Color: {fileID: 2800000, guid: 2876d69a552a17145abd0aad9a6e2796, type: 3}
+    Geometry: {fileID: 2800000, guid: e66bcb7744b8e3d40b77d169b1adead5, type: 3}
+  - Color: {fileID: 2800000, guid: 3b654e73cdbc4094490c870862844fb3, type: 3}
+    Geometry: {fileID: 2800000, guid: cee39be82403e474387fe923ad35aaab, type: 3}
+  - Color: {fileID: 2800000, guid: 173e7d7588c041247a0ee3418411f456, type: 3}
+    Geometry: {fileID: 2800000, guid: 45a9f501edeed5e49b2d906656c1d7d8, type: 3}
+  - Color: {fileID: 2800000, guid: 35fdf19793cd8bf4aab11265ed57f2e8, type: 3}
+    Geometry: {fileID: 2800000, guid: 6f4b553966fec5a48af761e6851730b7, type: 3}
+  - Color: {fileID: 2800000, guid: a6981aea7dcbd564daed1dd5601d6fba, type: 3}
+    Geometry: {fileID: 2800000, guid: b83bd78130b635a42ae3e61785b5f1f9, type: 3}
+  - Color: {fileID: 2800000, guid: 461d6f0a925439e478bbea27d9b82731, type: 3}
+    Geometry: {fileID: 2800000, guid: 8f4fb6fced53d9a42a600775c099a08d, type: 3}
+  - Color: {fileID: 2800000, guid: 8e1d74d1ab1e85b4db419faf5d914a88, type: 3}
+    Geometry: {fileID: 2800000, guid: 648041c02eceac04486f3db26de2eb4b, type: 3}
+  - Color: {fileID: 2800000, guid: 2a5bde4c46a0c0d4fb610a322e8486b8, type: 3}
+    Geometry: {fileID: 2800000, guid: e15b7187627e91844a218c73a5eaef1e, type: 3}
+  - Color: {fileID: 2800000, guid: 337c9321d94620e47b954b0a45b26fb2, type: 3}
+    Geometry: {fileID: 2800000, guid: 0a38a7e0bc608c64bb615ded1b89bad5, type: 3}
+  - Color: {fileID: 2800000, guid: 4d065695d1e300c48aa92b239811b893, type: 3}
+    Geometry: {fileID: 2800000, guid: 7d1a69507337963459b55762c7654f7c, type: 3}
+  - Color: {fileID: 2800000, guid: a5a2992215e08f343ac75b7e368061c9, type: 3}
+    Geometry: {fileID: 2800000, guid: 8eae25a13ac52a6408055504e3ade794, type: 3}
+  - Color: {fileID: 2800000, guid: 8f4bfb82f0671f442ae47fb7668ce3ef, type: 3}
+    Geometry: {fileID: 2800000, guid: a2a0174dfbdeb5b4b9704329ed5563ec, type: 3}
+  - Color: {fileID: 2800000, guid: 50f9213791013cd43b94a1feb3aef054, type: 3}
+    Geometry: {fileID: 2800000, guid: 0cc8a938f639832459507ec2482bd8ef, type: 3}
+  - Color: {fileID: 2800000, guid: da587bb9b6bac4b4cb193fa4d6f1fac0, type: 3}
+    Geometry: {fileID: 2800000, guid: bb9227afefd8ba643a5dc1653d5fdeac, type: 3}
+  - Color: {fileID: 2800000, guid: 16a6de1271a09d1468f191ea38832ba6, type: 3}
+    Geometry: {fileID: 2800000, guid: 4dc0894c5076e764d943f7f09713c6ee, type: 3}
+  - Color: {fileID: 2800000, guid: f9d94231d49f4fe40b42813f6e77aa0a, type: 3}
+    Geometry: {fileID: 2800000, guid: 02e1347058f25554dbdd00a231403c85, type: 3}
+  - Color: {fileID: 2800000, guid: 2da6b2fde3b8cf54a85151d771aa3314, type: 3}
+    Geometry: {fileID: 2800000, guid: 933711b984c7f944fb33111f5189b1bf, type: 3}
+  - Color: {fileID: 2800000, guid: b664339d15edf3347a5ca14fa7a6f008, type: 3}
+    Geometry: {fileID: 2800000, guid: bd0e235839a39b743b50ef064d9cbb1c, type: 3}
+  - Color: {fileID: 2800000, guid: a5199d6ad7171924dbf66cd2e971caec, type: 3}
+    Geometry: {fileID: 2800000, guid: 8c740055617e5df40842b974a8b3dc1a, type: 3}
+  - Color: {fileID: 2800000, guid: 485e2bfd55478f84dad8d03f15b23d46, type: 3}
+    Geometry: {fileID: 2800000, guid: c88c4cdd8a0dbf54fa1f8e5baabb4a57, type: 3}
+  - Color: {fileID: 2800000, guid: d4cc5439efdf19047b6d8bc5e6bde4a8, type: 3}
+    Geometry: {fileID: 2800000, guid: 5822cc81a2e1e8b4facd9d81adc0c479, type: 3}
+  manualColorOverrides: []
+  mountainFadeOpacity: 0.25
+  mountainFadeRadiusCells: 1.5
+  mountainHeightScale: 4

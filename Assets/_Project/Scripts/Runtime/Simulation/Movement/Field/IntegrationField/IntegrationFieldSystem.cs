@@ -5,13 +5,18 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using Unity.Profiling;
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(GridIslandSystem))]
+[UpdateAfter(typeof(GridNeighborMaskSystem))]
 public partial struct IntegrationFieldSystem : ISystem
 {
     private EntityQuery m_FieldQuery;
     public const int MaxIslands = 10000;
+    private static readonly ProfilerMarker ResetMarker = new ProfilerMarker("Integration.Reset");
+    private static readonly ProfilerMarker SeedMarker = new ProfilerMarker("Integration.Seeds");
+    private static readonly ProfilerMarker PropagationMarker = new ProfilerMarker("Integration.Propagate");
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -34,11 +39,18 @@ public partial struct IntegrationFieldSystem : ISystem
 
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var grid = SystemAPI.GetSingleton<GridComponent>();
+        if (!SystemAPI.HasComponent<GridNeighborMaskState>(gridEntity)) return;
+        var maskState = SystemAPI.GetComponent<GridNeighborMaskState>(gridEntity);
+        if (!maskState.Built || maskState.TopologyVersion != grid.topologyVersion
+            || maskState.Width != grid.width || maskState.Height != grid.height) return;
         
-        var gridCosts = SystemAPI.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray();
-        var gridIslands = SystemAPI.GetBuffer<GridIsland>(gridEntity).AsNativeArray();
+        var gridCosts = SystemAPI.GetBufferLookup<GridNodeCost>(true)[gridEntity].AsNativeArray();
+        var gridIslands = SystemAPI.GetBufferLookup<GridIsland>(true)[gridEntity].AsNativeArray();
+        if (!SystemAPI.HasBuffer<GridNeighborMask>(gridEntity)) return;
+        var neighborMasks = SystemAPI.GetBufferLookup<GridNeighborMask>(true)[gridEntity].AsNativeArray();
+        if (neighborMasks.Length != grid.width * grid.height) return;
 
-        // Neighbors và Costs cho BFS
+        // Neighbor offsets and integer edge costs for bucket Dijkstra.
         NativeArray<int2> nativeNeighbors = new NativeArray<int2>(8, Allocator.TempJob);
         nativeNeighbors[0] = new int2(0, 1);
         nativeNeighbors[1] = new int2(1, 0);
@@ -53,15 +65,16 @@ public partial struct IntegrationFieldSystem : ISystem
         nativeCosts[0] = 10; nativeCosts[1] = 10; nativeCosts[2] = 10; nativeCosts[3] = 10;
         nativeCosts[4] = 14; nativeCosts[5] = 14; nativeCosts[6] = 14; nativeCosts[7] = 14;
 
-        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalToWorld>().Build();
+        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalTransform>().Build();
         var blockageDatas = blockageQuery.ToComponentDataArray<BlockageData>(Allocator.TempJob);
-        var blockageLocalToWorlds = blockageQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
+        var blockageLocalToWorlds = BlockageTransforms.Capture(blockageQuery, Allocator.TempJob);
 
         var job = new CalculateIntegrationFieldJob
         {
             Grid = grid,
             GridCosts = gridCosts,
             GridIslands = gridIslands,
+            NeighborMasks = neighborMasks,
             BlockageDatas = blockageDatas,
             BlockageLocalToWorlds = blockageLocalToWorlds,
             NeighborsDir = nativeNeighbors,
@@ -89,6 +102,7 @@ public partial struct IntegrationFieldSystem : ISystem
         [ReadOnly] public GridComponent Grid;
         [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
         [ReadOnly] public NativeArray<GridIsland> GridIslands;
+        [ReadOnly] public NativeArray<GridNeighborMask> NeighborMasks;
         [ReadOnly] public NativeArray<BlockageData> BlockageDatas;
         [ReadOnly] public NativeArray<LocalToWorld> BlockageLocalToWorlds;
         [ReadOnly] public NativeArray<int2> NeighborsDir;
@@ -132,6 +146,7 @@ public partial struct IntegrationFieldSystem : ISystem
             }
 
             // 1. Reset all nodes
+            ResetMarker.Begin();
             for (int i = 0; i < nbuffer.Length; i++)
             {
                 FieldNode node = nbuffer[i];
@@ -139,7 +154,9 @@ public partial struct IntegrationFieldSystem : ISystem
                 nbuffer[i] = node;
             }
 
-            NativeQueue<int> queryforBFS = new NativeQueue<int>(Allocator.Temp);
+            ResetMarker.End();
+            SeedMarker.Begin();
+            IntegrationBucketQueue integrationQueue = new IntegrationBucketQueue(Allocator.Temp);
 
             NativeArray<int> bestSeedPerIsland = new NativeArray<int>(IntegrationFieldSystem.MaxIslands, Allocator.Temp); 
             NativeArray<float> minDistancePerIsland = new NativeArray<float>(IntegrationFieldSystem.MaxIslands, Allocator.Temp);
@@ -152,7 +169,14 @@ public partial struct IntegrationFieldSystem : ISystem
 
             float2 targetPos2D = new float2(field.targetcell.x, field.targetcell.y);
             
-            for (int i = 0; i < nbuffer.Length; i++)
+            if (IntegrationSeedUtility.TrySingleIslandTarget(field.targetcell.x, field.targetcell.y,
+                Grid.width, Grid.height, Grid.islandCount, Grid.islandTopologyVersion, Grid.topologyVersion,
+                GridCosts, GridIslands, out int directSeed, out int directIsland))
+            {
+                bestSeedPerIsland[directIsland] = directSeed;
+                minDistancePerIsland[directIsland] = 0;
+            }
+            else for (int i = 0; i < nbuffer.Length; i++)
             {
                 int islandID = GridIslands[i].islandID;
                 if (islandID <= 0 || islandID >= IntegrationFieldSystem.MaxIslands) continue;
@@ -192,7 +216,7 @@ public partial struct IntegrationFieldSystem : ISystem
                 }
             }
 
-            // 3. Nạp Seed vào BFS
+            // 3. All seeds enter the cost-zero bucket.
             if (foundTargetBlockage)
             {
                 // NẾU CLICK VÀO BLOCKAGE: Tạo Đa Seed trên TOÀN BỘ 4 CẠNH VIỀN NGOÀI (Chỉ lấy ô đất trống Cost < 255)
@@ -215,7 +239,7 @@ public partial struct IntegrationFieldSystem : ISystem
                                     FieldNode node = nbuffer[pIndex];
                                     node.bestcost = 0;
                                     nbuffer[pIndex] = node;
-                                    queryforBFS.Enqueue(pIndex);
+                                    integrationQueue.Enqueue(pIndex, 0);
                                 }
                             }
                         }
@@ -231,7 +255,7 @@ public partial struct IntegrationFieldSystem : ISystem
                         FieldNode node = nbuffer[seedIndex];
                         node.bestcost = 0;
                         nbuffer[seedIndex] = node;
-                        queryforBFS.Enqueue(seedIndex);
+                        integrationQueue.Enqueue(seedIndex, 0);
                     }
                 }
             }
@@ -248,7 +272,7 @@ public partial struct IntegrationFieldSystem : ISystem
                             FieldNode node = nbuffer[seedIndex];
                             node.bestcost = 0;
                             nbuffer[seedIndex] = node;
-                            queryforBFS.Enqueue(seedIndex);
+                            integrationQueue.Enqueue(seedIndex, 0);
                         }
                     }
                 }
@@ -256,43 +280,22 @@ public partial struct IntegrationFieldSystem : ISystem
 
             bestSeedPerIsland.Dispose();
             minDistancePerIsland.Dispose();
+            SeedMarker.End();
 
-            // 4. BFS
-            while (queryforBFS.TryDequeue(out int current))
+            // 4. Process lowest cost first; an improved node leaves a stale entry behind.
+            PropagationMarker.Begin();
+            while (integrationQueue.TryDequeue(out int current, out int queuedCost))
             {
-                int2 gridPos = GridHelper.GetGridPosFromIndex(current, Grid);
                 int currentbestcost = nbuffer[current].bestcost;
-
-                for (int i = 0; i < 8; i++)
+                if (queuedCost != currentbestcost)
+                    continue;
+                uint directions = NeighborMasks[current].Value;
+                while (directions != 0)
                 {
-                    int2 neighborsgridpos = gridPos + NeighborsDir[i];
-                    
-                    if (neighborsgridpos.x < 0 || neighborsgridpos.x >= Grid.width || 
-                        neighborsgridpos.y < 0 || neighborsgridpos.y >= Grid.height)
-                        continue;
-
-                    if (i > 3)
-                    {
-                        int2 orthox = gridPos + new int2(NeighborsDir[i].x, 0);
-                        int2 orthoy = gridPos + new int2(0, NeighborsDir[i].y);
-                        
-                        if (orthox.x < 0 || orthox.x >= Grid.width || orthox.y < 0 || orthox.y >= Grid.height ||
-                            orthoy.x < 0 || orthoy.x >= Grid.width || orthoy.y < 0 || orthoy.y >= Grid.height)
-                            continue;
-
-                        int orthoxindex = GridHelper.GetNodeIndex(orthox, Grid);
-                        int orthoyindex = GridHelper.GetNodeIndex(orthoy, Grid);
-                        
-                        if (GridCosts[orthoxindex].cost >= 255 || GridCosts[orthoyindex].cost >= 255 || 
-                            GridCosts[orthoxindex].cost == int.MaxValue || GridCosts[orthoyindex].cost == int.MaxValue)
-                            continue;
-                    }
-
-                    int neighborsindex = GridHelper.GetNodeIndex(neighborsgridpos, Grid);
+                    int i = math.tzcnt(directions);
+                    directions &= directions - 1;
+                    int neighborsindex = current + NeighborsDir[i].x + NeighborsDir[i].y * Grid.width;
                     int neighborcost = GridCosts[neighborsindex].cost;
-
-                    if (neighborcost >= 255 || neighborcost == int.MaxValue)
-                        continue;
 
                     int newcost = neighborcost + currentbestcost + DirCost[i];
                     
@@ -301,11 +304,12 @@ public partial struct IntegrationFieldSystem : ISystem
                         FieldNode node = nbuffer[neighborsindex];
                         node.bestcost = newcost;
                         nbuffer[neighborsindex] = node;
-                        queryforBFS.Enqueue(neighborsindex);
+                        integrationQueue.Enqueue(neighborsindex, newcost);
                     }
                 }
             }
-            queryforBFS.Dispose();
+            integrationQueue.Dispose();
+            PropagationMarker.End();
 
             status.Value = FieldState.CalculatingDirection;
             statuses[e] = status;

@@ -1,46 +1,45 @@
-# Movement Agent - Hướng dẫn Bảo trì & Tối ưu
+# MovementAgent: bảo trì và hiệu năng
 
-Tài liệu này chứa các lưu ý quan trọng để bảo trì, mở rộng và tinh chỉnh hiệu năng cho hệ thống di chuyển.
+Cập nhật 2026-10-12. Chưa ghi nhận kết quả Unity/Burst sau thay ngăn.
 
----
+## 12 không phải giới hạn tối đa
 
-## 1. Các giới hạn hệ thống (Known Limits)
+FlowFieldInvalidationSystem dùng MinRecalcPerFrame=12. Đầu đợt invalidation, RecalcPerframe=tối đa(12,ceil(số trường cũ / HEARTBEAT_INTERVAL)); interval hiện là 12. Mỗi bước mô phỏng đánh dấu tối thiểu(RecalcPerframe,số trường cũ) trường Ready thành PendingRecalculation, ưu tiên refCount cao.
 
-### Giới hạn số lượng Đảo (Island Limit)
-Hiện tại, trong file `IntegrationFieldSystem.cs`, số lượng "hạt giống" (seeds) cho mỗi đảo đang bị giới hạn cứng là **1000**.
-- **Vấn đề**: Nếu bản đồ của bạn có quá nhiều hòn đảo vụn vặt (> 1000), Game có thể bị crash khi Unit cố gắng tìm đường.
-- **Giải pháp**: Cần nâng cấp mảng này sang `NativeParallelHashMap` để co giãn linh hoạt theo quy mô bản đồ.
+Đây là mức tối thiểu khi đủ trường, không phải trần tổng Integration. Field mới Requested vẫn được xử lý riêng. Một trường chạy hết hàng đợi trong tác vụ; chưa chia theo ngân sách nút.
 
-### Tối ưu chi phí ORCA (Time Horizon)
-Thuật toán ORCA dùng giá trị `timeHorizon` để quyết định xem nó cần nhìn trước bao nhiêu giây để né.
-- **Tối ưu hóa**: Tránh đặt `timeHorizon` quá lớn (>3 giây) khi có quá đông Unit, bởi vì số lượng Velocity Obstacle (VO) sẽ quét rất rộng và Unit có thể bị đứng hình vì không tìm thấy vận tốc an toàn chung.
-- **Độ linh hoạt**: Nếu Unit né nhau quá sát nút (sắp đụng tới nơi mới lách), hãy tăng nhẹ `timeHorizon` lên để chúng bắt đầu thay đổi vận tốc từ xa.
+IJobChunk chia theo khối, trường cùng khối chạy lần lượt. Một khung hình dựng hình có thể có nhiều bước cố định bước mô phỏng.
 
----
+## Ngăn và giới hạn
 
-## 2. Tinh chỉnh tham số (Tuning)
+Cost cạnh = chi phí ô +10/14, tối đa 268 với chi phí ô 0..254. Có 269 ngăn vòng; ưu tiên chi phí thấp, bỏ queuedCost cũ và tái sử dụng vị trí. [Ví dụ](Field/IntegrationField/IntegrationFieldSystem.md).
 
-Các tham số mới (hoặc các component cấu hình Agent) ảnh hưởng cốt lõi đến sự mượt mà của bầy đàn:
+Nếu đổi chi phí, kiểm tra lại tính không âm và giới hạn cạnh. ngăn không loại quét hạt giống toàn bản đồ, Direction hoặc chính-luồng chờ. Standalone có lợi ở trọng số cao nhưng FIFO tốt hơn trên bản đồ trống/cost 1.
 
-| Tham số/Hệ số | Ý nghĩa | Ảnh hưởng |
-| :--- | :--- | :--- |
-| **Radius (Bán kính)** | Kích thước vật lý thực của Unit. | RADIUS cực kỳ quan trọng đối với ORCA. Quá to sẽ gây tắc đường hẹp, quá nhỏ sẽ làm model Unit bị xuyên thấu. |
-| **Separation Multiplier** | Hệ số dạt ra khi bị nén (chồng chéo). | Nếu bầy đàn tụ lại và bị jitter (run bần bật), hãy giảm điểm Separation xuống. Hệ số này quyết định lực đẩy `Hard Collision`. |
-| **First-come-first-settled Threshold** | Ngưỡng khoảng cách và vận tốc để một Unit được tính là đã "neo đậu". | Nếu giá trị này quá nhỏ, Unit sẽ lách liên tục quanh điểm đến mà không chịu dừng lại làm vật cản neo. |
+MaxIslands=10000, nhưng vòng hạt giống vẫn khởi tạo/nạp dưới 1000: vùng liên thông >=1000 có thể thiếu hạt giống. Chưa có bằng chứng đây là nguyên nhân crash/spike.
 
----
+Chưa có điều hướng khoảng trống class cho lính lớn. Endpoint điều kiện chặn không phải depenetration đầy đủ; tách hàng xóm không bảo đảm tuyệt đối hết chồng lấn. Far-stall vẫn có thể giữ lệnh mà chưa recovery.
 
-## 3. Quản lý Thực thi (Execution Groups)
+## Thử nghiệm tiếp sau phản hồi khi chạy
 
-Toàn bộ logic di chuyển được đặt trong **`FixedStepSimulationSystemGroup`**.
-- **Lý do**: Đảm bảo tính nhất quán của vật lý và né tránh bất kể FPS (Frame-rate) là bao nhiêu.
-- **Lưu ý**: Nếu bạn muốn di chuyển mượt hơn nữa ở FPS cao, có thể sử dụng `TransformSystemGroup` để nội suy vị trí cuối cùng trong `Actuation` layer.
+Người dùng báo riêng Integration khoảng 25 ms trong các khung hình đột biến thời gian, có một số đột biến thời gian khoảng 50 ms trong chuyển động kiểm thử, không phải mọi khung hình đều đột biến thời gian. Chưa có marker/khối lượng công việc artifact của lượt này, nên đây là phản hồi khi chạy, không phải đo hiệu năng được kiểm soát.
 
----
+mặt nạ 8 hướng hợp lệ đã thử độc lập trên 1000 trường 512 ×512 ×3 lần: mọi bestcost khớp FIFO, nhanh hơn ngăn thường khoảng 7–20% tùy bản đồ. mặt nạ cần 256 KiB/map; tạo 5 mặt nạ mất tổng 15,865 ms ở lượt được quản lý .NET này. Chi phí tạo mặt nạ đo riêng, phải chia sẻ qua nhiều trường mới có lợi. [kết quả đã lưu](../../../Maintenance/VerificationHistory.md).
 
-## 4. Troubleshooting (Gỡ lỗi)
+Đã apply mặt nạ bằng [GridNeighborMaskSystem](Grid/GridNeighborMaskSystem.md) chạy trước Integration. Bản hiện tại dựng lại toàn mặt nạ một lần mỗi thay đổi kết nối lưới; không quét lại khi version giữ nguyên. Chưa có số Unity/Burst cho thay đổi này. Writer GridNodeCost mới phải tăng topologyVersion khi walkability đổi, không chỉ isDirty/generation.
 
-Nếu Unit không di chuyển hoặc đứng im:
-1.  **Kiểm tra Grid**: Đảm bảo Grid đã được khởi tạo và ô lưới tại vị trí Unit không phải là vật cản (Cost < 250).
-2.  **Kiểm tra Flow Field**: Dùng `MovementAgentDebugSystem` để xem có mũi tên hướng nào chỉ về đích không.
-3.  **Kiểm tra Island ID**: Xem `IslandID` của Unit và của Đích đến có khớp nhau không. Nếu khác đảo, Unit sẽ chỉ đi đến điểm gần nhất trên "đảo nhà" của nó.
+Combat hiện gọi SetTarget mỗi update khi mục tiêu ngoài tầm; API luôn ghi request và đặt lại mục tiêu resolution. bộ nhớ đệm có thể tránh trường mới cho cùng targetCell, nên không kết luận mỗi request đều dựng lại. Cần phân biệt tải resolve/assignment với số trường mới khi mục tiêu di chuyển sang ô khác.
+
+Ưu tiên tiếp: bộ nhớ đệm hướng hợp lệ theo phiên bản kết nối lưới thật; giảm quét hạt giống lặp; tránh request chase trùng mà vẫn cập nhật đích XZ; sau đó mới xét trường cục bộ/chia vùng. Field cục bộ phải có phương án dự phòng cho đường vòng ngoài vùng, không được cắt cứng theo khoảng cách Euclidean.
+
+## Tham số và kiểm tra
+
+Phản hồi tiếp theo sau mặt nạ: riêng Integration trong đột biến thời gian giảm khoảng 25 xuống 20 ms trên máy mạnh của người dùng; vẫn chưa có artifact Profiler. Đã thêm hạt giống trực tiếp cho một vùng liên thông có metadata kết nối lưới hiện hành và mục tiêu đi được, cùng marker Integration.Reset/Seeds/Propagate để tách chi phí. Nhánh phương án dự phòng giữ nguyên cho blocked/multi-island/stale kết nối lưới. [kết quả đã lưu](../../../Maintenance/VerificationHistory.md) khớp 1000 mục tiêu; chưa có số Unity/Burst cho nhánh hạt giống mới.
+
+diameterCells là đường kính theo ô, bán kính khi chạy là bán kính thế giới ECS sau setup/snap. arrivalRadius hãm tốc; stoppingDistance kiểm tra đến đích. Không hủy lệnh xa chỉ vì stuckTime tăng.
+
+Đo cùng khối lượng công việc: số trường thật sự dựng lại, Integration/Direction, thợ và JobHandle.Complete, số lệnh/quãng đường, timed retarget, stall, penetration/overlap, p95/p99/worst khung hình. FPS trung bình không đủ.
+
+MovementSoakValidation chạy 6 phút; MovementSpikeProfile chụp giới hạn. Harness/Editor có thể tạo tải riêng. Không chạy thêm Editor vào dự án đang mở.
+
+[Bàn giao](../../../Maintenance/VerificationHistory.md) lưu bằng chứng và giới hạn. Ghi kết quả Unity mới kèm thời điểm, khối lượng công việc và artifact trước khi đánh dấu đã xác nhận.

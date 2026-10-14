@@ -1,0 +1,267 @@
+{
+    "version": 2,
+    "slots": [
+        "ground-lush",
+        "ground-sparse",
+        "ramp-earth",
+        "mountain-slate",
+        "cliff-slate",
+        "ground-detail"
+    ],
+    "sourceHash": "3bc948daad45c73839b333a97cbf0494",
+    "sourceOutputHash": "7c4d98ee718701a8e6af65bd4ba87d4b",
+    "generated": [
+        {
+            "key": "top-0",
+            "guid": "365c0a4a8d516214fae39f975b65c03a",
+            "hash": "c96a871ea5eb20aa65adfd54c63aa601",
+            "geometryHash": "d7861bad627af5f3ee5332027a5bca2e"
+        },
+        {
+            "key": "mountain-cap-0",
+            "guid": "d1a68b8c99fccf342b695b714807c646",
+            "hash": "4ed1c31a9b099db8d276813ee52f9c54",
+            "geometryHash": "f65382e652e66a0f31153af6d118f33c"
+        },
+        {
+            "key": "top-1",
+            "guid": "f5afcabd2410cca49b08c9a349299257",
+            "hash": "c8c166e01a08c539cafcda12bbe20e86",
+            "geometryHash": "1c0d474101fc05fae005b6e06a3ea2be"
+        },
+        {
+            "key": "mountain-cap-1",
+            "guid": "0353147f00836e7499a1b41a898d7afe",
+            "hash": "1876fbecac3c22123dc4730fd29fb7dc",
+            "geometryHash": "57a488f504c69c26d9de763930604263"
+        },
+        {
+            "key": "top-2",
+            "guid": "6ae8e384dd9f6884c8af7d7c1b30edfc",
+            "hash": "3eb2d96f5c293650b7936f5164369d6a",
+            "geometryHash": "026cf7eeda0efacbd18c80449e43d80b"
+        },
+        {
+            "key": "mountain-cap-2",
+            "guid": "84dea4d770922ba4fb787a9235fbec31",
+            "hash": "5c420f7ebc3984fbd8fc6ba8a08efec9",
+            "geometryHash": "0533e605b1a79b3f0eb47f5188984e41"
+        },
+        {
+            "key": "top-3",
+            "guid": "f51483084031e6e4c8a44bc24a8e5d6f",
+            "hash": "0b2120b109332835df13d3f81bd2e35b",
+            "geometryHash": "527672cd3ba3e83da943abf20870fc2e"
+        },
+        {
+            "key": "mountain-cap-3",
+            "guid": "4abafd213b179ec449a6d715e6e55e5c",
+            "hash": "bcc9fe259c882c9f0a682d232bfdf178",
+            "geometryHash": "80bf59acb5a97cdb21dd89995189e48f"
+        },
+        {
+            "key": "top-4",
+            "guid": "b2314cfd06479544497e4fe7331a30bf",
+            "hash": "5ed759e8022d5929eb7320172297baba",
+            "geometryHash": "ec7b09e8b380f3ebdab8ff7fb6b40bb0"
+        },
+        {
+            "key": "mountain-cap-4",
+            "guid": "6be5c8a38e623cb43a72d5d608e8aca2",
+            "hash": "5f7fa3d040e36d96af392eea8fd39ae6",
+            "geometryHash": "7e608a876486ecd33a0d5a7cf0322292"
+        },
+        {
+            "key": "top-5",
+            "guid": "57a30d970cce0d84fb2013f9963c0dc7",
+            "hash": "c0d264519c955ee6549a91a093c3b5da",
+            "geometryHash": "8964e1a085d6e5de7423a72b90083df0"
+        },
+        {
+            "key": "mountain-cap-5",
+            "guid": "7071a2f58aac686409fe7e771ed86bda",
+            "hash": "3112d86741dc4b3e14ff00b8b1adbccd",
+            "geometryHash": "0915b8f78b36bbe8ae9f9abe0ab480fb"
+        },
+        {
+            "key": "top-6",
+            "guid": "46f9f687ab3abf846a87af36a478fe29",
+            "hash": "bd5b7707124de355eef1a40a4e17cb4e",
+            "geometryHash": "86a56568ef2bef873aa7ed8bbf55cef3"
+        },
+        {
+            "key": "mountain-cap-6",
+            "guid": "39a2490985d3d294b80dc816407fe6e9",
+            "hash": "b831b13c3648f72777b54ac80b4fe3e7",
+            "geometryHash": "715796d846cd3b4d063b9ed57372ccfd"
+        },
+        {
+            "key": "top-7",
+            "guid": "fa6d8b91aa782de45a2ebbe8702d115b",
+            "hash": "e6cd6b76e386f8bf51b8055207aee2aa",
+            "geometryHash": "2ef303578616a9c50eec91cf10c40107"
+        },
+        {
+            "key": "mountain-cap-7",
+            "guid": "a03f40b6d5501934eafd6fd20f2cc2d9",
+            "hash": "2db38c488d23b5cc69cd1e03f323302d",
+            "geometryHash": "66bcdc28725eb28d188f30376749e000"
+        },
+        {
+            "key": "top-8",
+            "guid": "740f1b3e63710c848afdf47aa8e43806",
+            "hash": "5b315976e9d7f286da52053afb0c6d8c",
+            "geometryHash": "0a8283224d726330ad14a939b1148749"
+        },
+        {
+            "key": "mountain-cap-8",
+            "guid": "d51bdcf7d5ef2c04d920a57267516b28",
+            "hash": "2225c29ff466fe030662366d2353ffbe",
+            "geometryHash": "61b31b616572a6dd02714a1794561a17"
+        },
+        {
+            "key": "top-9",
+            "guid": "3afd3eafd6e52b748a7caccb4cd4dc36",
+            "hash": "4be823c50f9d06be5afd33b24b721e04",
+            "geometryHash": "c499cd9559b8c0599e1c0e9101bc3ee9"
+        },
+        {
+            "key": "mountain-cap-9",
+            "guid": "423edad8aad5811439301b5b9d9c1e90",
+            "hash": "ce46dd083b2136be3cd11db4fb900358",
+            "geometryHash": "27fdf835c432aa95462356015e3bfedb"
+        },
+        {
+            "key": "top-A",
+            "guid": "a47064e48c1e23445a3248c1a26f4d56",
+            "hash": "5fb1ce762af3ecd9686385fb4db59f3d",
+            "geometryHash": "70c82608ca496ea7c778b0cabb84f022"
+        },
+        {
+            "key": "mountain-cap-A",
+            "guid": "f5fc5b7c1f6893f42bbe45544c3fd36f",
+            "hash": "50b2d72dd28b61d14aa5dee2e6394fae",
+            "geometryHash": "96285fed7f474c52304e4cee3d98246d"
+        },
+        {
+            "key": "top-B",
+            "guid": "cced09d6563052a458570014b5788d73",
+            "hash": "582193b8cdf02d697a2c681aa362b460",
+            "geometryHash": "6b399cfa0ebf9448250763ccbeed0319"
+        },
+        {
+            "key": "mountain-cap-B",
+            "guid": "d552cbdab66e06b4e8ac4a08a7734e32",
+            "hash": "5b3602a1601145ec113656fc5d0cf22a",
+            "geometryHash": "14b6a78fa8aabfb0c5b9684779a92519"
+        },
+        {
+            "key": "top-C",
+            "guid": "93f936138dca4304e90557ca8d0d8185",
+            "hash": "d29828425ba7e052309e8c0d6b8bae01",
+            "geometryHash": "bb7facf1ed4d772666f9a3f1cd2ccc28"
+        },
+        {
+            "key": "mountain-cap-C",
+            "guid": "7b74f8f1e58ec5a4286637fd1b4bc92e",
+            "hash": "0de0ec7549400a55f93b543796dcf4fa",
+            "geometryHash": "8696ca9ef3651619eb4570ee138211d8"
+        },
+        {
+            "key": "top-D",
+            "guid": "0df68370c539d3a4ea9140cc22ce575e",
+            "hash": "2aaee765b626c87865ae007a77ff07dd",
+            "geometryHash": "f18e76228176106042e8038008dfe9e7"
+        },
+        {
+            "key": "mountain-cap-D",
+            "guid": "d80821e334de2924f849718e37a917a3",
+            "hash": "90bce7961e040d7b5d39ca8e109c6597",
+            "geometryHash": "ca2c23c5e937aa8b4a7d5d2e04e42d17"
+        },
+        {
+            "key": "top-E",
+            "guid": "6151f6e93500f31409ea5a506fa959a2",
+            "hash": "e00404be485180ff817b04e7d59dd630",
+            "geometryHash": "f40a4ce3d43c0998f9ab6d1f99bcf0c4"
+        },
+        {
+            "key": "mountain-cap-E",
+            "guid": "c290d9cdc7dae804f8a2dc7d26fe035e",
+            "hash": "1dc2acff666f71594594e553f83d1b8f",
+            "geometryHash": "fe561bbe8c763eceb717a562f0669cb2"
+        },
+        {
+            "key": "top-F",
+            "guid": "cc9b37cb07713ac408ac360c0efb9e91",
+            "hash": "32b997886db5ce708a1a0ed16047b99b",
+            "geometryHash": "b9233b6f9c62dd8812bfcbd2c83874e7"
+        },
+        {
+            "key": "mountain-cap-F",
+            "guid": "621b5cad3fbe2b940af9668eeba6f438",
+            "hash": "306dc76c45ef74ed52f6a98f2c802fef",
+            "geometryHash": "d02589be2bab040332f2bf7c2a78535c"
+        },
+        {
+            "key": "cliff-0-4",
+            "guid": "52a38fdd2ae29384b84084f80b9f26c6",
+            "hash": "504ad7853e47bd2f325a79e9c97496de",
+            "geometryHash": "c135b1a20b2e067fbe625d503312321d"
+        },
+        {
+            "key": "cliff-0-8",
+            "guid": "d609630d7ca81e048a48f4d1801075bf",
+            "hash": "3283708c1d74ea79731cf7a4c1f0f3c6",
+            "geometryHash": "ef2b7d62455003e98f6efeb6a9b12026"
+        },
+        {
+            "key": "cliff-0-C",
+            "guid": "2c831a2a7f1190747bac9a7a2756e9f4",
+            "hash": "f1a2e7ebd856b9bb193d97b3df950a48",
+            "geometryHash": "264bd21c87e6a5eb2992ee746b6b8278"
+        },
+        {
+            "key": "cliff-0-D",
+            "guid": "32fac1495a3ebc24695a837fe6ae7149",
+            "hash": "a408a85efb33cb978ad5d3834be8c67e",
+            "geometryHash": "c2d019f6fa6598da47d49bfa74133f7f"
+        },
+        {
+            "key": "cliff-0-E",
+            "guid": "17cdebe20e0c72949a84e437e36221de",
+            "hash": "9c943276e2dbece96c22c6e615f7c51a",
+            "geometryHash": "3e5633126d204e4c85f39dfec36b76aa"
+        },
+        {
+            "key": "cliff-1-4",
+            "guid": "16fccf1a2a6568544a856fcc3cdff6ea",
+            "hash": "e258f3da6dd1d285cac50e34c899935f",
+            "geometryHash": "97ca13109a35d9df367dcb7a1e50ea82"
+        },
+        {
+            "key": "cliff-1-8",
+            "guid": "fecf852adb4823741859a7b26e824c79",
+            "hash": "c7c8e48b437328c725dc2c045150fc8a",
+            "geometryHash": "68982294606285b8da43fd290dfa34e9"
+        },
+        {
+            "key": "cliff-1-C",
+            "guid": "520d162c67a1d8e46b3d4ad7d78a999c",
+            "hash": "9a64e6675f783ef4c7f4da1b9a3d97f9",
+            "geometryHash": "9da47eae369a0362f76ef034c146eb92"
+        },
+        {
+            "key": "cliff-1-D",
+            "guid": "4f0f1592a0fb4d9459d78711a9352595",
+            "hash": "f1e8628352839a565254991385822e1a",
+            "geometryHash": "c743c2aac94332ba0d74bf9aab3bac60"
+        },
+        {
+            "key": "cliff-1-E",
+            "guid": "db2903e868b8d4c4a89fac6c73a07de3",
+            "hash": "fda84a2c637aaf7eeeb277ec121c7167",
+            "geometryHash": "43226247a83e15d3221194a79cdd572c"
+        }
+    ]
+}

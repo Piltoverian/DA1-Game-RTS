@@ -14,7 +14,8 @@ public partial struct GridIslandSystem : ISystem
     {
         foreach (var (grid, entity) in SystemAPI.Query<RefRO<GridComponent>>().WithEntityAccess())
         {
-            if (grid.ValueRO.islandGeneration == grid.ValueRO.generation)
+            if (grid.ValueRO.islandGeneration == grid.ValueRO.generation
+                && grid.ValueRO.islandTopologyVersion == grid.ValueRO.topologyVersion)
                 continue;
            
             var costBuffer = SystemAPI.GetBuffer<GridNodeCost>(entity);
@@ -95,6 +96,8 @@ public partial struct GridIslandSystem : ISystem
             queue.Dispose();
             var updated = grid.ValueRO;
             updated.islandGeneration = updated.generation;
+            updated.islandTopologyVersion = updated.topologyVersion;
+            updated.islandCount = currentIslandID;
             SystemAPI.SetComponent(entity, updated);
 
         }

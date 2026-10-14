@@ -69,6 +69,7 @@ public static class FlowFieldHelper
         unit.FieldEntity = field;
         unit.currentworldtarget = worldTarget;
         unit.hastarget = field != Entity.Null;
+        unit.stopReason = field != Entity.Null ? MovementStopReason.None : MovementStopReason.InvalidTarget;
         steering.isSettled = false;
 
         if (field != Entity.Null)
@@ -91,6 +92,7 @@ public static class FlowFieldHelper
         }
         unit.FieldEntity = Entity.Null;
         unit.hastarget = false;
+        unit.stopReason = MovementStopReason.Released;
         if (em.HasComponent<MovementAgentFieldCleanUpData>(unitEntity))
         {
             var cleanup = em.GetComponentData<MovementAgentFieldCleanUpData>(unitEntity);

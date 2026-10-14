@@ -45,7 +45,7 @@ public static class PlayerSpawnPlacement
                 if (occupied[index] && cx >= lo.x && cx <= hi.x && cy >= lo.y && cy <= hi.y)
                 { valid = false; break; }
                 var t = terrain[index];
-                if (costs[index].cost != 1 || !t.walkable || t.isMountain || t.isCliff || t.RampId >= 0 || t.heightLevel != level)
+                if (costs[index].cost != 1 || !t.walkable || t.isMountain || t.isCliff || t.RampId >= 0 || t.RampInfluence || t.heightLevel != level)
                 { valid = false; break; }
             }
             if (!valid) continue;

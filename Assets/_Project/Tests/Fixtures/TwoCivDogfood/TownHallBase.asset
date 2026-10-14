@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a821538914da5a4b89f97bcc823bcfe, type: 3}
+  m_Name: TownHallBase
+  m_EditorClassIdentifier: Assembly-CSharp::BasedSO
+  ID: dogfood.townhall
+  Name: Test Town Hall
+  MaxHP: 1000
+  Icon: {fileID: 21300000, guid: e777569b2633bc14388e27f75d326d41, type: 3}
+  Prefab: {fileID: 7625297489629590005, guid: b05e4b17d59e310469b710283197b888, type: 3}
+  WorkRate: 5
+  JobCapacity: 5
+  Abilities:
+  - {fileID: 11400000, guid: 74e860504dc24a1f992027746a1262ce, type: 2}
+  Jobs:
+  - {fileID: 11400000, guid: abd434f26afed964097f944b3a1e0252, type: 2}
+  - {fileID: 11400000, guid: f81c840a7872891499f6612ae0390dac, type: 2}

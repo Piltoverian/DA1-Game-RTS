@@ -66,7 +66,7 @@ public static class MapResourcePlanner
                 if (overlaps) continue;
                 int ci = GridHelper.GetNodeIndex((int2)math.round(center), grid);
                 var tile = terrain[ci];
-                if (costs[ci].cost != 1 || tile.isMountain || tile.isCliff || tile.RampId >= 0) continue;
+                if (costs[ci].cost != 1 || tile.isMountain || tile.isCliff || tile.RampId >= 0 || tile.RampInfluence) continue;
                 var trial = new List<Node>();
                 for (int draw = 0; draw < config.MemberAttempts && trial.Count < count; draw++)
                 {
@@ -77,12 +77,12 @@ public static class MapResourcePlanner
                     var footprint = em.GetComponentData<GridFootprint>(prefab);
                     float3 pos = GridSnapperMath.Snap(GridHelper.GridToWorld(cell, grid), grid, footprint.Cells);
                     if (!PlayerSpawnPlacement.TryFootprint(grid, pos, em.GetComponentData<BlockageData>(prefab).LocalRect, out var min, out var max)) continue;
-                    // Keep ramp entrances/exits and mountain artwork clear, including diagonal neighbours.
-                    // Check the entire footprint's one-cell margin; reserve only the mine footprint.
+                    // Mountain artwork keeps its margin. Ramp influence is checked
+                    // on the actual footprint below, not a blanket 3x3 exclusion.
                     bool nearMountainOrRamp=false;
                     for(int y=math.max(0,min.y-1);y<=math.min(grid.height-1,max.y+1)&&!nearMountainOrRamp;y++)
                         for(int x=math.max(0,min.x-1);x<=math.min(grid.width-1,max.x+1);x++)
-                            if(terrain[y*grid.width+x].isMountain || terrain[y*grid.width+x].RampId >= 0){nearMountainOrRamp=true;break;}
+                            if(terrain[y*grid.width+x].isMountain){nearMountainOrRamp=true;break;}
                     if(nearMountainOrRamp)continue;
                     bool valid = true;
                     foreach (var node in trial)
@@ -93,7 +93,7 @@ public static class MapResourcePlanner
                     {
                         int i = GridHelper.GetNodeIndex(new int2(x, y), grid);
                         var t = terrain[i];
-                        if (costs[i].cost != 1 || occupied[i] || !t.walkable || t.isMountain || t.isCliff || t.RampId >= 0 || t.heightLevel != tile.heightLevel)
+                        if (costs[i].cost != 1 || occupied[i] || !t.walkable || t.isMountain || t.isCliff || t.RampId >= 0 || t.RampInfluence || t.heightLevel != tile.heightLevel)
                         { valid = false; break; }
                     }
                     if (valid) trial.Add(new Node { Prefab = prefab, Position = pos, Min = min, Max = max, Level = tile.heightLevel,

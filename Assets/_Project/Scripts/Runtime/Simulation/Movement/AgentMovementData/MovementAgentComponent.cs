@@ -14,8 +14,14 @@ public enum TargetResolutionKind : byte
     NaturalResolved = 3
 }
 
+public enum MovementStopReason : byte
+{
+    None, Arrived, CrowdedDestination, InvalidTarget, Released, Paused
+}
+
 public struct MovementAgentComponent : IComponentData
 {
+    public MovementStopReason stopReason;
     public float speed;
     public bool hastarget;
     public Entity FieldEntity;

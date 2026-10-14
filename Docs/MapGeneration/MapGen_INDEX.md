@@ -1,40 +1,23 @@
-# Map Generation: topology, grid, spawn và resource
+# Sinh bản đồ — chọn đúng tài liệu
 
-Cập nhật 2026-10-10. Main dùng SharedVertexSlopes; generator quyết định topology, mountain mask, cliff/ramp, spawn và dữ liệu gameplay. Phần hiển thị có bộ nghiên cứu độc lập tại [Terrain Visualizer](../TerrainVisualizer/README.md). Các trang visual cũ bên dưới chỉ giữ redirect để tương thích liên kết.
+**Mở [hướng dẫn Main](MapGen_Unity_ReadingGuide.md) để chạy/chỉnh bản đồ — khoảng 3 phút để bắt đầu.**
 
-## Bắt đầu
-
-- Chạy/chỉnh Main: [hướng dẫn Unity](MapGen_Unity_ReadingGuide.md).
-- Designer tạo bộ art mới: [atlas/art pipeline](../TerrainVisualizer/05_Atlas_ArtPipeline.md).
-- Lập trình MapGen: [rules](MapGen_Unity_Rules.md), [dữ liệu map](MapGen_DataTexture_Specification.md), [config](MapGenConfig.md).
-- Lập trình visual: [kiến trúc](../TerrainVisualizer/01_PhamVi_KienTruc.md), [thuật toán](../TerrainVisualizer/03_ThuatToan_Tile_Nui.md), [lab](../TerrainVisualizer/06_Lab_BangChung.md).
-
-## Tra cứu
-
-| Nội dung | Tài liệu |
+| Bạn cần | Trang |
 |---|---|
-| Camera, projection, batching, giới hạn | [Terrain Visualizer: projection](../TerrainVisualizer/02_PhepChieu_RenderOrder.md) |
-| Metadata cliff/ramp | [Terrain Visualizer: tile algorithms](../TerrainVisualizer/03_ThuatToan_Tile_Nui.md) |
-| Config và rebake | [MapGenConfig](MapGenConfig.md) |
-| Catalog, quota, vị trí resource | [Resource config](MapGen_ResourceSpawn_Config.md) |
-| Snap và footprint | [Grid snapper](GridSnapper_ResourceSpawn.md) |
-| Player/starting economy | [Bootstrap](PlayerBootstrap.md) |
-| Renderer lifecycle và danh sách file | [Visualizer architecture](../TerrainVisualizer/01_PhamVi_KienTruc.md) |
-| Bộ nghiên cứu visual hiện hành | [Terrain Visualizer](../TerrainVisualizer/README.md) |
-| Polish4–6, núi theo cụm, bố cục và kết quả | [Terrain polish remaining](TerrainPolish_Remaining.md) |
-| Atlas sample/mask/guide và lệnh split | [Atlas authoring kit](../../ArtSource/Terrain/AtlasTemplates/README.md) |
+| Input/output,cấu hình và luật bản đồ | [Rules](MapGen_Unity_Rules.md) · [dữ liệu](MapGen_DataTexture_Specification.md) · [cấu hình](MapGenConfig.md) |
+| ECS sinh dữ liệu,ready,phiên bản và ảnh trạng thái | [luồng xử lý](EcsMapPipeline.md) · [Tối ưu Unity](UnityOptimizationPort.md) |
+| khởi tạo,tài nguyên và vùng chiếm chỗ | [người chơi](PlayerBootstrap.md) · [tài nguyên cấu hình](MapGen_ResourceSpawn_Config.md) · [lưới bộ căn lưới](GridSnapper_ResourceSpawn.md) |
+| Height,chuyển động và dựng hình | [Height hợp đồng](PendingTerrainHeight.md) · [Obstacle điều hướng](GridObstacleSteering.md) · [Atlas địa hình](../TerrainVisualizer/README.md) |
+| Đo hiệu năng và kiểm chứng | [Main hiệu năng](../Maintenance/VerificationHistory.md) · [luồng xử lý kiểm tra](../Maintenance/VerificationHistory.md) |
 
-CompetitiveTerrain/StartingSpawn và [ServerMapLoading](../Multiplayer/ServerMapLoading.md) chứa thiết kế mở rộng; không phải mọi đề xuất trong đó đã triển khai.
+## Mã cần tìm
 
-## Code cần đọc
+Simulation/MapGeneration giữ công thức,sinh dữ liệu,địa hình dữ liệu,dốc nối tầng trình biên dịch và căn lưới. Simulation/Players khởi tạo player/nhóm đối tượng khởi đầu/resources. Presentation/Terrain giữ renderer/surface/picking; Presentation/Camera căn lưới camera cục bộ. Movement/Height đọc dữ liệu lưới độc lập bộ dựng hình.
 
-| Lớp | Code |
-|---|---|
-| Sinh map | TerrainGeneration, SharedVertexTerrainGeneration |
-| Grid/bake/cost | GridAuthoring, GridComponent, GridInitSystem, GridHelper |
-| Resource | MapResourcePlanner, PlayerBootstrapSystem |
-| Art/schema | TerrainTheme, CanonicalIsometricSpriteAuthoring |
-| Render | TerrainMapRenderer, TerrainVisualCompiler, TerrainVisualSurface, TerrainChunkRenderer, CanonicalIsometricSprites |
-| Camera/đối tượng | IsometricTerrainCamera, TerrainVisualOffsetSystem, TerrainVisualRestoreSystem |
+Runtime dùng TerrainRampCompiler; TerrainVisualCompiler cũ đã đổi tên. Renderer chỉ là luồng xử lý vật liệu atlas/độ sâu. ảnh vật liệu lược đồ dữ liệu là hợp đồng hình ảnh mỹ thuật, không phải wire format chơi nhiều người.
 
-Các class trên nằm trong Assets/_Project/Scripts hoặc Tests/Editor. Texture schema là hợp đồng art, không phải định dạng truyền map multiplayer.
+## Kết quả lịch sử và phạm vi còn mở
+
+hạt giống audit/benchmark trong folder này chỉ chứng minh cấu hình và phiên bản ghi trong báo cáo. Các báo cáo đã gom vào lịch sử hợp nhất, giữ phân biệt khối lượng công việc/thuật toán; không suy số đo bản thử nghiệm hoặc Editor thành FPS người chơi bản dựng.
+
+[Trạng thái mới nhất](../Maintenance/CurrentState.md) · [lộ trình](../Maintenance/Roadmap.md) · [Thiết kế sản xuất sinh đối tượng](MapGen_StartingSpawn_Plan.md) · [máy chủ bản đồ loading](../Multiplayer/ServerMapLoading.md)

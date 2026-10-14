@@ -34,7 +34,7 @@ public class TrainButtonScript : MonoBehaviour
     {
         var world = World.DefaultGameObjectInjectionWorld;
 
-        if (world == null || !world.IsCreated)
+        if (world == null || !world.IsCreated || !SelectHelper.TryGetLocalPlayerId(out int playerId))
             return;
 
         var entityManager = world.EntityManager;
@@ -53,7 +53,10 @@ public class TrainButtonScript : MonoBehaviour
             return;
         }
 
-        TrainUnitHelper.TrainUnit(entityManager, entity, buttonIndexInPrefabList);
+        if (!entityManager.HasBuffer<ProductionElement>(entity)) return;
+        var offers = entityManager.GetBuffer<ProductionElement>(entity);
+        if (buttonIndexInPrefabList < 0 || buttonIndexInPrefabList >= offers.Length) return;
+        TrainUnitHelper.TrainUnit(entityManager, entity, offers[buttonIndexInPrefabList].JobReference, playerId);
     }
 
     private void Update()
@@ -93,7 +96,8 @@ public class TrainButtonScript : MonoBehaviour
         var buildingData =
             entityManager.GetComponentData<BuildingComponent>(entity);
 
-        button.interactable =
-            entityManager.HasBuffer<ProductionElement>(entity) && entityManager.GetBuffer<ProductionElement>(entity).Length > buttonIndexInPrefabList && !BuildingHelper.IsUnderConstruction(entityManager, entity);
+        button.interactable = SelectHelper.TryGetLocalPlayerId(out int playerId)
+            && CommandAuthority.CanControl(entityManager, playerId, entity)
+            && entityManager.HasBuffer<ProductionElement>(entity) && entityManager.GetBuffer<ProductionElement>(entity).Length > buttonIndexInPrefabList && !BuildingHelper.IsUnderConstruction(entityManager, entity);
     }
 }

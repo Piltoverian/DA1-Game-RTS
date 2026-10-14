@@ -34,9 +34,9 @@ public sealed class IsometricTerrainCamera : MonoBehaviour
         Vector3 focus=camera.transform.position;
         if(new Plane(Vector3.up,Vector3.zero).Raycast(ray,out float distance))focus=ray.GetPoint(distance);
         int selected=-1;float nearest=float.MaxValue;
-        foreach(var draw in map.draws)if(draw.tile>=3&&draw.tile<=6){
-            var p=new Vector3(map.grid.origin.x+(draw.cell%map.grid.width+.5f)*map.grid.cellsize,0,map.grid.origin.z+(draw.cell/map.grid.width+.5f)*map.grid.cellsize);
-            float d=(p-new Vector3(focus.x,0,focus.z)).sqrMagnitude;if(d<nearest){nearest=d;selected=draw.cell;}
+        for(int cell=0;cell<map.rampFaceDirections.Length;cell++)if(map.rampFaceDirections[cell]>=0){
+            var p=new Vector3(map.grid.origin.x+(cell%map.grid.width+.5f)*map.grid.cellsize,0,map.grid.origin.z+(cell/map.grid.width+.5f)*map.grid.cellsize);
+            float d=(p-new Vector3(focus.x,0,focus.z)).sqrMagnitude;if(d<nearest){nearest=d;selected=cell;}
         }
         if(selected<0)return;
         var target=new Vector3(map.grid.origin.x+(selected%map.grid.width+.5f)*map.grid.cellsize,0,map.grid.origin.z+(selected/map.grid.width+.5f)*map.grid.cellsize);
@@ -51,12 +51,10 @@ public sealed class IsometricTerrainCamera : MonoBehaviour
         Vector3 focus=camera.transform.position;
         if(new Plane(Vector3.up,Vector3.zero).Raycast(ray,out float distance))focus=ray.GetPoint(distance);
         int ramp=-1,mountain=-1,cliff=-1;float best=float.MaxValue;
-        var legacyRamps=new System.Collections.Generic.HashSet<int>();
-        foreach(var draw in map.draws)if(draw.tile>=3&&draw.tile<=6)legacyRamps.Add(draw.cell);
         for(int rampCell=0;rampCell<map.cells.Length;rampCell++){
             var cell=map.cells[rampCell];
             if(cell.isMountain||!cell.walkable)continue;
-            if(cell.UsesVertexCorners?(cell.CornerMask==0||cell.CornerMask==15):!legacyRamps.Contains(rampCell))continue;
+            if(cell.UsesVertexCorners?(cell.CornerMask==0||cell.CornerMask==15):(map.rampFaceDirections.Length==0||map.rampFaceDirections[rampCell]<0))continue;
             int x=rampCell%map.grid.width,z=rampCell/map.grid.width;
             int rock=-1,wall=-1;float closest=float.MaxValue,closestWall=float.MaxValue;
             for(int dz=-12;dz<=12;dz++)for(int dx=-12;dx<=12;dx++){

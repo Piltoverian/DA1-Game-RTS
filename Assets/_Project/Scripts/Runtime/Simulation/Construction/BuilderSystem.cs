@@ -1,3 +1,5 @@
+using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -5,8 +7,9 @@ using Unity.Transforms;
 [UpdateAfter(typeof(CommandQueue))]
 [UpdateBefore(typeof(ConstructionSystem))]
 
-partial struct BuilderSystem : ISystem
+public partial struct BuilderSystem : ISystem
 {
+    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         foreach (var (builderData, localTransform, entity) in SystemAPI.Query<RefRW<BuilderComponent>, RefRO<LocalTransform>>().WithEntityAccess())
@@ -34,6 +37,7 @@ partial struct BuilderSystem : ISystem
 
                         if (math.distancesq(localTransform.ValueRO.Position.xz, closestPoint) <= rangeSq)
                         {
+                            RestoreStoppingDistance(state.EntityManager, builderData, entity);
                             if (state.EntityManager.HasComponent<MoveOverride>(entity))
                             {
                                 state.EntityManager.SetComponentEnabled<MoveOverride>(entity, false);
@@ -45,9 +49,21 @@ partial struct BuilderSystem : ISystem
                             if (state.EntityManager.HasComponent<MoveOverride>(entity) && !state.EntityManager.IsComponentEnabled<MoveOverride>(entity))
                             {
                                 var moveOverride = state.EntityManager.GetComponentData<MoveOverride>(entity);
-                                if (math.distancesq(moveOverride.targetPosition.xz, buildingTransform.Position.xz) > 0.01f)
+                                if (TryApproach(state.EntityManager, entity, constructionSite, localTransform.ValueRO.Position,
+                                    builderData.ValueRO.BuildRange, out var approach, out float stopDistance))
                                 {
-                                    moveOverride.targetPosition = buildingTransform.Position;
+                                    if (state.EntityManager.HasComponent<MovementSteeringComponent>(entity))
+                                    {
+                                        var steering = state.EntityManager.GetComponentData<MovementSteeringComponent>(entity);
+                                        if (!builderData.ValueRO.HasApproachStoppingDistance)
+                                        {
+                                            builderData.ValueRW.PreviousStoppingDistance = steering.stoppingDistance;
+                                            builderData.ValueRW.HasApproachStoppingDistance = true;
+                                        }
+                                        steering.stoppingDistance = math.min(builderData.ValueRO.PreviousStoppingDistance, stopDistance);
+                                        state.EntityManager.SetComponentData(entity, steering);
+                                    }
+                                    moveOverride.targetPosition = approach;
                                     moveOverride.targetApplied = false;
                                     state.EntityManager.SetComponentData(entity, moveOverride);
                                     state.EntityManager.SetComponentEnabled<MoveOverride>(entity, true);
@@ -97,21 +113,15 @@ partial struct BuilderSystem : ISystem
                         int playerId = em.GetComponentData<EntityOwner>(constructionSite).PlayerID;
                         float repairRatio = restoredHp / health.MaxHP;
                         var costs = em.GetBuffer<EntityResourceCost>(constructionSite);
-                        bool canAfford = true;
+                        using var repairCosts = new NativeList<ResourcePair>(Allocator.Temp);
                         for (int c = 0; c < costs.Length; c++)
+                            repairCosts.Add(new ResourcePair(costs[c].Type, costs[c].Amount * repairRatio));
+                        if (!ResourcePayment.TryPay(em, playerId, repairCosts, out var repairPaid))
                         {
-                            if (PlayerContextHelper.GetPlayerResourceByType(em, playerId, costs[c].Type, out float available) != FunctionResult.Success ||
-                                available < costs[c].Amount * repairRatio)
-                            {
-                                canAfford = false;
-                                break;
-                            }
-                        }
-                        if (!canAfford)
+                            repairPaid.Dispose();
                             break;
-
-                        for (int c = 0; c < costs.Length; c++)
-                            PlayerContextHelper.AddPlayerResource(em, playerId, costs[c].Type, -costs[c].Amount * repairRatio);
+                        }
+                        repairPaid.Dispose();
 
                         health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + restoredHp);
                         health.Changed = true;
@@ -193,6 +203,7 @@ partial struct BuilderSystem : ISystem
 
     private static void StopBuilder(EntityManager em, RefRW<BuilderComponent> builder, Entity entity)
     {
+        RestoreStoppingDistance(em, builder, entity);
         if (TryStartNextBuilding(em, builder, entity))
             return;
         builder.ValueRW.State = BuilderState.Idle;
@@ -200,6 +211,46 @@ partial struct BuilderSystem : ISystem
         em.SetComponentEnabled<BuilderComponent>(entity, false);
         if (em.HasComponent<MoveOverride>(entity))
             em.SetComponentEnabled<MoveOverride>(entity, false);
+    }
+
+    private static void RestoreStoppingDistance(EntityManager em, RefRW<BuilderComponent> builder, Entity entity)
+    {
+        RestoreStoppingDistance(em, entity);
+        builder.ValueRW.HasApproachStoppingDistance = false;
+    }
+
+    public static void RestoreStoppingDistance(EntityManager em, Entity entity)
+    {
+        var builder = em.GetComponentData<BuilderComponent>(entity);
+        if (!builder.HasApproachStoppingDistance) return;
+        if (em.HasComponent<MovementSteeringComponent>(entity))
+        {
+            var steering = em.GetComponentData<MovementSteeringComponent>(entity);
+            steering.stoppingDistance = builder.PreviousStoppingDistance;
+            em.SetComponentData(entity, steering);
+        }
+        builder.HasApproachStoppingDistance = false;
+        em.SetComponentData(entity, builder);
+    }
+
+    // Clamp to the nearest footprint point, then leave room for the worker collider.
+    private static bool TryApproach(EntityManager em, Entity worker, Entity site, float3 position, float range,
+        out float3 goal, out float stopDistance)
+    {
+        goal = default; stopDistance = 0;
+        if (!math.isfinite(range) || range <= 0) return false;
+        var rect = em.GetComponentData<BlockageData>(site).LocalRect;
+        var centre = em.GetComponentData<LocalTransform>(site).Position;
+        float2 minimum = centre.xz + rect.MinPoint, maximum = centre.xz + rect.MaxPoint;
+        float2 closest = math.clamp(position.xz, minimum, maximum);
+        float radius = em.HasComponent<MovementAgentAvoidanceComponent>(worker)
+            ? em.GetComponentData<MovementAgentAvoidanceComponent>(worker).radius : 0;
+        float clearance = math.max(0, radius) + .01f;
+        if (clearance >= range) return false;
+        float2 approach = closest + math.normalizesafe(position.xz - closest) * clearance;
+        goal = new float3(approach.x, position.y, approach.y);
+        stopDistance = math.max(.01f, (range - clearance) * .5f);
+        return true;
     }
 
     private static bool CheckConstructionSiteAndReturnToIdle(ref SystemState state, RefRW<BuilderComponent> builder, Entity entity)

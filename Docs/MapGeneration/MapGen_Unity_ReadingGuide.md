@@ -1,55 +1,41 @@
-# Hướng dẫn sử dụng terrain trong Unity
+# Chạy và chỉnh địa hình trong Unity
 
-Cập nhật 2026-10-09. Main dùng SharedVertexSlopes, theme canonical, camera orthographic và mesh terrain phẳng. Cao độ là dữ liệu logic/presentation; movement và physics giữ Y=0.
+**Mở scene Main rồi bấm Play — khoảng2phút để bắt đầu nếu Unity đã nhập xong dữ liệu.**
+
+Main dùng SharedVertexSlopes,MoonTerrain/LunarTheme.asset và camera chiếu song song. Gameplay/tầm/điều hướng dùng XZ;Y lấy độ cao địa hình và offset pivot. Thử nghiệm ép phẳng đã bỏ. [Luồng ECS](EcsMapPipeline.md).
 
 ## Chạy Main
 
-1. Mở Assets/_Project/Scenes/Main.unity, chờ import/compile.
-2. Kiểm tra Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset. Đây là config Main đang dùng dù nằm trong Tests.
-3. TerrainMapRenderer dùng Theme/SO/XianxiaIsometricTheme.asset. Runtime chỉ có canonical sprites và stock URP Unlit; không cần chọn mode hoặc bật flag render.
-4. Sau sửa config/generator, Stop Play và rebake subscene chứa GridAuthoring trước khi Play. Không kỳ vọng baked grid tự đổi trong phiên Play.
-5. Renderer chờ ECS grid rồi dựng atlas/mesh; không gen map thứ hai. Camera pitch30°, yaw45°, orthographic. frameRampOnLoad tìm khu vực có ramp/cliff/núi khi có khu vực phù hợp.
+1. Mở `Assets/_Project/Scenes/Main.unity`,chờ Unity nhập/biên dịch.
+2. Kiểm tra `Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset`. Đây vẫn là cấu hình Main dù nằm trong Tests.
+3. TerrainMapRenderer dùng theme `Assets/_Project/Data/Terrain/Generated/MoonTerrain/LunarTheme.asset`. Camera chỉ thu phóng/di chuyển,không xoay.
+4. Sau sửa cấu hình/bộ sinh map,dừng Play,chờ SubScene bake lại rồi Play. Baker ghi công thức;MapTerrainGenerationSystem sinh địa hình khi chạy. Không thay địa hình của trận đang diễn ra.
+5. MapTerrainPresentationSystem chờ TerrainReady,không sinh map thứ hai. LocalBaseCameraSnapSystem chờ renderer/BootstrapReady rồi hướng tới nhà chính cục bộ một lần. Khi tắt snapOnReady,frameRampOnLoad mới dùng trình bày ramp.
 
-## Thay đổi thường dùng
+## Chỉnh thông số
 
-| Thay đổi | Nơi chỉnh | Bước tiếp theo |
+| Bạn muốn đổi | Nơi chỉnh | Sau đó |
 |---|---|---|
-| Seed, số ô, player, vùng spawn | MapGenConfig | Rebake, Play lại |
-| Height/noise/cliff band/ramp width | Terrain settings | Rebake, validation |
-| Màu đất/dốc/vách/núi | PNG/TerrainTheme | Import, Stop/Play lại |
-| Zoom/showcase | IsometricTerrainCamera/renderer | Kiểm tra khung nhìn Main |
+| Seed,cỡ map,player,vùng sinh | MapGenConfig | Bake lại và bắt đầu trận mới |
+| Height,noise,cliff band,ramp width | Cấu hình terrain | Bake lại,kiểm tra hợp lệ |
+| Màu đất/dốc/vách/núi | PNG/TerrainTheme | Nhập lại,Stop/Play |
+| Thu phóng/khung nhìn | IsometricTerrainCamera | Kiểm tra Main |
+| Cỡ lính | MovementAgentAuthoring.diameterCells | Đơn vị đường kính ô;bake/Play lại |
 
-Cellsize = chiều rộng bounds grid chia số ô. Plane rộng1000, map512 cho 1.953125. MinimumCellSize là giới hạn kiểm tra, không thay công thức. Không đặt cellsize riêng trong art pack. Rise theo tỷ lệ sprite và camera; xem [schema](MapGen_TextureSchema.md).
+Cellsize=chiều rộng lưới/số ô. Plane rộng1000,map512cho1.953125. MinimumCellSize là giới hạn kiểm tra,không thay công thức. Camera chuẩn pitch30°,yaw45°;đổi PNG không yêu cầu đổi camera. [Art/atlas](../TerrainVisualizer/05_Atlas_ArtPipeline.md).
 
-Camera/art có hợp đồng30°/45° và128/32. Zoom orthographic được phép theo component; tự đổi pitch/yaw không phải thao tác đổi texture.
+## Nhập bộ ảnh mới
 
-## Chọn bộ texture mới
-
-Nhân bản theme/PNG, gán đủ slot, chọn theme trên TerrainMapRenderer và lưu scene. Làm theo [hướng dẫn texture](MapGen_TextureAuthoring.md). Không dùng menu Use Reference sau đó vì menu sẽ gán lại bộ Reference.
+Làm theo [workflow atlas Unity](../TerrainVisualizer/14_SuDung_Atlas_Implementation.md):atlas nguồn→importer→cập nhật cùng SO→preview/Main. Không chạy menu renderer stock đã nghỉ dùng.
 
 ## Kiểm tra
 
-| Công cụ/menu | Nội dung |
+| Menu giữ tên đúng trong Unity | Nội dung |
 |---|---|
-| RTS / Tests / Validate Mountain Integration | Hai thuật toán, núi, spawn, connectivity |
-| Tools / MapGen / Test resource planner only | Snap footprint, khoảng cách núi, starting mines, seed |
-| RTS / Tests / Validate Stock Reference Sprites | Theme Reference, sprite rectangles, batches, vertexY0 |
-| RTS / Tests / Validate Selected Terrain Theme | Bộ theme được chọn, không cần ảnh nguồn offline |
+| `Tools/MapGen/Test resource planner only` | Dữ liệu riêng:footprint,khoảng cách núi,mỏ khởi đầu,seed |
+| `Tools/MapGen/Test Main resource spawn and grid snapper` | Scene Main:sinh resource/căn lưới |
+| `RTS/Tests/Validate Current Terrain Atlas` | Atlas hiện tại |
+| `RTS/Tests/Validate Selected Terrain Theme` | Theme được chọn |
+| `RTS/Tests/Validate Mountain Integration` | Generation,núi,kết nối/spawn |
 
-Stock Reference validation kiểm tra bộ Reference. Với bộ tùy chỉnh, chọn TerrainTheme trong Project rồi chạy RTS / Tests / Validate Selected Terrain Theme; sau đó kiểm tra Main dùng theme mới. Khi sửa gen, kiểm tra spawn, crossing ramp và một island walkable.
-
-## Chẩn đoán
-
-| Triệu chứng | Kiểm tra |
-|---|---|
-| Terrain mất/null texture | Theme, đủ16/10 slot, Read/Write, canvas128×128 và stock Unlit shader |
-| Nền vuông/xanh quanh ảnh | Alpha PNG, nền sheet tham khảo |
-| Ramp hở/lệch mép | Canvas, mask, góc, crop, metrics128/32 |
-| Map không đổi sau sửa config | Stop và rebake grid/subscene |
-| Núi lặp trong cụm | Hiện một ảnh mỗi ô; chưa có autotile núi |
-| Thiếu resource quota | Vị trí hợp lệ thiếu; đọc báo cáo, không ép spawn lên núi/ramp |
-| Unit xuyên vách khi nhìn | Giới hạn occlusion, không sửa chỉ bằng PNG |
-
-Xem [pipeline](MapGen_TerrainPresentation.md), [rules](MapGen_Unity_Rules.md), [config](MapGenConfig.md), [resource](MapGen_ResourceSpawn_Config.md) và [giới hạn](MapGen_CanonicalIsometricSprites.md).
-
-Cập nhật loại sprite trống: giữ16top,10cliff(mask4,8,C,D,E mỗi side),1núi;22PNGcliff alpha0 và field tương ứng đã xóa. Baker không tái tạo mask trống, renderer không pack/vẽ chúng. [Manifest cleanup](../Reviews/TerrainEmptySpriteCleanup_2026-10-09.json).
+[Danh mục kiểm thử](../../Assets/_Project/Tests/README.md) phân biệt harness hiện hành và các harness gameplay đã xóa. Compile thành công không thay kết quả Play Mode hoặc benchmark tải.

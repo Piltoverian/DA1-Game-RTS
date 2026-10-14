@@ -4,7 +4,9 @@ using Unity.Mathematics;
 public class MovementAgentAuthoring : MonoBehaviour
 {
     public float speed = 10.0f;
-    public float radius = 1.0f;
+    [UnityEngine.Serialization.FormerlySerializedAs("radius")]
+    [Min(0.01f), Tooltip("Unit diameter in grid cells, including model and collider scaling.")]
+    public float diameterCells = 1.0f;
     public float arrivalRadius = 3.5f;
     public float stoppingDistance = 1.5f;
     public float rotationSpeed = 8.0f;
@@ -15,15 +17,12 @@ public class MovementAgentAuthoring : MonoBehaviour
 
     private void OnValidate()
     {
-        if (radius < 0.75)
-        {
-            radius = 0.75f; // Đặt giới hạn tối thiểu để tránh lỗi vật lý và tránh trường hợp overlapped
-        }
-        stoppingDistance = radius * 1.5f;
+        diameterCells = Mathf.Max(0.01f, diameterCells);
+        stoppingDistance = diameterCells * 0.5f * 1.5f;
 
         // Arrival Radius: Cần đủ lớn để bù đắp cho vân tốc speed = 10.
         // Tỷ lệ 0.8 * Speed là tiêu chuẩn cho hãm phanh mượt.
-        arrivalRadius = Mathf.Max(radius * 4f, speed * 0.8f);
+        arrivalRadius = Mathf.Max(diameterCells * 0.5f * 4f, speed * 0.8f);
     }
 
 
@@ -32,6 +31,10 @@ public class MovementAgentAuthoring : MonoBehaviour
         public override void Bake(MovementAgentAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            if(GetComponent<UnityEngine.Collider>()&&!GetComponent<ModelSnapperAuthoring>()){
+                AddComponent(entity,ModelSnapSource.Capture(authoring.gameObject,1,authoring.diameterCells));
+                AddComponent<Snapping>(entity);
+            }
 
             AddComponent(entity, new MovementAgentComponent
             {
@@ -43,7 +46,7 @@ public class MovementAgentAuthoring : MonoBehaviour
 
             AddComponent(entity, new MovementAgentAvoidanceComponent
             {
-                radius = authoring.radius,
+                radius = authoring.diameterCells * 0.5f,
                 gridIndex = -1,
                 separationForce = float3.zero,
                 IsStatic = false,
