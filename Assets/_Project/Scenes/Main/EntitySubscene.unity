@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3d163eca842bab439e76fc52220338e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RegistryAuthoring
-  gameDataRegistry: {fileID: 11400000, guid: ce4d37957f8cf7448a79152e5e5939fd, type: 2}
+  gameDataRegistry: {fileID: 11400000, guid: f1769d193e7cb494eb67a0d8bf379fbc, type: 2}
   bakeMode: 0
 --- !u!4 &507945990
 Transform:
@@ -420,28 +420,28 @@ MonoBehaviour:
   Players:
   - PlayerId: 1
     SpawnSlot: 0
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   - PlayerId: 2
     SpawnSlot: 1
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
   - PlayerId: 3
     SpawnSlot: 2
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   - PlayerId: 4
     SpawnSlot: 3
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
   - PlayerId: 5
     SpawnSlot: 4
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   - PlayerId: 6
     SpawnSlot: 5
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
   - PlayerId: 7
     SpawnSlot: 6
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   - PlayerId: 8
     SpawnSlot: 7
-    Civilization: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
 --- !u!4 &1730584000
 Transform:
   m_ObjectHideFlags: 0
@@ -516,7 +516,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerContextAuthoring
   playerId: 1
-  civDef: {fileID: 11400000, guid: 0187871ba30f4628b54765314b97aa9a, type: 2}
+  civDef: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   useBootstrapContext: 1
   age: 0
   startResources: []

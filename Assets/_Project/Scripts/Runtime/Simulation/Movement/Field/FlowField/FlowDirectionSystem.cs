@@ -29,6 +29,10 @@ partial struct FlowDirectionSystem : ISystem
 
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var grid = SystemAPI.GetComponent<GridComponent>(gridEntity);
+        var costLookup = SystemAPI.GetBufferLookup<GridNodeCost>(true);
+        if (!costLookup.HasBuffer(gridEntity)) return;
+        var gridCosts = costLookup[gridEntity].AsNativeArray();
+        if (gridCosts.Length != grid.width * grid.height) return;
 
         NativeArray<int2> nativeNeighbors = new NativeArray<int2>(8, Allocator.TempJob);
         nativeNeighbors[0] = new int2(0, 1);
@@ -43,6 +47,7 @@ partial struct FlowDirectionSystem : ISystem
         var job = new CalculateDirectionFieldJob
         {
             Grid = grid,
+            GridCosts = gridCosts,
             NeighborsDir = nativeNeighbors,
             FlowFieldType = SystemAPI.GetComponentTypeHandle<FlowField>(true),
             StatusType = SystemAPI.GetComponentTypeHandle<FlowFieldStatus>(false),
@@ -51,7 +56,7 @@ partial struct FlowDirectionSystem : ISystem
 
         state.Dependency = job.ScheduleParallel(m_FieldQuery, state.Dependency);
 
-        nativeNeighbors.Dispose(state.Dependency);
+        state.Dependency = nativeNeighbors.Dispose(state.Dependency);
     }
 
     [BurstCompile]
@@ -64,6 +69,7 @@ partial struct FlowDirectionSystem : ISystem
 public struct CalculateDirectionFieldJob : IJobChunk
 {
     [ReadOnly] public GridComponent Grid;
+    [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
     [ReadOnly] public NativeArray<int2> NeighborsDir;
 
     [ReadOnly] public ComponentTypeHandle<FlowField> FlowFieldType;
@@ -83,7 +89,7 @@ public struct CalculateDirectionFieldJob : IJobChunk
             FlowFieldStatus status = statuses[e];
             DynamicBuffer<FieldNode> nbuffer = nodeBuffers[e];
 
-            if (nbuffer.Length > 0)
+            if (nbuffer.Length == Grid.width * Grid.height && GridCosts.Length == nbuffer.Length)
             {
                 for (int i = 0; i < nbuffer.Length; i++)
                 {
@@ -91,7 +97,7 @@ public struct CalculateDirectionFieldJob : IJobChunk
                     int bestcost = nbuffer[i].bestcost;
                     float2 bestdirection = float2.zero;
 
-                    if (!(cell.x < 0 || cell.x >= Grid.width || cell.y < 0 || cell.y >= Grid.height))
+                    if (GridCosts[i].cost < 255 && bestcost != int.MaxValue)
                     {
                         for (int j = 0; j < 8; j++)
                         {
@@ -101,6 +107,12 @@ public struct CalculateDirectionFieldJob : IJobChunk
                                 continue;
 
                             int neighborindex = GridHelper.GetNodeIndex(neighborcell, Grid);
+                            if (GridCosts[neighborindex].cost >= 255) continue;
+                            if (NeighborsDir[j].x != 0 && NeighborsDir[j].y != 0) {
+                                int sideX = cell.y * Grid.width + neighborcell.x;
+                                int sideZ = neighborcell.y * Grid.width + cell.x;
+                                if (GridCosts[sideX].cost >= 255 || GridCosts[sideZ].cost >= 255) continue;
+                            }
                             int neighborcost = nbuffer[neighborindex].bestcost;
 
                             if (neighborcost < bestcost)

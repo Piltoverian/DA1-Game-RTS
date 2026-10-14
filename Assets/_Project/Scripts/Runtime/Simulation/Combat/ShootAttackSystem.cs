@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Transforms;
 
@@ -32,6 +33,8 @@ public partial struct ShootAttackSystem : ISystem
         var registryEntity = SystemAPI.GetSingletonEntity<GameDataRegistryComponent>();
         var registry = SystemAPI.GetBuffer<RegistryBlobElement>(registryEntity);
         var Prefab= SystemAPI.GetBuffer<RegistryPrefabElement>(registryEntity);
+        using var contexts = SystemAPI.QueryBuilder().WithAll<PlayerContext>().Build()
+            .ToComponentDataArray<PlayerContext>(Allocator.Temp);
         foreach (var (
                      localTransform,
                      shootAttack,
@@ -53,7 +56,7 @@ public partial struct ShootAttackSystem : ISystem
             if (result != FunctionResult.Success)
                 continue;
             ref var attackBlob = ref attackReference.Value;
-            if (!IsValidTarget(ref state, targetEntity, unit.ValueRO.PlayerID))
+            if (!IsValidTarget(ref state, targetEntity, unit.ValueRO.PlayerID, contexts))
             {
                 target.ValueRW.targetEntity = Entity.Null;
                 continue;
@@ -161,7 +164,8 @@ public partial struct ShootAttackSystem : ISystem
     private bool IsValidTarget(
         ref SystemState state,
         Entity targetEntity,
-        int attackerPlayerID)
+        int attackerPlayerID,
+        NativeArray<PlayerContext> contexts)
     {
         if (targetEntity == Entity.Null)
             return false;
@@ -184,7 +188,7 @@ public partial struct ShootAttackSystem : ISystem
             EntityOwner targetUnit =
                 SystemAPI.GetComponent<EntityOwner>(targetEntity);
 
-            if (targetUnit.PlayerID == attackerPlayerID)
+            if (PlayerContextHelper.AreAllies(contexts, targetUnit.PlayerID, attackerPlayerID))
                 return false;
         }
 

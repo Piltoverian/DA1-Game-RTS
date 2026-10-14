@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9cdb83b15ab487a85bcd6403f820778, type: 3}
   m_Name: MapGenConfig
   m_EditorClassIdentifier: Assembly-CSharp::MapGenConfig
-  MapSize: 512
+  MapSize: 256
   MinimumCellSize: 1
   GenerateTerrain: 1
   Terrain:
@@ -25,6 +25,15 @@ MonoBehaviour:
     levelStep: 1
     cliffCells: 1
     rampWidth: 3
+    maximumRampCells: 12
+    smallIslandFillBudget: 0.02
+    mountainWavelength: 26
+    mountainThreshold: 0.2
+    mountainDensity: 0.85
+    mountainSpawnBuffer: 8
+    mountainMinimumClusterCells: 6
+    layoutClearings: 1
+    battlefieldRadius: 14
   PlayerBootstrap: {fileID: 11400000, guid: 8964479f7b4649f69ecf9687387ceebb, type: 2}
   Resources:
     Enabled: 1

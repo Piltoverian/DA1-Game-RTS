@@ -2,6 +2,7 @@
   "dependencies": {
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ai.navigation": "2.0.11",
+    "com.unity.burst": "1.8.30",
     "com.unity.collab-proxy": "2.11.4",
     "com.unity.entities": "1.4.5",
     "com.unity.entities.graphics": "1.4.18",

@@ -18,12 +18,16 @@ public class CameraScript : MonoBehaviour
         {
             return;
         }
-        transform.position += new Vector3(move.ReadValue<Vector2>().x, 0, move.ReadValue<Vector2>().y) * Time.deltaTime * 50f;
+        var input=move.ReadValue<Vector2>();var camera=Camera.main;
+        Vector3 right=camera?camera.transform.right:Vector3.right;
+        Vector3 up=camera?Vector3.ProjectOnPlane(camera.transform.up,Vector3.up).normalized:Vector3.forward;
+        transform.position += (right*input.x+up*input.y)*Time.deltaTime*50f;
     }
 
     Vector3 ConvertCamToWorld(Vector2 vector)
     {
         Ray ray= Camera.main.ScreenPointToRay(vector);
+        if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(ray,out var logical,out _)) return logical;
         if (Physics.Raycast(ray, out RaycastHit hitInfo,Mathf.Infinity, LayerMask.GetMask("Ground")))
         {
             return hitInfo.point;

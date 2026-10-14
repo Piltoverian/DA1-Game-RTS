@@ -42,6 +42,7 @@ partial struct SetupUnitMoverDefaultPositionSystem : ISystem
                 if (!NaturalBlockedTargetResolver.TryResolveNaturalBlockedCell(position, cell, gridComponent, costs, out _, out float3 spawn)) continue;
                 spawn.y = position.y;
                 transform.ValueRW.Position = spawn;
+                if (em.HasComponent<PendingHeight>(entity)) em.SetComponentEnabled<PendingHeight>(entity, true);
                 position = spawn;
             }
             // A production rally or an already-issued command owns its target.

@@ -1,5 +1,5 @@
 using gameManagerModule;
-using NUnit.Framework;
+
 using System.Collections.Generic;
 using System.Drawing;
 using Unity.Collections;
@@ -127,6 +127,20 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     public void DragSelect(Vector2 currentMousePos, EntityManager em)
     {
         if (!TryGetPlayerId(out int playerId)) return;
+        if(TerrainVisualSurface.Active!=null&&cam!=null) {
+            using var query=em.CreateEntityQuery(new EntityQueryDesc {
+                All=new[]{ComponentType.ReadOnly<DragSelectableEntity>(),ComponentType.ReadOnly<Selectable>(),ComponentType.ReadOnly<LocalTransform>(),ComponentType.ReadOnly<Selected>()},
+                Options=EntityQueryOptions.IgnoreComponentEnabledState
+            });
+            using var entities=query.ToEntityArray(Allocator.Temp);
+            foreach(var entity in entities){
+                if(em.GetComponentData<Selectable>(entity).playerID!=playerId)continue;
+                Vector3 position=(Vector3)em.GetComponentData<LocalTransform>(entity).Position;
+                Vector3 screen=cam.WorldToScreenPoint(position);
+                if(screen.z>0&&selectingRect.isContains(new float2(screen.x,screen.y)))em.SetComponentEnabled<Selected>(entity,true);
+            }
+            return;
+        }
       
 
         if (em != null)
@@ -175,6 +189,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 
         public static float3 ConvertScreenToWorldPos(Vector2 screenPos, Camera cam)
         {
+            if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(cam.ScreenPointToRay(screenPos),out var logical,out _)) return logical;
             RaycastInput input = GetRayCastInput(screenPos, cam, PhysicsLayersDefine.Ground);
             var world = World.DefaultGameObjectInjectionWorld;
             var entityManager = world.EntityManager;
@@ -300,3 +315,4 @@ public struct StartEndRect
         EndPoint = default(float2);
     }
 }
+

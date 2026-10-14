@@ -21,6 +21,10 @@ public class GridSnapperAuthoring : MonoBehaviour
                 throw new InvalidOperationException("Grid snapper needs a positive size, root BoxCollider, positive scale and unrotated root.");
             var entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new GridFootprint { Cells = authoring.GridScale });
+            if(!GetComponent<MovementAgentAuthoring>()&&!GetComponent<ModelSnapperAuthoring>()){
+                AddComponent(entity,ModelSnapSource.Capture(authoring.gameObject,authoring.GridScale,0));
+                AddComponent<Snapping>(entity);
+            }
             AddComponent(entity, new GridSnapperSource
             {
                 Size = (float3)box.size * (float3)transform.lossyScale,

@@ -10,16 +10,18 @@ public enum CommandType
     Move,
     TargetTo,
     Progression,
-    Build
+    Build,
+    PlanBuild
 }
 
 public struct CommandQueueElement : IBufferElementData
 {
     public int PlayerId;
     public CommandType Type;
-    public int DataIndex;
+    public GameBlobReference Progression;
     public Entity sourceEntity;
     public Entity targetEntity;
+    public Entity SourcesEntity;
     public Vector3 position;
     public GridRect gridRect;
 }
@@ -30,24 +32,41 @@ public struct CommandQueueComponent : IComponentData
 
 public static class CommandDataHelper
 {
+    // Snapshot selection now; processing must not read a later UI selection.
+    public static void AddPlanBuildToQueue(EntityManager em, int playerId,
+        System.Collections.Generic.IReadOnlyList<Entity> sources, Entity prefab, Vector3 position)
+    {
+        using var query = em.CreateEntityQuery(typeof(CommandQueueComponent));
+        var queue = query.GetSingletonEntity();
+        var payload = em.CreateEntity();
+        var buffer = em.AddBuffer<PlaceBuildingWorkerElement>(payload);
+        foreach (var source in sources)
+            buffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = source });
+        em.GetBuffer<CommandQueueElement>(queue).Add(new CommandQueueElement
+        {
+            PlayerId = playerId, Type = CommandType.PlanBuild, targetEntity = prefab,
+            position = position, SourcesEntity = payload
+        });
+    }
+
     public static void AddCommandToQueue(
         EntityManager entityManager,
         int playerId,
         Entity sourceEntity,
         CommandType type,
-        int dataIndex = 0,
+        GameBlobReference progression = default,
         Entity targetEntity = default,
         Vector3 position = default,
         GridRect gridRect = default)
     {
-        var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>());
+        using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>());
         var commandQueueEntity = query.GetSingletonEntity();
         var commandBuffer = entityManager.GetBuffer<CommandQueueElement>(commandQueueEntity);
         commandBuffer.Add(new CommandQueueElement
         {
             PlayerId = playerId,
             Type = type,
-            DataIndex = dataIndex,
+            Progression = progression,
             sourceEntity = sourceEntity,
             targetEntity = targetEntity,
             position = position,
@@ -69,28 +88,30 @@ partial struct CommandQueue : ISystem
     {
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var e = SystemAPI.GetSingletonEntity<CommandQueueComponent>();
-        var commandBuffer = state.EntityManager.GetBuffer<CommandQueueElement>(e);
+        // Placement and production can perform structural changes; do not retain a buffer across them.
+        using var commands = state.EntityManager.GetBuffer<CommandQueueElement>(e).ToNativeArray(Allocator.Temp);
+        state.EntityManager.GetBuffer<CommandQueueElement>(e).Clear();
 
-        foreach (var command in commandBuffer)
+        foreach (var command in commands)
         {
             ProcessCommand(ref state, command);
         }
 
-        commandBuffer.Clear();
     }
 
     private static void ProcessCommand(ref SystemState state, CommandQueueElement command)
     {
+        if (command.Type == CommandType.PlanBuild)
+        {
+            HandlePlanBuild(ref state, command);
+            return;
+        }
+        if (!CommandAuthority.CanControl(state.EntityManager, command.PlayerId, command.sourceEntity)
+            || !IsValidSourceEntity(state.EntityManager, command))
+            return;
+
         if (command.Type == CommandType.Build)
         {
-            if (command.targetEntity != Entity.Null &&
-                state.EntityManager.HasComponent<BuildingComponent>(command.targetEntity) &&
-                !state.EntityManager.HasComponent<BuildingConstruction>(command.targetEntity))
-            {
-                HandlePlaceBuilding(ref state, command);
-                return;
-            }
-
             HandleBuild(ref state, command);
             return;
         }
@@ -98,11 +119,6 @@ partial struct CommandQueue : ISystem
         if (command.Type == CommandType.Progression)
         {
             HandleProgression(ref state, command);
-            return;
-        }
-
-        if (!IsValidSourceEntity(state.EntityManager, command))
-        {
             return;
         }
 
@@ -119,9 +135,33 @@ partial struct CommandQueue : ISystem
         }
     }
 
-    private static void HandlePlaceBuilding(ref SystemState state, CommandQueueElement command)
+    private static void HandlePlanBuild(ref SystemState state, CommandQueueElement command)
     {
         var em = state.EntityManager;
+        var payload = command.SourcesEntity;
+        if (payload == Entity.Null || !em.Exists(payload)) return;
+        try
+        {
+        if (command.PlayerId < 0 || !em.HasBuffer<PlaceBuildingWorkerElement>(payload)
+            || !em.Exists(command.targetEntity) || !em.HasComponent<Prefab>(command.targetEntity)
+            || !em.HasComponent<BuildingComponent>(command.targetEntity)
+            || !math.all(math.isfinite((float3)command.position))) return;
+        var id = em.GetComponentData<BuildingComponent>(command.targetEntity).DefinitionID;
+        using var workers = new NativeList<Entity>(Allocator.Temp);
+        foreach (var source in em.GetBuffer<PlaceBuildingWorkerElement>(payload))
+        {
+            var worker = source.WorkerEntity;
+            if (!CommandAuthority.CanControl(em, command.PlayerId, worker)
+                || !em.HasComponent<BuilderComponent>(worker) || !em.HasComponent<MoveOverride>(worker)
+                || !em.HasBuffer<BuildOffer>(worker)
+                || (em.HasComponent<EntityHealth>(worker) && em.GetComponentData<EntityHealth>(worker).CurrentHP <= 0)) continue;
+            bool allowed = false;
+            foreach (var offer in em.GetBuffer<BuildOffer>(worker)) if (offer.DefinitionID == id) allowed = true;
+            bool duplicate = false;
+            foreach (var added in workers) if (added == worker) duplicate = true;
+            if (allowed && !duplicate) workers.Add(worker);
+        }
+        if (workers.Length == 0) return;
         Entity reqEntity = em.CreateEntity();
         em.AddComponentData(reqEntity, new PlaceBuildingRequest
         {
@@ -131,10 +171,10 @@ partial struct CommandQueue : ISystem
         });
 
         DynamicBuffer<PlaceBuildingWorkerElement> workerBuffer = em.AddBuffer<PlaceBuildingWorkerElement>(reqEntity);
-        if (command.sourceEntity != Entity.Null && em.Exists(command.sourceEntity))
-        {
-            workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = command.sourceEntity });
+        foreach (var worker in workers)
+            workerBuffer.Add(new PlaceBuildingWorkerElement { WorkerEntity = worker });
         }
+        finally { em.DestroyEntity(payload); }
     }
 
     private static bool IsValidSourceEntity(EntityManager entityManager, CommandQueueElement command)
@@ -166,7 +206,7 @@ partial struct CommandQueue : ISystem
 
     private static bool CanHandleTargetTo(EntityManager entityManager, CommandQueueElement command)
     {
-        if (command.targetEntity == Entity.Null)
+        if (command.targetEntity == Entity.Null || !entityManager.Exists(command.targetEntity))
         {
             return false;
         }
@@ -219,7 +259,8 @@ partial struct CommandQueue : ISystem
         ProductionJobs.Enqueue(
             state.EntityManager,
             command.sourceEntity,
-            command.DataIndex
+            command.Progression,
+            command.PlayerId
         );
     }
 
@@ -249,7 +290,7 @@ partial struct CommandQueue : ISystem
             return;
         }
 
-        if (command.targetEntity == Entity.Null || !em.Exists(command.targetEntity))
+        if (command.targetEntity == Entity.Null || !em.Exists(command.targetEntity) || em.HasComponent<Prefab>(command.targetEntity))
         {
             return;
         }
@@ -274,6 +315,7 @@ partial struct CommandQueue : ISystem
         }
 
         DeactiveAllAbility(em, command.sourceEntity);
+        builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
         builder.TargetConstructionSite = command.targetEntity;
         builder.State = BuilderState.GoingToSite;
         em.SetComponentData(command.sourceEntity, builder);
@@ -366,6 +408,7 @@ partial struct CommandQueue : ISystem
 
         if (em.HasComponent<BuilderComponent>(entity))
         {
+            BuilderSystem.RestoreStoppingDistance(em, entity);
             em.SetComponentEnabled<BuilderComponent>(entity, false);
         }
     }

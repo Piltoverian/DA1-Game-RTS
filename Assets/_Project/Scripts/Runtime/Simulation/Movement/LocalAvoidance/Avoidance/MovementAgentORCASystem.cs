@@ -39,6 +39,7 @@ public partial struct MovementAgentORCASystem : ISystem
             AvoidanceLookup = SystemAPI.GetComponentLookup<MovementAgentAvoidanceComponent>(true),
             TransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
             MoveLookup = SystemAPI.GetComponentLookup<MovementAgentComponent>(true),
+            PendingHeightLookup = SystemAPI.GetComponentLookup<PendingHeight>(false),
             GridCosts = SystemAPI.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(),
             InvDeltaTime = 1.0f / deltaTime,
         };
@@ -62,6 +63,8 @@ public partial struct MovementAgentORCASystem : ISystem
         public ComponentLookup<MovementAgentComponent> MoveLookup;
 
         [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
+        [NativeDisableParallelForRestriction]
+        public ComponentLookup<PendingHeight> PendingHeightLookup;
 
         public float InvDeltaTime;
 
@@ -184,15 +187,9 @@ public partial struct MovementAgentORCASystem : ISystem
                 }
             }
 
-            // --- 3. GRID GRADIENT (wall avoidance) ---
-            if (isNearWall)
-            {
-                separationPush += wallNormal * 0.3f;
-
-                prefVel += gridGradient * maxSpeed * 0.5f;
-                if (math.lengthsq(prefVel) > maxSpeed * maxSpeed)
-                    prefVel = math.normalize(prefVel) * maxSpeed;
-            }
+            // Smooth early steering removes the inward component, preserving wall tangents.
+            // No constant wall push: idle agents stay still unless neighbours overlap them.
+            prefVel = GridObstacleAvoidance.Steer(pos.xz, prefVel, agentRadius, GridCosts, Grid);
 
             // --- 4. LP SOLVE ---
             float2 newVel;
@@ -217,6 +214,8 @@ public partial struct MovementAgentORCASystem : ISystem
 
             // --- 6. OUTPUT ---
             move.velocity = new float3(newVel.x, 0, newVel.y);
+            if (math.any(newVel != float2.zero) && PendingHeightLookup.HasComponent(entity))
+                PendingHeightLookup.SetComponentEnabled(entity, true);
 
             lines.Dispose();
 

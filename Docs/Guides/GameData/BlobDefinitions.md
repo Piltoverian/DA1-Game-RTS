@@ -1,51 +1,44 @@
-# Blob definitions — 2026-09-21
+# Định nghĩa blob và danh mục dữ liệu — hiện hành
 
-## Hiện hành 2026-09-22 — chỉ dùng blob đã bake, không có Registry system
+**Mở phần Lookup dưới đây để đọc cấu hình khi chạy — khoảng 3 phút.**
 
-Theo yêu cầu người dùng, đã bỏ native map, RegistryCatalogMapSystem và RegistryMapCleanup. RegistryBlobElement giữ các blob references đã bake; RegistryBlobLookup.GetBlobByID<T> tra trực tiếp buffer theo type + ID (duyệt tuyến tính, không cấp phát). BlobBuilder/AddBlobAsset, BlobArray và DependsOn giữ nguyên. Unity quản lý buffers và lifetime blob theo scene; không có map Persistent để cleanup.
+## Lookup nhị phân và progression tham chiếu
 
-Lấy Registry bằng `entityManager.GetBuffer<RegistryBlobElement>(registryEntity, true)`, sau đó gọi `registry.GetBlobByID<T>(id, out result)` và đọc `ref var value = ref reference.Value`. Không cần chờ system khởi tạo map; chỉ cần Registry entity/buffer đã được load. Bộ kiểm tra blob riêng vẫn đã bỏ, không tạo lại. Bước kế tiếp là entity bakers/bindings. Nội dung lịch sử nói dùng map/system bên dưới đã được thay thế.
+`RegistryBlobElement` giữ `TypeKey`, `ID` và untyped blob tham chiếu. bộ chuyển dữ liệu sang ECS dùng `RegistryBlobElement.Create<T>(blob)` để lấy ID từ đúng kiểu ngay lúc chuyển dữ liệu sang ECS; tra cứu không đoán layout của blob để đọc ID.
 
-## Lịch sử trước khi bỏ system
+RegistryAuthoring gom mục rồi sắp xếp ổn định theo `(TypeKey, ID)` một lần lúc chuyển dữ liệu sang ECS. `RegistryBlobElement.CompareTo` dùng cùng thứ tự cho baking và tìm kiếm nhị phân cận dưới. `RegistryPrefabElement` không bị sắp xếp, giữ nguyên mọi PrefabIndex. Một tra cứu nhị phân được dùng bởi cả ba API:
 
-## Hiện hành — BlobAsset + map type/ID (2026-09-21)
+```csharp
+var typed = registry.GetBlobByID<TrainBlob>(id, out var result);
+var untyped = registry.GetBlobByID(RegistryTypeKey.For<TrainBlob>(), id, out result);
+var resolved = registry.GetBlobByID(gameBlobReference, out result);
+```
 
-Theo yêu cầu mới: giữ các hàm bake theo loại SO và map generic; mỗi record là một BlobAssetReference<T>, lists lồng nhau dùng BlobArray. Baker dựng bằng BlobBuilder, đăng ký AddBlobAsset, không gọi validator. DependsOn Registry và các SO con thực sự đọc; dependency của Registry không tự thay thế dependency của SO con.
+Hai overload không generic trả `UnsafeUntypedBlobAssetReference`; chỉ reinterpret sau khi tra cứu thành công và đã xác định đúng kiểu khóa. Wrapper generic tính mã băm khóa và gọi lại tra cứu gốc. Với khóa duy nhất, tra cứu O(nhật ký n); nếu có khóa trùng, chỉ duyệt nhóm trùng để giữ tham chiếu hợp lệ đầu tiên. Registry vẫn không có native bản đồ hoặc hệ thống khởi tạo/cleanup riêng; Unity sở hữu blob lifetime. Fixture hoặc bên cung cấp tạo bộ đệm thủ công phải sắp xếp trước tra cứu; không sắp xếp hoặc kiểm tra toàn bộ đệm ở mỗi lần tra khi chạy.
 
-RegistryBlobElement là một buffer chung chứa type key + untyped blob reference để Unity serialize/remap. RegistryCatalogMapSystem dựng map runtime và là bên duy nhất dispose map khi Registry entity mất source hoặc system/world bị hủy. Unity sở hữu lifetime blob; system không dispose blob. Không còn CustomList/NativeList hoặc Dispose đệ quy trong blob structs.
+`CommandQueueElement.Progression` dùng `GameBlobReference { CatalogKey, ID }` có sẵn, thay `DataIndex`. Phát lệnh với `progression: offer.JobReference`, hoặc tạo tham chiếu từ `RegistryTypeKey.For<TrainBlob/ResearchBlob>()` và JobID. `ProductionJobs.Enqueue` phân giải tham chiếu và xác nhận bên sản xuất có lựa chọn được cung cấp cùng kiểu+ID trước thanh toán. Vì vậy đổi thứ tự lựa chọn được cung cấp không đổi tác vụ đang chờ, còn lựa chọn được cung cấp bị gỡ sẽ bị từ chối. `ProductionElement.UnitPrefab` vẫn lấy từ lựa chọn được cung cấp hợp lệ của bên sản xuất.
 
-Lookup giữ GetBlobByID<T>(id, out result), nay trả BlobAssetReference<T>; đọc root/nested arrays qua ref. Type key dùng BurstRuntime.GetHashCode64<T>(), không dùng TypeManager cho blob structs và không cần enum liệt kê loại. AddBlobToReg<T> nhận blob hoàn chỉnh và mượn reference, không nhận T by-value để tạo blob.
-
-Base.PrefabIndex và WeaponDefinitionBlob.ProjectilePrefabIndex tra RegistryPrefabElement trên cùng Registry entity; Entity không nằm trong blob. Đã copy Research.Cost, Build.Range, ProjectileSpeed, Unit/Building ability/job references, Civ/tree/nested prerequisites. Tech identity theo source người dùng: TechDefinition.IDs.
-
-Runtime và Editor Roslyn compile với Unity references/source generators đã pass ở lượt trước. Ngày 2026-09-22, theo yêu cầu người dùng, đã bỏ công cụ kiểm tra blob riêng và không yêu cầu chạy lại hoặc tạo lại bộ checks này. Chưa có evidence actual Unity baking/rebake/PlayMode; không coi việc bỏ checks là tests đã pass. Evidence compile lịch sử: Temp/RegistryFixCompile. Các snapshots bên dưới không thay thế mục hiện hành này.
-
-## Snapshot trước — không thay thế trạng thái trên
-
-Theo yêu cầu hiện tại: chỉ chuyển schema SO sang structs dùng trong BlobAsset và thêm GetID, lấy AbiilityBlob.cs làm mẫu. Không khôi phục các baker/helper/map system cũ đã bị người dùng thay đổi hoặc xóa.
-
-## Files trong NewDataRefactor/Baking/Blobs
-
-- AbiilityBlob.cs: giữ Attack/Build/Gather/Storage; NativeList đổi thành BlobArray; ID public để BlobBuilder có thể gán; thêm GetID và giữ getID tương thích IGameBlobAsset hiện tại. Giữ BuildingIDsInReg là indices theo thiết kế người dùng, không tự đổi sang loại khác.
-- BaseBlob.cs: ID, MaxHP, WorkRate, JobCapacity, abilities/jobs references gồm CatalogKey + ID và gameplay PrefabIndex.
-- UnitBlob.cs: Base inline, PopulationCost, ResourceCosts, UnitTypes.
-- BuildingBlob.cs: Base inline, Tags, Cost, PopulationCapacity, WorkLoad.
-- JobBlob.cs: thay template MonoBehaviour bằng JobBlob; TrainBlob có Job inline và OutputUnitID; ResearchBlob có Job và Tech inline.
-- TechBlob.cs: TechBlob có ID lấy từ Research.Id và Cost; TechTreeBlob có Nodes; node giữ TechID và Prerequisites.
-- CivBlob.cs: ID, TechTreeID, UnitUnlocks; mỗi entry giữ UnitID và prerequisite IDs.
-
-Unit/Building.GetID trả Base.ID; Train/Research.GetID trả Job.ID. Helper structs không tương ứng SO độc lập (node/unlock/reference) không có identity riêng. Không thêm ID field vào SO.
-
-Blob không chứa dữ liệu UI: không Icon/IconIndex, Name/DisplayName hoặc Position hiển thị node TechTree. UI nhận ID của blob và tự tra dữ liệu presentation từ Resources; các fields trên SO vẫn giữ nguyên. Base.PrefabIndex là liên kết prefab gameplay, không phải UI, nên được giữ (-1 khi thiếu). Chưa tạo bảng mới hoặc viết baker. WeaponDefinitionBlob do người dùng đặt trong AttackAbilityDefinition.cs vẫn giữ nguyên; Entity projectile trong blob cần xem xét remapping khi tích hợp baking.
-
-## Cách dùng và giới hạn Registry hiện tại
-
-- BlobArray phải allocate bằng BlobBuilder; blob hiện không giữ BlobString vì tên hiển thị thuộc UI. Không dùng NativeList làm storage bên trong blob.
-- Đọc root và nested structs chứa BlobArray qua ref/BlobAssetReference; không copy struct ra khỏi blob rồi đọc relative offsets.
-- GameDataRegistryComponent hiện trả T bằng giá trị và dùng BlobAssetReference<T>.Create(T): API đó chưa phù hợp các blob có arrays. Cần sửa riêng khi làm Registry, chưa sửa trong lượt này.
-- nameof(T) trong Registry hiện trả chuỗi "T", không phải tên kiểu concrete. Đây cũng là vấn đề Registry cần xử lý riêng; không thay kiến trúc map trong lượt chỉ viết struct.
-- Nested Native containers trong map và lifetime/serialization chưa được kiểm chứng. Các struct compile không có nghĩa catalog/baking pipeline đã hoạt động.
-
-Kiểm chứng: compile toàn runtime bằng Roslyn của Unity với references/source generators hiện có pass; chỉ còn diagnostics legacy CS0618/SGFE009. Evidence tại Temp/BlobDefinitionsCompile. Chưa chạy Unity baking/serialization/Burst/PlayMode.
+Schema bộ đệm danh mục dữ liệu đã đổi; cần chuyển dữ liệu sang ECS lại SubScene khi chạy sau biên dịch. Không mang raw blob pointer trong lệnh hoặc giải phóng blob từ hàng đợi.
 
 
+## Các nhóm blob
+
+| tệp dưới GameData/Baking/Blobs | Nội dung |
+|---|---|
+| BaseBlob.cs | ID,MaxHP,WorkRate,JobCapacity,PrefabIndex; BlobArray tham chiếu Ability/Job |
+| UnitBlob.cs / BuildingBlob.cs | Base inline; dân số,chi phí,type/tag và khối lượng công việc phù hợp loại |
+| JobBlob.cs | Job ID/WorkLoad; TrainBlob có OutputUnitID; ResearchBlob có Tech inline |
+| TechBlob.cs / CivBlob.cs | Tech/tree/điều kiện tiên quyết và civilization/unlocks |
+| AbiilityBlob.cs | Các khả năng cấu hình được RegistryAuthoring chuyển dữ liệu sang ECS |
+
+Tên `AbiilityBlob.cs` giữ theo mã nguồn hiện có. Job identity lấy Job.ID; Unit/Building identity lấy Base.ID. UI icon/name thuộc ScriptableObject hiển thị, không nhét vào lối chơi blob.
+
+## Đọc an toàn và lifetime
+
+1. Lấy bộ đệm danh mục dữ liệu của scene/world hiện tại; tra cứu đúng kiểu+ID và kiểm tra FunctionResult.
+2. Đọc root/nested struct chứa BlobArray qua `ref`; không sao chép struct rồi đọc relative offsets.
+3. Không Dispose blob mượn từ danh mục dữ liệu hoặc gửi raw pointer/Entity handle qua mạng.
+
+BlobBuilder,AddBlobAsset và DependsOn thuộc baking luồng xử lý; Unity quản lý lifetime. PrefabIndex dùng RegistryPrefabElement của đúng danh mục dữ liệu, không phải biểu tượng chỉ số. Không sắp xếp mẫu đối tượng liên kết để sắp xếp danh mục blob.
+
+[Entity thiết lập dữ liệu](EntityAuthoring.md) · [Registry hiển thị](RegistryPresentation.md) · [Trạng thái/bằng chứng](../../Maintenance/CurrentState.md)

@@ -14,6 +14,17 @@ public class GameDataRegistry : ScriptableObject
 
     public List<CivDef> Civs = new();
 
+    [Tooltip("Fallback only when a civilization has no StartWorker. Must be registered in Units.")]
+    public UnitSO DefaultWorker;
+    [Tooltip("Fallback only when a civilization has no TownHallPrefab. Must be registered in Buildings.")]
+    public BuildingSO DefaultTownHall;
+
+    public GameObject GetStartingWorker(CivDef civ)
+        => civ != null && civ.StartWorker != null ? civ.StartWorker : DefaultWorker?.basedSO?.Prefab;
+
+    public GameObject GetStartingTownHall(CivDef civ)
+        => civ != null && civ.TownHallPrefab != null ? civ.TownHallPrefab : DefaultTownHall?.basedSO?.Prefab;
+
     public Sprite GetIcon<T>(FixedString64Bytes ID) where T: ScriptableObject
     {
         Sprite result;

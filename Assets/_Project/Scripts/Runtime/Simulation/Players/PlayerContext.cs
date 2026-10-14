@@ -11,6 +11,7 @@ public struct PlayerContextCachePendingTag : IComponentData
 public struct PlayerContextCache : IComponentData
 {
     public int PlayerId;
+    public int TeamID;
     public int civilizationId;
     public FixedString64Bytes CivID;
     public Age age;
@@ -20,6 +21,7 @@ public struct PlayerContextCache : IComponentData
     public PlayerContextCache(PlayerContext context)
     {
         PlayerId = context.PlayerId;
+        TeamID = context.TeamID;
         civilizationId = context.civilizationId;
         CivID = context.CivID;
         this.age = context.age;
@@ -30,6 +32,7 @@ public struct PlayerContextCache : IComponentData
     public void UpdateFromContext(PlayerContext context)
     {
         PlayerId = context.PlayerId;
+        TeamID = context.TeamID;
         civilizationId = context.civilizationId;
         CivID = context.CivID;
         age = context.age;
@@ -74,15 +77,17 @@ public struct ResourcePairCache : IBufferElementData
 public struct PlayerContext : IComponentData
 {
     public int PlayerId;
+    public int TeamID;
     public int civilizationId;
     public FixedString64Bytes CivID;
     public Age age;
     public int currentPopulation;
     public int maxPopulation;
 
-    public PlayerContext(int playerId, int civilizationId, Age age, FixedString64Bytes civId = default)
+    public PlayerContext(int playerId, int civilizationId, Age age, FixedString64Bytes civId = default, int teamId = -1)
     {
         PlayerId = playerId;
+        TeamID = teamId;
         this.civilizationId = civilizationId;
         CivID = civId;
         this.age = age;
@@ -93,6 +98,20 @@ public struct PlayerContext : IComponentData
 
 public static class PlayerContextHelper
 {
+    // Unassigned/missing teams preserve individual-player hostility.
+    public static bool AreAllies(NativeArray<PlayerContext> contexts, int firstPlayer, int secondPlayer)
+    {
+        if (firstPlayer == secondPlayer) return true;
+        int firstTeam = -1;
+        int secondTeam = -1;
+        for (int i = 0; i < contexts.Length; i++)
+        {
+            if (contexts[i].PlayerId == firstPlayer) firstTeam = contexts[i].TeamID;
+            if (contexts[i].PlayerId == secondPlayer) secondTeam = contexts[i].TeamID;
+        }
+        return firstTeam >= 0 && firstTeam == secondTeam;
+    }
+
     public static FunctionResult GetContextData(EntityManager entityManager, int playerId, out PlayerContext playerContext)
     {
         return GetPlayerContextEntity(entityManager, playerId, out _, out playerContext);

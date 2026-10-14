@@ -10,7 +10,7 @@ using Unity.Transforms;
 /// Pipeline: TargetSystem → ORCASystem → ActuatorSystem
 /// 
 /// Vai trò:
-///   1. Anti-deadlock: stuck detection + force settle
+///   1. Stuck detection + settle only at a crowded destination
 ///   2. Apply velocity → position (trực tiếp, không smoothing thêm)
 ///   3. Safety net: hard collision nếu ORCA fail (hiếm khi xảy ra)
 ///   4. Rotation
@@ -23,10 +23,15 @@ public partial struct MovementAgentActuatorSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         var deltaTime = SystemAPI.Time.DeltaTime;
+        bool hasGrid = SystemAPI.TryGetSingleton<GridComponent>(out var grid);
 
         var job = new MovementAgentActuatorJob
         {
-            DeltaTime = deltaTime
+            DeltaTime = deltaTime,
+            Grid = grid,
+            GridEntity = hasGrid ? SystemAPI.GetSingletonEntity<GridComponent>() : Entity.Null,
+            GridCostsLookup = SystemAPI.GetBufferLookup<GridNodeCost>(true),
+            PendingHeightLookup = SystemAPI.GetComponentLookup<PendingHeight>(false)
         };
 
         state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -36,6 +41,11 @@ public partial struct MovementAgentActuatorSystem : ISystem
     public partial struct MovementAgentActuatorJob : IJobEntity
     {
         public float DeltaTime;
+        public GridComponent Grid;
+        public Entity GridEntity;
+        [ReadOnly] public BufferLookup<GridNodeCost> GridCostsLookup;
+        [Unity.Collections.NativeDisableParallelForRestriction]
+        public ComponentLookup<PendingHeight> PendingHeightLookup;
 
         public void Execute(Entity entity, ref LocalTransform transform,
             ref MovementAgentComponent move,
@@ -43,12 +53,14 @@ public partial struct MovementAgentActuatorSystem : ISystem
             [ReadOnly] in MovementAgentAvoidanceComponent avoidance)
         {
             float3 pos = transform.Position;
+            var costs = GridEntity != Entity.Null && GridCostsLookup.HasBuffer(GridEntity)
+                ? GridCostsLookup[GridEntity].AsNativeArray() : default;
 
             // --- 1. ANTI-DEADLOCK: Stuck Detection ---
-            if (move.hastarget)
+            if (move.hastarget && move.targetResolutionKind != TargetResolutionKind.None)
             {
                 // Tính khoảng cách THỰC TẾ di chuyển được so với frame trước
-                float actualDistMoved = math.distance(pos, steering.lastPosition);
+                float actualDistMoved = math.distance(pos.xz, steering.lastPosition.xz);
                 float expectedDist = move.speed * DeltaTime;
                 
                 // Cập nhật lastPosition cho frame tiếp theo
@@ -58,26 +70,23 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 if (actualDistMoved < expectedDist * 0.1f)
                     steering.stuckTime += DeltaTime;
                 else
-                    steering.stuckTime += DeltaTime * 0.2f; // Vẫn đang lách -> tăng chậm
+                    steering.stuckTime = 0; // Real XZ progress, including wall sliding, is not a deadlock.
 
-                float distToGlobal = math.distance(pos, move.realTarget);
+                float distToGlobal = math.distance(pos.xz, move.realTarget.xz);
 
-                float stuckThreshold;
                 bool blockedByNeighbor = avoidance.closestDistance < avoidance.radius * 2.5f
                                          && avoidance.neighborCount > 0;
-
-                if (blockedByNeighbor)
-                    stuckThreshold = 0.2f;
-                else if (distToGlobal < steering.arrivalRadius)
-                    stuckThreshold = 0.5f;
-                else
-                    stuckThreshold = 0.7f;
-
-                if (steering.stuckTime > stuckThreshold)
+                // arrivalRadius is a braking range, not permission to discard a command.
+                // Keep waiting at bottlenecks and walls. Only settle beside the goal
+                // when another unit occupies it and the goal is directly reachable.
+                float settleRadius = math.max(steering.stoppingDistance, avoidance.radius * 2);
+                if (blockedByNeighbor && distToGlobal <= settleRadius && steering.stuckTime > .5f
+                    && GridObstacleAvoidance.ClearSegment(pos.xz, move.realTarget.xz, avoidance.radius, costs, Grid))
                 {
                     // Settle bình thường — khi settled, prefVel = 0
                     // → separation trở thành lực duy nhất → overlap tự giải
                     move.hastarget = false;
+                    move.stopReason = MovementStopReason.CrowdedDestination;
                     move.velocity = float3.zero;
                     move.preferredVelocity = float3.zero;
                     steering.isSettled = true;
@@ -105,14 +114,23 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 }
                 
                 correction.y = 0;
-                transform.Position += correction;
+                float2 corrected = GridObstacleAvoidance.MoveAndSlide(transform.Position.xz, correction.xz, avoidance.radius, costs, Grid);
+                var correctedPosition = transform.Position;
+                correctedPosition.x = corrected.x; correctedPosition.z = corrected.y;
+                transform.Position = correctedPosition;
             }
 
             // --- 3. APPLY VELOCITY (từ ORCA) ---
             if (math.lengthsq(move.velocity) > 0.001f)
             {
-                transform.Position += move.velocity * DeltaTime;
-                steering.isSettled = false;
+                float2 before = transform.Position.xz;
+                float2 after = GridObstacleAvoidance.MoveAndSlide(before, move.velocity.xz * DeltaTime, avoidance.radius, costs, Grid);
+                var nextPosition = transform.Position;
+                nextPosition.x = after.x; nextPosition.z = after.y;
+                transform.Position = nextPosition;
+                float2 actualVelocity = DeltaTime > 0 ? (after - before) / DeltaTime : float2.zero;
+                move.velocity = new float3(actualVelocity.x, 0, actualVelocity.y);
+                steering.isSettled = math.lengthsq(actualVelocity) < .001f;
             }
             else
             {
@@ -120,6 +138,10 @@ public partial struct MovementAgentActuatorSystem : ISystem
             }
 
             // --- 4. ROTATION ---
+            // Separation can move an idle agent even when its final velocity is zero.
+            if (math.any(pos.xz != transform.Position.xz) && PendingHeightLookup.HasComponent(entity))
+                PendingHeightLookup.SetComponentEnabled(entity, true);
+
             if (math.lengthsq(move.velocity) > 0.01f)
             {
                 float3 moveDir = math.normalizesafe(move.velocity);

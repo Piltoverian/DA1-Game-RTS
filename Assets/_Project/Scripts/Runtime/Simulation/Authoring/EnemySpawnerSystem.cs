@@ -596,12 +596,12 @@ public partial struct EnemySpawnMoveDebugSystem : ISystem
             string fieldInfo = BuildFieldInfo(entityManager, move.ValueRO.FieldEntity);
 
             float movedDistance = math.distance(
-                transform.ValueRO.Position,
-                debug.ValueRO.spawnPosition);
+                transform.ValueRO.Position.xz,
+                debug.ValueRO.spawnPosition.xz);
 
             float remainingDistance = math.distance(
-                transform.ValueRO.Position,
-                debug.ValueRO.expectedTarget);
+                transform.ValueRO.Position.xz,
+                debug.ValueRO.expectedTarget.xz);
 
             if (debug.ValueRO.elapsed >= debug.ValueRO.duration)
             {

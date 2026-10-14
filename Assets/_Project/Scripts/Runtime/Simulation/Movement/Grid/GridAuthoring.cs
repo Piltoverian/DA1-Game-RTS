@@ -48,6 +48,8 @@ public class GridAuthoring : MonoBehaviour
             AddComponent(entity, gridComponent);
             AddBuffer<GridNodeCost>(entity);
             AddBuffer<GridIsland>(entity);
+            AddBuffer<GridNeighborMask>(entity);
+            AddComponent(entity, new GridNeighborMaskState());
             AddBuffer<CostChangeRequest>(entity);
             var terrainBuffer = AddBuffer<GridTerrain>(entity);
 
@@ -56,11 +58,9 @@ public class GridAuthoring : MonoBehaviour
             {
                 // TerrainMapRenderer renders the baked cells; retain the plane collider.
                 AddComponent<Unity.Rendering.DisableRendering>(entity);
-                var terrain = TerrainGeneration.Generate(gridComponent, authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings);
-                foreach (var cell in terrain.cells) terrainBuffer.Add(cell);
-                var spawns = AddBuffer<GridSpawnCell>(entity);
-                for (int player = 0; player < terrain.spawns.Length; player++)
-                    spawns.Add(new GridSpawnCell { playerId = player, cell = terrain.spawns[player] });
+                AddComponent(entity,MapGenerationRecipe.From(authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings));
+                AddComponent(entity,new MapBuildState{Phase=MapBuildPhase.Requested,Revision=1});
+                AddBuffer<GridSpawnCell>(entity);
             }
         }
     }

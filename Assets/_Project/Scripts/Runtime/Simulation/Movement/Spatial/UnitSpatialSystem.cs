@@ -10,6 +10,7 @@ public struct UnitSpatialBucket : IComponentData
 }
 
 [UpdateAfter(typeof(SelectableSpatialSystem))]
+[UpdateAfter(typeof(MovementAgentActuatorSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct UnitSpatialSystem : ISystem
 {

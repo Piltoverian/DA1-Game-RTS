@@ -9,7 +9,12 @@ public struct GridComponent : IComponentData
     public float3 origin;
     public uint generation;
     public uint islandGeneration;
+    // Updated immediately when walkability changes, independently of field heartbeat.
+    public uint topologyVersion;
+    public uint islandTopologyVersion;
+    public int islandCount;
     public bool isDirty;
+    public bool initialized;
     public int HeartbeatTimer;
     public int RecalcPerframe;
 }
@@ -34,6 +39,9 @@ public struct GridTerrain : IBufferElementData
         new int2(-1,  0), // 3
     };
     public int heightLevel;
+    // Shared-vertex mode: base tier plus NW/NE/SE/SW high-corner bits 1/2/4/8.
+    public bool UsesVertexCorners;
+    public byte CornerMask;
 
     public bool walkable;
 
@@ -44,6 +52,9 @@ public struct GridTerrain : IBufferElementData
     public int RampId;
 
     public int RampDirection;
+
+    // Generation placement only. Gameplay construction must not treat this as a ban.
+    public bool RampInfluence;
 
 }
 

@@ -37,9 +37,9 @@ public partial struct FlowFieldAssignmentSystem : ISystem
         var cacheBuffer = SystemAPI.GetBuffer<FlowFieldCacheEntry>(cacheEntity);
         var fixedFrameCount = SystemAPI.GetSingleton<FixedFrameCount>();
 
-        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalToWorld>().Build();
+        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalTransform>().Build();
         var blockageDatas = blockageQuery.ToComponentDataArray<BlockageData>(Allocator.Temp);
-        var blockageLocalToWorlds = blockageQuery.ToComponentDataArray<LocalToWorld>(Allocator.Temp);
+        var blockageLocalToWorlds = BlockageTransforms.Capture(blockageQuery, Allocator.Temp);
         
         var ecb = new EntityCommandBuffer(Allocator.Temp);
         var refCountDeltas = new NativeHashMap<Entity, int>(16, Allocator.Temp);

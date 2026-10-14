@@ -29,6 +29,7 @@ public class PlayerBootstrapAuthoring : MonoBehaviour
     public class PlayerEntry
     {
         [Min(0)] public int PlayerId;
+        [Min(-1)] public int TeamID = -1;
         [Min(0)] public int SpawnSlot;
         public CivDef Civilization;
     }
@@ -114,7 +115,7 @@ public class PlayerBootstrapAuthoring : MonoBehaviour
             {
                 DependsOn(player.Civilization);
                 Entity contextEntity = CreateAdditionalEntity(TransformUsageFlags.None);
-                var context = new PlayerContext(player.PlayerId, 0, settings.StartingAge, new FixedString64Bytes(player.Civilization.Id));
+                var context = new PlayerContext(player.PlayerId, 0, settings.StartingAge, new FixedString64Bytes(player.Civilization.Id), player.TeamID);
                 AddComponent(contextEntity, context);
                 AddComponent(contextEntity, new PlayerContextCache(context));
                 AddComponent<PlayerContextCachePendingTag>(contextEntity);

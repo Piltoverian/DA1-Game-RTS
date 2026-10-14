@@ -28,7 +28,13 @@ public partial class PlayerBootstrapSystem : SystemBase
         var root = SystemAPI.GetSingletonEntity<PlayerBootstrapState>();
         var status = em.GetComponentData<PlayerBootstrapState>(root);
         if (status.Phase != PlayerBootstrapPhase.Waiting) return;
+        using var startupProbe=RuntimePerformanceProbe.Measure("bootstrapWaitingUpdates");
         var ge = SystemAPI.GetSingletonEntity<GridComponent>();
+        if(em.HasComponent<MapBuildState>(ge)){
+            var phase=em.GetComponentData<MapBuildState>(ge).Phase;
+            if(phase==MapBuildPhase.Failed){Fail(root,status,"Terrain generation failed; inspect MapBuildState.Error.");return;}
+            if(phase<MapBuildPhase.NavigationReady)return;
+        }
         var grid = em.GetComponentData<GridComponent>(ge);
         if (!em.HasBuffer<GridSpawnCell>(ge) || !em.HasBuffer<GridTerrain>(ge))
         { Fail(root, status, "Generated terrain and spawn slots are required."); return; }
@@ -75,7 +81,7 @@ public partial class PlayerBootstrapSystem : SystemBase
             var civ = registry.GetBlobByID<CivBlob>(em.GetComponentData<PlayerContext>(slot.Context).CivID, out var lookup);
             if (lookup != FunctionResult.Success || !TryPrefab(prefabs, civ.Value.TownHallPrefab, out var hall) ||
                 (status.WorkerCount > 0 && !TryPrefab(prefabs, civ.Value.StartWorkerPrefab, out _)))
-            { Fail(root, status, "Civilization or starting prefab is missing from registry."); return; }
+            { Fail(root, status, "Civilization or starting prefab is missing: configure the civ prefab or registry default for each required spawn type."); return; }
             if (!ValidPrefab(hall, true)) { Fail(root, status, "Town hall prefab requires building, completed-construction support, main-base tag and blocking footprint."); return; }
             if (!PlayerSpawnPlacement.TryBuilding(grid, terrain, costs, occupied, anchor, status.PlacementRadiusCells,
                 em.GetComponentData<BlockageData>(hall).LocalRect, out var position, out var min, out var max,
@@ -96,7 +102,7 @@ public partial class PlayerBootstrapSystem : SystemBase
                 foreach (var spawn in spawns) if (spawn.playerId == slots[p].SpawnSlot) bases[p] = spawn.cell;
             List<MapResourcePlanner.Node> nodes;
             MapResourceReport report;
-            try { nodes = MapResourcePlanner.Plan(em, grid, terrain, costs, occupied, bases,
+            try { using var resourceProbe=RuntimePerformanceProbe.Measure("resourcePlan");nodes = MapResourcePlanner.Plan(em, grid, terrain, costs, occupied, bases,
                 em.GetComponentData<MapResourceSettings>(root), em.GetBuffer<MapResourcePrefab>(root), out report); }
             catch (System.InvalidOperationException error) { Fail(root, status, error.Message); return; }
             em.SetComponentData(root, report);
@@ -132,57 +138,61 @@ public partial class PlayerBootstrapSystem : SystemBase
             }
         }
 
-        // No structural changes until the entire roster has a valid plan.
+        // Record all structural changes, then publish them in one playback.
+        // Do not interleave Instantiate/Add/Remove with GetBuffer: structural changes
+        // invalidate ECS safety handles, including the bootstrap ledger handle.
+        using var commands = new EntityCommandBuffer(Allocator.Temp);
         foreach (var placement in plan)
         {
-            Entity entity = em.Instantiate(placement.Prefab);
-            var transform = em.GetComponentData<LocalTransform>(entity);
+            Entity entity = commands.Instantiate(placement.Prefab);
+            var transform = em.GetComponentData<LocalTransform>(placement.Prefab);
             var position = placement.Position;
             position.y = transform.Position.y; // Current gameplay terrain uses flat Y; preserve the prefab pivot.
             transform.Position = position;
-            em.SetComponentData(entity, transform);
+            commands.SetComponent(entity, transform);
             if (placement.Resource)
             {
-                var nodeData = em.GetComponentData<ResourceNodeData>(entity);
+                var nodeData = em.GetComponentData<ResourceNodeData>(placement.Prefab);
                 nodeData.Amount = placement.AmountPerMine;
-                em.SetComponentData(entity, nodeData);
-                em.RemoveComponent<ResourceNodePendingConfig>(entity);
+                commands.SetComponent(entity, nodeData);
+                commands.RemoveComponent<ResourceNodePendingConfig>(entity);
                 if (!placement.ResourceId.IsEmpty)
                 {
-                    em.AddComponentData(entity, new MapResourceIdentity { DefinitionId = placement.ResourceId,
+                    commands.AddComponent(entity, new MapResourceIdentity { DefinitionId = placement.ResourceId,
                         Tier = placement.ResourceTier, ClusterRole = placement.ResourceRole });
                 }
-                if (!em.HasComponent<BlockageNeedBakeTag>(entity)) em.AddComponent<BlockageNeedBakeTag>(entity);
-                em.SetComponentEnabled<BlockageNeedBakeTag>(entity, true);
-                em.GetBuffer<PlayerBootstrapSpawned>(root).Add(new PlayerBootstrapSpawned { Value = entity });
+                if (!em.HasComponent<BlockageNeedBakeTag>(placement.Prefab)) commands.AddComponent<BlockageNeedBakeTag>(entity);
+                commands.SetComponentEnabled<BlockageNeedBakeTag>(entity, true);
+                commands.AppendToBuffer(root, new PlayerBootstrapSpawned { Value = entity });
                 continue;
             }
-            em.SetComponentData(entity, new EntityOwner { PlayerID = placement.Owner });
-            var selection = em.GetComponentData<Selectable>(entity);
+            commands.SetComponent(entity, new EntityOwner { PlayerID = placement.Owner });
+            var selection = em.GetComponentData<Selectable>(placement.Prefab);
             selection.playerID = placement.Owner;
-            em.SetComponentData(entity, selection);
-            var health = em.GetComponentData<EntityHealth>(entity);
+            commands.SetComponent(entity, selection);
+            var health = em.GetComponentData<EntityHealth>(placement.Prefab);
             health.CurrentHP = health.MaxHP; health.Changed = true;
-            em.SetComponentData(entity, health);
+            commands.SetComponent(entity, health);
             if (placement.Building)
             {
-                em.SetComponentData(entity, new BuildingConstruction { Phase = ConstructionPhase.Completed,
-                    CompletedWork = em.GetComponentData<BuildingComponent>(entity).WorkLoad });
-                if (!em.HasComponent<BlockageNeedBakeTag>(entity)) em.AddComponent<BlockageNeedBakeTag>(entity);
-                em.SetComponentEnabled<BlockageNeedBakeTag>(entity, true);
+                commands.SetComponent(entity, new BuildingConstruction { Phase = ConstructionPhase.Completed,
+                    CompletedWork = em.GetComponentData<BuildingComponent>(placement.Prefab).WorkLoad });
+                if (!em.HasComponent<BlockageNeedBakeTag>(placement.Prefab)) commands.AddComponent<BlockageNeedBakeTag>(entity);
+                commands.SetComponentEnabled<BlockageNeedBakeTag>(entity, true);
             }
             else
             {
-                if (!em.HasComponent<SetupUnitMoverDefaultPosition>(entity)) em.AddComponent<SetupUnitMoverDefaultPosition>(entity);
-                var agent = em.GetComponentData<MovementAgentComponent>(entity);
+                if (!em.HasComponent<SetupUnitMoverDefaultPosition>(placement.Prefab)) commands.AddComponent<SetupUnitMoverDefaultPosition>(entity);
+                var agent = em.GetComponentData<MovementAgentComponent>(placement.Prefab);
                 agent.hastarget = false;
                 agent.velocity = float3.zero;
                 agent.preferredVelocity = float3.zero;
-                em.SetComponentData(entity, agent);
-                if (em.HasComponent<MoveOverride>(entity)) em.SetComponentEnabled<MoveOverride>(entity, false);
+                commands.SetComponent(entity, agent);
+                if (em.HasComponent<MoveOverride>(placement.Prefab)) commands.SetComponentEnabled<MoveOverride>(entity, false);
             }
-            em.GetBuffer<PlayerBootstrapSpawned>(root).Add(new PlayerBootstrapSpawned { Value = entity });
+            commands.AppendToBuffer(root, new PlayerBootstrapSpawned { Value = entity });
         }
+        commands.Playback(em); // Deferred entity references in the ledger are remapped here.
         status.Phase = PlayerBootstrapPhase.Finalizing;
         status.GridGeneration = grid.generation;
         em.SetComponentData(root, status);

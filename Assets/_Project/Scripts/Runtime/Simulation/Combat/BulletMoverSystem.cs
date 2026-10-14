@@ -1,4 +1,5 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -48,6 +49,8 @@ partial struct BulletMoverSystem : ISystem
         var bucketMap = spatialBucket.Bucket;
 
         float deltaTime = SystemAPI.Time.DeltaTime;
+        using var contexts = SystemAPI.QueryBuilder().WithAll<PlayerContext>().Build()
+            .ToComponentDataArray<PlayerContext>(Allocator.Temp);
         int2 gridMax = new int2(gridComponent.width - 1, gridComponent.height - 1);
 
         foreach (var (localTransform, bullet, target, entity) in
@@ -73,20 +76,30 @@ partial struct BulletMoverSystem : ISystem
             }
 
             float3 currentPosition = localTransform.ValueRO.Position;
-            float distanceBeforeSq = math.distancesq(currentPosition, targetPosition);
-            
-            float3 moveDirection = math.normalizesafe(targetPosition - currentPosition);
-            localTransform.ValueRW.Position += moveDirection * bullet.ValueRO.speed * deltaTime;
-
-            float distanceAfterSq = math.distancesq(localTransform.ValueRO.Position, targetPosition);
-            if (distanceAfterSq > distanceBeforeSq)
+            float distanceSq = math.distancesq(currentPosition, targetPosition);
+            float stepDistance = math.max(0f, bullet.ValueRO.speed * deltaTime);
+            // Reach the target this update when the remaining distance fits in the step.
+            bool reachedTarget = distanceSq <= stepDistance * stepDistance;
+            if (reachedTarget)
             {
                 localTransform.ValueRW.Position = targetPosition;
             }
-
-            float destroyDistanceSq = 0.2f * 0.2f;
-            if (math.distancesq(localTransform.ValueRO.Position, targetPosition) <= destroyDistanceSq)
+            else
             {
+                float3 moveDirection = math.normalizesafe(targetPosition - currentPosition);
+                localTransform.ValueRW.Position += moveDirection * stepDistance;
+            }
+
+            if (reachedTarget)
+            {
+                // Ownership, teams and health may have changed while the bullet was in flight.
+                if (!healthLookup.HasComponent(targetEntity) || healthLookup[targetEntity].CurrentHP <= 0f ||
+                    (unitLookup.HasComponent(targetEntity) && PlayerContextHelper.AreAllies(
+                        contexts, bullet.ValueRO.playerID, unitLookup[targetEntity].PlayerID)))
+                {
+                    ecb.DestroyEntity(entity);
+                    continue;
+                }
                 if (healthLookup.HasComponent(targetEntity))
                 {
                     var health = healthLookup.GetRefRW(targetEntity);
@@ -130,7 +143,9 @@ partial struct BulletMoverSystem : ISystem
                                     {
                                         if (ally == targetEntity) continue;
 
-                                        if (victimFaction != -1 && unitLookup.HasComponent(ally) && unitLookup[ally].PlayerID == victimFaction)
+                                        if (victimFaction != -1 && unitLookup.HasComponent(ally) &&
+                                            PlayerContextHelper.AreAllies(contexts, unitLookup[ally].PlayerID, victimFaction) &&
+                                            !PlayerContextHelper.AreAllies(contexts, unitLookup[ally].PlayerID, attackerFaction))
                                         {
                                             bool allyIdle = targetLookup.HasComponent(ally) &&
                                                             targetLookup[ally].targetEntity == Entity.Null &&

@@ -92,7 +92,7 @@ public class CommandMenu : MonoBehaviour
                 if (commandButton == null)
                     commandButton = buttonObject.AddComponent<CommandButton>();
 
-                commandButton.SetProductionJob(i, offer.JobID);
+                commandButton.SetProductionJob(offer.JobReference);
 
                 Button button = buttonObject.GetComponent<Button>();
                 if (button != null)

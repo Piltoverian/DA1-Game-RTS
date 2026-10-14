@@ -32,7 +32,7 @@ public sealed class GameDataRegistryEditor : Editor
         }
         if (GUILayout.Button("Validate"))
         {
-            issues = GameDataValidator.Validate((GameDataRegistry)target);
+            issues = ValidateAndNormalize(registry);
             LogIssues(issues, target);
         }
         if (issues == null) return;
@@ -53,11 +53,52 @@ public sealed class GameDataRegistryEditor : Editor
     private static void ValidateSelected()
     {
         var registry = Selection.activeObject as GameDataRegistry;
-        LogIssues(GameDataValidator.Validate(registry), registry);
+        LogIssues(ValidateAndNormalize(registry), registry);
     }
 
     [MenuItem("Tools/Game Data/Validate Selected Registry", true)]
     private static bool CanValidateSelected() => Selection.activeObject is GameDataRegistry;
+
+    private static IReadOnlyList<ValidationIssue> ValidateAndNormalize(GameDataRegistry registry)
+    {
+        // Keep validation diagnostics, then normalize each valid cost list on its SO.
+        // An invalid list stays untouched so its reported fields can be corrected.
+        var issues = GameDataValidator.Validate(registry);
+        if (registry == null) return issues;
+        Undo.IncrementCurrentGroup();
+        int group = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Normalize Registry Resource Costs");
+        bool changed = false;
+        void Normalize(Object asset, List<ResourcePair> values)
+        {
+            if (asset == null || values == null || ResourceCostNormalizer.IsNormalized(values)) return;
+            if (!ResourceCostNormalizer.TryNormalize(values, out var normalized)) return;
+            Undo.RecordObject(asset, "Normalize Resource Costs");
+            values.Clear();
+            values.AddRange(normalized);
+            EditorUtility.SetDirty(asset);
+            changed = true;
+        }
+        if (registry.Units != null)
+            foreach (var unit in registry.Units)
+                if (unit != null) Normalize(unit, unit.ResourceCosts);
+        if (registry.Buildings != null)
+            foreach (var building in registry.Buildings)
+                if (building != null) Normalize(building, building.Cost);
+        if (registry.Jobs != null)
+            foreach (var job in registry.Jobs)
+                if (job is Research research && research.TechDefinition != null)
+                    Normalize(research.TechDefinition, research.TechDefinition.Cost);
+        if (registry.Civs != null)
+            foreach (var civ in registry.Civs)
+                if (civ != null && civ.TechTree != null && civ.TechTree.Nodes != null)
+                    foreach (var node in civ.TechTree.Nodes)
+                        if (node != null && node.techDefinition != null)
+                            Normalize(node.techDefinition, node.techDefinition.Cost);
+        Undo.CollapseUndoOperations(group);
+        if (changed) AssetDatabase.SaveAssets();
+        return GameDataValidator.Validate(registry);
+    }
 
     private static string Format(ValidationIssue issue)
     {

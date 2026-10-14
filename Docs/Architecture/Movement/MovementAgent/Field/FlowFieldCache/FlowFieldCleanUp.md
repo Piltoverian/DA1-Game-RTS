@@ -1,6 +1,6 @@
 # FlowFieldCleanUp.cs
 
-Hệ thống này đóng vai trò là bộ dọn rác (Garbage Collector) cho các Flow Field, đảm bảo bộ nhớ của game không bị phình to sau một thời gian chơi dài.
+Hệ thống này đóng vai trò là bộ dọn rác (Garbage Collector) cho các trường hướng Field, đảm bảo bộ nhớ của trò chơi không bị phình to sau một thời gian chơi dài.
 
 ---
 
@@ -10,20 +10,20 @@ Hệ thống quét qua tất cả các thực thể có thành phần `FlowField
 ### Điều kiện 1: Không có Unit nào sử dụng
 Kiểm tra `refCount.value == 0`. Nếu vẫn còn lính đang đi trên đường này, hệ thống sẽ bỏ qua.
 
-### Điều kiện 2: Không nằm trong Cache
+### Điều kiện 2: Không nằm trong bộ nhớ đệm
 Đây là điều kiện quan trọng nhất (`inCache == false`).
-- Nếu một Flow Field không có Unit nào sử dụng nhưng vẫn đang nằm trong danh sách **Cache** (160 mục gần nhất), hệ thống **SẼ KHÔNG XÓA**.
+- Nếu một trường hướng Field không có Unit nào sử dụng nhưng vẫn đang nằm trong danh sách **bộ nhớ đệm** (160 mục gần nhất), hệ thống **SẼ KHÔNG XÓA**.
 - Lý do: Để nếu người chơi click lại vào đúng điểm đó ngay sau đó, chúng ta có thể tái sử dụng ngay lập tức mà không cần tính toán lại từ đầu.
 
 ---
 
 ## 2. Khi nào thực thể bị xóa thực sự?
-Một thực thể Flow Field sẽ thực sự bị `DestroyEntity` khi:
+Một thực thể trường hướng Field sẽ thực sự bị `DestroyEntity` khi:
 1. Nó không còn Unit nào bám theo.
-2. Nó đã bị đẩy ra khỏi danh sách Cache (bởi thuật toán LRU trong `FlowFieldCacheHelper`).
+2. Nó đã bị đẩy ra khỏi danh sách bộ nhớ đệm (bởi thuật toán LRU trong `FlowFieldCacheHelper`).
 
 ---
 
-## 3. Thứ tự thực thi (Execution Order)
+## 3. Thứ tự thực thi (Execution thứ tự)
 Hệ thống này chạy ở cuối cùng của nhóm `FixedStepSimulationSystemGroup`, sau khi quân lính đã thực hiện xong các bước di chuyển (`ActuatorSystem`).
 - **Lý do**: Để đảm bảo mọi thay đổi về gán đường đi trong khung hình hiện tại đã được ghi nhận trước khi thực hiện dọn dẹp.

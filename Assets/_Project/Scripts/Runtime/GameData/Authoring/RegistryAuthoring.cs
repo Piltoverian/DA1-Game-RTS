@@ -6,6 +6,7 @@ using Unity.Entities;
 using Unity.Entities.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.UIElements;
+using RTS.DataValidation;
 using static UnityEngine.Rendering.STP;
 
 // Preserve the existing serialized mode values and membership behavior.
@@ -22,16 +23,6 @@ public class RegistryAuthoring : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetInstance() => __instance = null;
 
-    private void Awake()
-    {
-        var regs= FindObjectsByType<RegistryAuthoring>(FindObjectsSortMode.None);
-        if(regs.Count()!=1)
-        {
-            Debug.LogError($"There should be exactly one RegistryAuthoring in the scene, but found {regs.Count()}.");
-        }
-        __instance = this.gameDataRegistry;
-    }
-
     public static GameDataRegistry Instance
     {
         get
@@ -46,11 +37,19 @@ public class RegistryAuthoring : MonoBehaviour
     {
         private readonly Dictionary<GameObject, int> prefabs = new();
         private readonly HashSet<TechTreeDef> trees = new();
+        private readonly List<RegistryBlobElement> blobEntries = new();
 
         public override void Bake(RegistryAuthoring authoring)
         {
+            var regs = FindObjectsByType<RegistryAuthoring>(FindObjectsSortMode.None);
+            if (regs.Count() != 1)
+            {
+                Debug.LogError($"There should be exactly one RegistryAuthoring in the scene, but found {regs.Count()}.");
+            }
+            __instance = authoring.gameDataRegistry;
             prefabs.Clear();
             trees.Clear();
+            blobEntries.Clear();
             try
             {
                 DependsOn(authoring.gameDataRegistry);
@@ -66,19 +65,21 @@ public class RegistryAuthoring : MonoBehaviour
                     foreach (var building in authoring.gameDataRegistry.Buildings) BakeBuildings(building, et);
                 }
                 if (authoring.bakeMode == BakeMode.BakeAll || authoring.bakeMode == BakeMode.CivOnly)
-                    foreach (var civ in authoring.gameDataRegistry.Civs) BakeCivs(civ, et);
+                    foreach (var civ in authoring.gameDataRegistry.Civs) BakeCivs(civ, et, authoring.gameDataRegistry);
+
+                // Stable ordering keeps the first registered blob for duplicate keys.
+                // Only blob records move; RegistryPrefabElement indices remain unchanged.
+                foreach (var entry in blobEntries.OrderBy(entry => entry))
+                    AppendToBuffer(et, entry);
             }
-            finally { prefabs.Clear(); trees.Clear(); }
+            finally { prefabs.Clear(); trees.Clear(); blobEntries.Clear(); }
         }
 
         private void AddBlobToReg<T>(Entity et, ref BlobBuilder builder) where T : unmanaged, IGameBlobAsset
         {
             var blob = builder.CreateBlobAssetReference<T>(Allocator.Persistent);
             AddBlobAsset(ref blob, out _);
-            AppendToBuffer(et, new RegistryBlobElement
-            {
-                TypeKey = RegistryTypeKey.For<T>(), Blob = UnsafeUntypedBlobAssetReference.Create(blob)
-            });
+            blobEntries.Add(RegistryBlobElement.Create(blob));
         }
 
         private static void Copy<T>(ref BlobBuilder builder, ref BlobArray<T> destination, List<T> source)
@@ -139,6 +140,8 @@ public class RegistryAuthoring : MonoBehaviour
         private void BakeUnits(UnitSO authoring, Entity et)
         {
             DependsOn(authoring);
+            if (!ResourceCostNormalizer.IsNormalized(authoring.ResourceCosts))
+                throw new InvalidOperationException($"UnitSO '{authoring.name}' has invalid or duplicate costs. Run Registry Validate.");
             var builder = new BlobBuilder(Allocator.Temp);
             try
             {
@@ -155,6 +158,8 @@ public class RegistryAuthoring : MonoBehaviour
         private void BakeBuildings(BuildingSO authoring, Entity et)
         {
             DependsOn(authoring);
+            if (!ResourceCostNormalizer.IsNormalized(authoring.Cost))
+                throw new InvalidOperationException($"BuildingSO '{authoring.name}' has invalid or duplicate costs. Run Registry Validate.");
             var builder = new BlobBuilder(Allocator.Temp);
             try
             {
@@ -180,6 +185,8 @@ public class RegistryAuthoring : MonoBehaviour
                     case Research research:
                     {
                         DependsOn(research.TechDefinition);
+                        if (!ResourceCostNormalizer.IsNormalized(research.TechDefinition.Cost))
+                            throw new InvalidOperationException($"TechDefinition '{research.TechDefinition.name}' has invalid or duplicate costs. Run Registry Validate.");
                         ref var blob = ref builder.ConstructRoot<ResearchBlob>();
                         blob.Job.ID = research.Id;
                         blob.Job.WorkLoad = research.WorkLoad;
@@ -273,7 +280,7 @@ public class RegistryAuthoring : MonoBehaviour
             finally { builder.Dispose(); }
         }
 
-        private void BakeCivs(CivDef authoring, Entity et)
+        private void BakeCivs(CivDef authoring, Entity et, GameDataRegistry registry)
         {
             DependsOn(authoring);
             DependsOn(authoring.TechTree);
@@ -294,8 +301,12 @@ public class RegistryAuthoring : MonoBehaviour
                     unlocks[i].UnitID = entry.unitDefinition.basedSO.ID;
                     BakeTechIds(ref builder, ref unlocks[i].Prerequisites, entry.Prerequisites);
                 }
-                blob.StartWorkerPrefab = PrefabIndex(authoring.StartWorker, et);
-                blob.TownHallPrefab = PrefabIndex(authoring.TownHallPrefab, et);
+                DependsOn(registry.DefaultWorker);
+                DependsOn(registry.DefaultTownHall);
+                if (registry.DefaultWorker != null) DependsOn(registry.DefaultWorker.basedSO);
+                if (registry.DefaultTownHall != null) DependsOn(registry.DefaultTownHall.basedSO);
+                blob.StartWorkerPrefab = PrefabIndex(registry.GetStartingWorker(authoring), et);
+                blob.TownHallPrefab = PrefabIndex(registry.GetStartingTownHall(authoring), et);
                 AddBlobToReg<CivBlob>(et, ref builder);
             }
             finally { builder.Dispose(); }

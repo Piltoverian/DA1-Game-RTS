@@ -192,6 +192,12 @@ namespace RTS.DataValidation
                     References(registry.Abilities, registry, nameof(registry.Abilities));
                     References(registry.Jobs, registry, nameof(registry.Jobs));
                     References(registry.Civs, registry, nameof(registry.Civs));
+                    if (registry.DefaultWorker != null)
+                        RegisteredReference(registry.DefaultWorker, registry, nameof(registry.DefaultWorker),
+                            IsRegisteredUnit, "DEFAULT_WORKER_NOT_IN_REGISTRY", "GameDataRegistry.Units");
+                    if (registry.DefaultTownHall != null)
+                        RegisteredReference(registry.DefaultTownHall, registry, nameof(registry.DefaultTownHall),
+                            IsRegisteredBuilding, "DEFAULT_HALL_NOT_IN_REGISTRY", "GameDataRegistry.Buildings");
                     break;
                 case CivDef civ:
                     CivValidator.Validate(civ, this);

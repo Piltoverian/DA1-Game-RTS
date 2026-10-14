@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7033e16499574ca4aa00ecd6a6f73c8e, type: 3}
+  m_Name: TempCivB
+  m_EditorClassIdentifier: Assembly-CSharp::CivDef
+  Id: dogfood.civ.b
+  Name: Temp Civ B
+  Icon: {fileID: 0}
+  TechTree: {fileID: 11400000, guid: 7898eaa707504fcf95885d1989fd69ed, type: 2}
+  UnitUnlocks:
+  - unitDefinition: {fileID: 11400000, guid: c126a5d65473fa94b95653723dfdaed1, type: 2}
+    Prerequisites: []
+  - unitDefinition: {fileID: 11400000, guid: df9ec4c9ada10504c828f2e897b1dd9b, type: 2}
+    Prerequisites: []
+  TownHallPrefab: {fileID: 7625297489629590005, guid: b05e4b17d59e310469b710283197b888, type: 3}
+  StartWorker: {fileID: 3382223461976398644, guid: 6466deff236c943439172622eda95da9, type: 3}

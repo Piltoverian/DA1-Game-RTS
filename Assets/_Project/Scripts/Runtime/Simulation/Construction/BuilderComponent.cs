@@ -13,6 +13,8 @@ public struct BuilderComponent : IComponentData,IEnableableComponent
     public Entity TargetConstructionSite;
     public float BuildWorkLoadPerSecond;
     public float BuildRange;
+    public float PreviousStoppingDistance;
+    public bool HasApproachStoppingDistance;
 }
 
 // Pending buildings, in placement order. The active target remains in BuilderComponent.

@@ -18,16 +18,12 @@ partial struct GridInitSystem : ISystem
 
         foreach (var (grid, costBuffer, islandBuffer, entity) in SystemAPI.Query<RefRW<GridComponent>, DynamicBuffer<GridNodeCost>, DynamicBuffer<GridIsland>>().WithEntityAccess())
         {
-            int totalNodes = grid.ValueRO.width * grid.ValueRO.height;
-            if (state.EntityManager.HasComponent<PhysicsCollider>(entity))
-            {
-                PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
-                var clone = collider.Value.Value.Clone();
-                var filter = clone.Value.GetCollisionFilter();
-                clone.Value.SetCollisionFilter(filter);
-                collider.Value = clone;
-                state.EntityManager.SetComponentData(entity, collider);
+            if(grid.ValueRO.initialized)continue;
+            if(state.EntityManager.HasComponent<MapBuildState>(entity)){
+                var phase=state.EntityManager.GetComponentData<MapBuildState>(entity).Phase;
+                if(phase==MapBuildPhase.Requested||phase==MapBuildPhase.Failed)continue;
             }
+            int totalNodes = grid.ValueRO.width * grid.ValueRO.height;
             
             var cbuffer = costBuffer;
             var ibuffer = islandBuffer;
@@ -44,8 +40,9 @@ partial struct GridInitSystem : ISystem
                 ibuffer[i] = new GridIsland { islandID = 0 };
             }
             grid.ValueRW.islandGeneration = uint.MaxValue;
+            grid.ValueRW.topologyVersion++;
+            grid.ValueRW.initialized = true;
         }
-        state.Enabled = false;
     }
 
     [BurstCompile]

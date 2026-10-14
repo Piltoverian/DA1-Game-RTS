@@ -39,6 +39,7 @@ public partial struct WorkerGatherSystem : ISystem
         }
 
         var depotCache = new NativeParallelMultiHashMap<DepotKey, DepotInfo>(32, Allocator.Temp);
+        using var accessIslands = new NativeList<int>(Allocator.Temp);
         foreach (var (transform, unit, bState, entity) in SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityOwner>, RefRO<BuildingConstruction>>()
                      .WithAll<StorageResource>()
                      .WithEntityAccess())
@@ -50,16 +51,11 @@ public partial struct WorkerGatherSystem : ISystem
             {
                 pos = blockageLookup[entity].GetWorldCenter(pos);
             }
-            int islandID = GetIslandID(pos, grid, islandBuffer);
-            DepotInfo info = new DepotInfo
-            {
-                Entity = entity,
-                Position = pos,
-                IslandID = islandID
-            };
-
-            foreach (var resource in SystemAPI.GetBuffer<StorageResource>(entity))
-                depotCache.Add(new DepotKey { PlayerId = unit.ValueRO.PlayerID, ResourceType = resource.Type }, info);
+            CollectAccessIslands(transform.ValueRO.Position, entity, ref blockageLookup, grid, islandBuffer, accessIslands);
+            foreach (int islandID in accessIslands)
+                foreach (var resource in SystemAPI.GetBuffer<StorageResource>(entity))
+                    depotCache.Add(new DepotKey { PlayerId = unit.ValueRO.PlayerID, ResourceType = resource.Type },
+                        new DepotInfo { Entity = entity, Position = pos, IslandID = islandID });
         }
 
         var nodeSpatialCache = new NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo>(1024, Allocator.Temp);
@@ -74,9 +70,9 @@ public partial struct WorkerGatherSystem : ISystem
             int2 gridPos = GridHelper.WorldToGrid(pos, grid);
             if (gridPos.x < 0 || gridPos.x >= grid.width || gridPos.y < 0 || gridPos.y >= grid.height) continue;
             int cellIndex = GridHelper.GetNodeIndex(gridPos, grid);
-            int islandID = islandBuffer[cellIndex].islandID;
-
-            nodeSpatialCache.Add(cellIndex, new ResourceNodeSpatialInfo
+            CollectAccessIslands(transform.ValueRO.Position, entity, ref blockageLookup, grid, islandBuffer, accessIslands);
+            foreach (int islandID in accessIslands)
+                nodeSpatialCache.Add(cellIndex, new ResourceNodeSpatialInfo
             {
                 Entity = entity,
                 Type = node.ValueRO.Type,
@@ -186,7 +182,8 @@ public partial struct WorkerGatherSystem : ISystem
     {
         Entity targetNode = gather.ValueRO.TargetNode;
 
-        if (targetNode == Entity.Null || !nodeLookup.HasComponent(targetNode) || nodeLookup[targetNode].Amount <= 0)
+        if (targetNode == Entity.Null || !nodeLookup.HasComponent(targetNode) || nodeLookup[targetNode].Amount <= 0
+            || !NodeReachable(targetNode, workerIsland, grid, ref transformLookup, ref blockageLookup, ref nodeSpatialCache))
         {
             float3 searchCenter = math.lengthsq(targetCache.ValueRO.lastTargetPosition) > 0.001f ? targetCache.ValueRO.lastTargetPosition : workerPos;
             Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache);
@@ -260,7 +257,8 @@ public partial struct WorkerGatherSystem : ISystem
     {
         Entity targetNode = gather.ValueRO.TargetNode;
 
-        if (targetNode == Entity.Null || !nodeLookup.HasComponent(targetNode) || nodeLookup[targetNode].Amount <= 0)
+        if (targetNode == Entity.Null || !nodeLookup.HasComponent(targetNode) || nodeLookup[targetNode].Amount <= 0
+            || !NodeReachable(targetNode, workerIsland, grid, ref transformLookup, ref blockageLookup, ref nodeSpatialCache))
         {
             if (gather.ValueRO.CarryAmount > 0)
             {
@@ -354,7 +352,8 @@ public partial struct WorkerGatherSystem : ISystem
         bool depotValid = false;
         var depotKey = new DepotKey { PlayerId = playerId, ResourceType = gather.ValueRO.CurrentResourceType };
         if (depotCache.TryGetFirstValue(depotKey, out var candidateDepot, out var depotIterator))
-            do { if (candidateDepot.Entity == targetDepot) depotValid = true; } while (depotCache.TryGetNextValue(out candidateDepot, ref depotIterator));
+            do { if (candidateDepot.Entity == targetDepot && candidateDepot.IslandID == workerIsland && workerIsland > 0) depotValid = true; }
+            while (depotCache.TryGetNextValue(out candidateDepot, ref depotIterator));
         if (!depotValid || targetDepot == Entity.Null || !transformLookup.HasComponent(targetDepot))
         {
             targetDepot = FindNearestDepot(workerPos, playerId, gather.ValueRO.CurrentResourceType, workerIsland, ref depotCache);
@@ -520,9 +519,9 @@ public partial struct WorkerGatherSystem : ISystem
         {
             do
             {
-                if (workerIsland == 0 || depotInfo.IslandID == 0 || depotInfo.IslandID == workerIsland)
+                if (workerIsland > 0 && depotInfo.IslandID == workerIsland)
                 {
-                    float distSq = math.distancesq(workerPos, depotInfo.Position);
+                    float distSq = math.distancesq(workerPos.xz, depotInfo.Position.xz);
                     if (distSq < bestDistSq)
                     {
                         bestDistSq = distSq;
@@ -564,9 +563,9 @@ public partial struct WorkerGatherSystem : ISystem
                     {
                         if (nodeInfo.Type == requiredType && nodeInfo.Amount > 0)
                         {
-                            if (workerIsland == 0 || nodeInfo.IslandID == 0 || nodeInfo.IslandID == workerIsland)
+                            if (workerIsland > 0 && nodeInfo.IslandID == workerIsland)
                             {
-                                float distSq = math.distancesq(centerPos, nodeInfo.Position);
+                                float distSq = math.distancesq(centerPos.xz, nodeInfo.Position.xz);
                                 if (distSq < bestDistSq)
                                 {
                                     bestDistSq = distSq;
@@ -580,6 +579,48 @@ public partial struct WorkerGatherSystem : ISystem
         }
 
         return bestNode;
+    }
+
+    private static bool NodeReachable(Entity node, int workerIsland, in GridComponent grid,
+        ref ComponentLookup<LocalTransform> transforms, ref ComponentLookup<BlockageData> blockages,
+        ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> cache)
+    {
+        if (workerIsland <= 0 || !transforms.HasComponent(node)) return false;
+        float3 position = transforms[node].Position;
+        if (blockages.HasComponent(node)) position = blockages[node].GetWorldCenter(position);
+        int2 cell = GridHelper.WorldToGrid(position, grid);
+        if (!PlayerSpawnPlacement.InBounds(cell, grid)) return false;
+        if (cache.TryGetFirstValue(cell.y * grid.width + cell.x, out var info, out var iterator))
+            do { if (info.Entity == node && info.IslandID == workerIsland) return true; }
+            while (cache.TryGetNextValue(out info, ref iterator));
+        return false;
+    }
+
+    // Blocked target centers have island0. Reachability is supplied by free cells
+    // along its four footprint sides, not by treating island0 as universally reachable.
+    private static void CollectAccessIslands(float3 position, Entity entity, ref ComponentLookup<BlockageData> blockageLookup,
+        in GridComponent grid, in DynamicBuffer<GridIsland> islands, NativeList<int> result)
+    {
+        result.Clear();
+        if (!blockageLookup.HasComponent(entity))
+        {
+            int island = GetIslandID(position, grid, islands);
+            if (island > 0) result.Add(island);
+            return;
+        }
+        if (!PlayerSpawnPlacement.TryFootprint(grid, position, blockageLookup[entity].LocalRect, out var min, out var max)) return;
+        for (int y = min.y - 1; y <= max.y + 1; y++)
+        for (int x = min.x - 1; x <= max.x + 1; x++)
+        {
+            bool horizontalSide = (y == min.y - 1 || y == max.y + 1) && x >= min.x && x <= max.x;
+            bool verticalSide = (x == min.x - 1 || x == max.x + 1) && y >= min.y && y <= max.y;
+            if ((!horizontalSide && !verticalSide) || x < 0 || y < 0 || x >= grid.width || y >= grid.height) continue;
+            int island = islands[y * grid.width + x].islandID;
+            if (island <= 0) continue;
+            bool known = false;
+            foreach (int existing in result) if (existing == island) known = true;
+            if (!known) result.Add(island);
+        }
     }
 
     private static int GetIslandID(float3 pos, in GridComponent grid, in DynamicBuffer<GridIsland> islandBuffer)

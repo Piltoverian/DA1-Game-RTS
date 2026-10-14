@@ -1,45 +1,23 @@
-# MapGen Unity — mục lục các rule
+# Sinh bản đồ — chọn đúng tài liệu
 
-Multiplayer đã chọn [server tạo map và truyền kết quả cho client](../Multiplayer/ServerMapLoading.md) ngày 2026-10-06. Đây là hướng triển khai tiếp theo, chưa có pipeline mạng trong code.
+**Mở [hướng dẫn Main](MapGen_Unity_ReadingGuide.md) để chạy/chỉnh bản đồ — khoảng 3 phút để bắt đầu.**
 
-Bản gameplay C# hiện tại, cập nhật 2026-10-06. Chọn một nhóm để mở đúng phần trong file giải thích; bảng code bên dưới chỉ tới file triển khai.
-
-| Nhóm rule | Nội dung tra cứu | File giải thích |
-|---|---|---|
-| 1. Grid và schema | Index, tọa độ, dữ liệu ô, walkable chung, kích thước | [Grid và dữ liệu một ô](MapGen_Unity_Rules.md#grid-schema) |
-| Quy ước tính index | Dùng chung GridHelper; phân biệt width của cell, vertex và chunk | [GridHelper và chiều rộng hàng](MapGen_Unity_Rules.md#grid-helper) |
-| 2. RNG và height | Seed, Perlin/fBm, wavelength, warp/ridge, quantize, smoothing | [Noise và tầng cao](MapGen_Unity_Rules.md#noise-height) |
-| 3. Spawn | Sector/jitter, khoảng cách, core phẳng, vùng bảo vệ | [Spawn và vùng bảo vệ](MapGen_Unity_Rules.md#spawn) |
-| 4. Núi | Noise mask, lấp khe, level khối núi, cấm đào ramp | [Núi](MapGen_Unity_Rules.md#mountain) |
-| 5. Cliff | Đánh phía cao, bề dày band, góc lõm | [Cliff ở phía cao](MapGen_Unity_Rules.md#cliff) |
-| 6. Ramp | Run thẳng, direction, portal hợp lệ, width, spacing, quota n/12 | [Các rule ramp](MapGen_Unity_Rules.md#ramp) |
-| 7. Kết nối | Một đảo, nối component, lấp túi nhỏ | [Kết nối đảo](MapGen_Unity_Rules.md#connectivity) |
-| 8. Nhận hoặc bỏ map | Giới hạn input, 16 candidate, fallback, validation | [Retry và validation](MapGen_Unity_Rules.md#retry-validation) |
-| 9. Gameplay ECS | Bake grid, cost 1/255, init một lần, obstacle động, lệnh Move | [Grid và movement](MapGen_Unity_Rules.md#gameplay-grid) |
-| 10. Visual | Tile ID, rotation, cliff/ramp/ground, layer, giới hạn art | [Compiler và sprite](MapGen_Unity_Rules.md#visual) |
-| 12. Config và resource | Catalog ID/type/prefab, tier, main balance, quota/range và luồng spawn | [Resource config và spawn](MapGen_ResourceSpawn_Config.md) |
-| 11. Theme và render | Sprite theo tên, thay texture, chunkSize, vòng đời mesh/material | [Theme và chunk](MapGen_Unity_Rules.md#theme-chunk) |
-
-## Chỉ mục code
-
-| Phần | File triển khai |
+| Bạn cần | Trang |
 |---|---|
-| Config và resource planner | [MapGenConfig.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/MapGenConfig.cs>), [MapResourcePlanner.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/MapResourcePlanner.cs>) |
-| Settings, spawn, height, núi, cliff, ramp, connectivity, retry | [TerrainGeneration.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainGeneration.cs>) |
-| Perlin/fBm và RNG | [MapGenerator.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/MapGenerator.cs>), [MapGenRNG.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/MapGenRNG.cs>) |
-| Schema và direction reference | [GridComponent.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Grid/GridComponent.cs>) |
-| Tọa độ và index dùng chung | [GridHelper.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Helpers/GridHelper.cs>) |
-| Bake, init và cập nhật cost | [GridAuthoring.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Grid/GridAuthoring.cs>), [GridInitSystem.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Grid/GridInitSystem.cs>), [CostChangeSystem.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Grid/Cost/CostChangeSystem.cs>) |
-| Ánh xạ terrain sang sprite | [TerrainVisualCompiler.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainVisualCompiler.cs>) |
-| Theme và chunk renderer | [TerrainTheme.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainTheme.cs>), [TerrainMapRenderer.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainMapRenderer.cs>) |
-| Lệnh Move và field | [MovementAgentAPI.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/CommandBridge/API/MovementAgentAPI.cs>), [FlowFieldAssignmentSystem.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/CommandBridge/FlowFieldAssignmentSystem.cs>), [TargetRequestCleanupSystem.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/CleanUpSystem/TargetRequestCleanupSystem.cs>) |
-| Setup vị trí unit | [SetupUnitDefaultPositionSystem.cs](<../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Overrides/SetupUnitDefaultPositionSystem.cs>) |
+| Input/output,cấu hình và luật bản đồ | [Rules](MapGen_Unity_Rules.md) · [dữ liệu](MapGen_DataTexture_Specification.md) · [cấu hình](MapGenConfig.md) |
+| ECS sinh dữ liệu,ready,phiên bản và ảnh trạng thái | [luồng xử lý](EcsMapPipeline.md) · [Tối ưu Unity](UnityOptimizationPort.md) |
+| khởi tạo,tài nguyên và vùng chiếm chỗ | [người chơi](PlayerBootstrap.md) · [tài nguyên cấu hình](MapGen_ResourceSpawn_Config.md) · [lưới bộ căn lưới](GridSnapper_ResourceSpawn.md) |
+| Height,chuyển động và dựng hình | [Height hợp đồng](PendingTerrainHeight.md) · [Obstacle điều hướng](GridObstacleSteering.md) · [Atlas địa hình](../TerrainVisualizer/README.md) |
+| Đo hiệu năng và kiểm chứng | [Main hiệu năng](../Maintenance/VerificationHistory.md) · [luồng xử lý kiểm tra](../Maintenance/VerificationHistory.md) |
 
-## Thao tác và tham khảo
+## Mã cần tìm
 
-- [MapGenConfig trong Inspector](MapGenConfig.md): entrypoint cấu hình map, bootstrap, AmountPerMine và thư mục test Assets/_Project/Tests/Fixtures/MapGeneration.
-- [Catalog và resource spawn](MapGen_ResourceSpawn_Config.md): tài liệu đọc/góp ý về prefab mapping, cấp giá trị, main cố định và các range.
-- [Kế hoạch spawn nhà và quân](MapGen_StartingSpawn_Plan.md): loadout, footprint, owner, population, production và authority multiplayer.
-- [Player bootstrap chung](PlayerBootstrap.md): cấu hình roster/settings dùng chung và spawn đầu trận; kết quả test cũ và giới hạn bản hiện tại.
-- [Grid snapper và resource spawn](GridSnapper_ResourceSpawn.md): footprint vuông N×N sau bake, mỏ đầu trận và smoke test Main.
-- [Chạy Main và thay texture trong Inspector](MapGen_Unity_ReadingGuide.md).
+Simulation/MapGeneration giữ công thức,sinh dữ liệu,địa hình dữ liệu,dốc nối tầng trình biên dịch và căn lưới. Simulation/Players khởi tạo player/nhóm đối tượng khởi đầu/resources. Presentation/Terrain giữ renderer/surface/picking; Presentation/Camera căn lưới camera cục bộ. Movement/Height đọc dữ liệu lưới độc lập bộ dựng hình.
+
+Runtime dùng TerrainRampCompiler; TerrainVisualCompiler cũ đã đổi tên. Renderer chỉ là luồng xử lý vật liệu atlas/độ sâu. ảnh vật liệu lược đồ dữ liệu là hợp đồng hình ảnh mỹ thuật, không phải wire format chơi nhiều người.
+
+## Kết quả lịch sử và phạm vi còn mở
+
+hạt giống audit/benchmark trong folder này chỉ chứng minh cấu hình và phiên bản ghi trong báo cáo. Các báo cáo đã gom vào lịch sử hợp nhất, giữ phân biệt khối lượng công việc/thuật toán; không suy số đo bản thử nghiệm hoặc Editor thành FPS người chơi bản dựng.
+
+[Trạng thái mới nhất](../Maintenance/CurrentState.md) · [lộ trình](../Maintenance/Roadmap.md) · [Thiết kế sản xuất sinh đối tượng](MapGen_StartingSpawn_Plan.md) · [máy chủ bản đồ loading](../Multiplayer/ServerMapLoading.md)

@@ -2,6 +2,7 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using RTS.DataValidation;
 
 [DisallowMultipleComponent]
 public class UnitAuthoring : MonoBehaviour
@@ -20,6 +21,8 @@ public class UnitAuthoring : MonoBehaviour
             DependsOn(authoring.unitDef);
             if (authoring.unitDef == null)
                 throw new InvalidOperationException("UnitAuthoring requires a UnitSO.");
+            if (!ResourceCostNormalizer.IsNormalized(authoring.unitDef.ResourceCosts))
+                throw new InvalidOperationException($"UnitSO '{authoring.unitDef.name}' has invalid or duplicate costs. Run Registry Validate.");
 
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             BakeBase(entity, authoring.unitDef.basedSO, authoring.initialHealth);

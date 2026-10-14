@@ -1,13 +1,15 @@
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class CommandButton : MonoBehaviour
 {
     [SerializeField] private CommandType commandType;
-    [SerializeField] private int dataIndex;
+    [FormerlySerializedAs("dataIndex")]
+    [SerializeField] private int buildOfferIndex;
     private FixedString64Bytes buildingId;
-    private FixedString64Bytes jobId;
+    private GameBlobReference progression;
 
     public void OnClick()
     {
@@ -39,7 +41,7 @@ public class CommandButton : MonoBehaviour
                         playerId: playerId,
                         sourceEntity: sourceEntity,
                         type: CommandType.Progression,
-                        dataIndex: dataIndex
+                        progression: progression
                     );
 
                     break;
@@ -63,7 +65,7 @@ public class CommandButton : MonoBehaviour
                     }
                     else
                     {
-                        BuildingPlacer.Instance.StartPlacementFromOfferIndex(dataIndex, sourceEntity, playerId);
+                        BuildingPlacer.Instance.StartPlacementFromOfferIndex(buildOfferIndex, sourceEntity, playerId);
                     }
                     break;
                 }
@@ -78,16 +80,15 @@ public class CommandButton : MonoBehaviour
     public void SetBuildOffer(FixedString64Bytes definitionId, int index = 0)
     {
         buildingId = definitionId;
-        jobId = default;
+        progression = default;
         commandType = CommandType.Build;
-        dataIndex = index;
+        buildOfferIndex = index;
     }
 
-    public void SetProductionJob(int index, FixedString64Bytes id)
+    public void SetProductionJob(GameBlobReference reference)
     {
         buildingId = default;
-        jobId = id;
+        progression = reference;
         commandType = CommandType.Progression;
-        dataIndex = index;
     }
 }

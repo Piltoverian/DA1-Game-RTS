@@ -1,6 +1,6 @@
 # MovementAgentDebugAuthoring.cs
 
-File này cung cấp giao diện điều khiển (UI) trong Unity Inspector để bật/tắt các tính năng gỡ lỗi trực quan của hệ thống Movement Agent.
+tệp này cung cấp giao diện điều khiển (UI) trong Unity Inspector để bật/tắt các tính năng gỡ lỗi trực quan của hệ thống chuyển động tác nhân.
 
 ---
 
@@ -15,9 +15,9 @@ Bạn có thể bật tắt các thành phần sau trên GameObject gỡ lỗi:
 
 ---
 
-## 2. Cơ chế Bake
-Hệ thống Bake sẽ chuyển các lựa chọn này vào một thành phần **`MovementAgentDebugConfig`**.
-- Thành phần này được thiết kế như một Singleton config, ảnh hưởng đến toàn bộ các Unit trong game.
+## 2. Cơ chế chuyển dữ liệu sang ECS
+Hệ thống chuyển dữ liệu sang ECS sẽ chuyển các lựa chọn này vào một thành phần **`MovementAgentDebugConfig`**.
+- Thành phần này được thiết kế như một duy nhất cấu hình, ảnh hưởng đến toàn bộ các Unit trong trò chơi.
 
 ---
 
@@ -26,4 +26,4 @@ Hệ thống Bake sẽ chuyển các lựa chọn này vào một thành phần 
 1. Tạo một GameObject mới (ví dụ tên là `MovementAgentDebugger`).
 2. Gắn script `MovementAgentDebugAuthoring` vào GameObject đó.
 3. Tích chọn các ô mà bạn muốn quan sát.
-4. Khi chạy game, `MovementAgentDebugSystem` sẽ tự động tìm thấy các thiết lập này và thực hiện việc vẽ lên màn hình.
+4. Khi chạy trò chơi, `MovementAgentDebugSystem` sẽ tự động tìm thấy các thiết lập này và thực hiện việc vẽ lên màn hình.

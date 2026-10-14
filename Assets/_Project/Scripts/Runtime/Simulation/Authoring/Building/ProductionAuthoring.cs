@@ -21,6 +21,13 @@ public struct ProductionElement : IBufferElementData
     public FixedString64Bytes JobID;
     public ProductionKind Kind;
     public Entity UnitPrefab;
+
+    public GameBlobReference JobReference => new GameBlobReference
+    {
+        CatalogKey = Kind == ProductionKind.Train ? RegistryTypeKey.For<TrainBlob>()
+            : Kind == ProductionKind.Research ? RegistryTypeKey.For<ResearchBlob>() : 0,
+        ID = JobID
+    };
 }
 public struct ProductionQueueElement : IBufferElementData
 {

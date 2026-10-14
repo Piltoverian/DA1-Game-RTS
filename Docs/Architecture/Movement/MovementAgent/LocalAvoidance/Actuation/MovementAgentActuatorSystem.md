@@ -1,33 +1,15 @@
-# MovementAgentActuatorSystem.cs
+# Actuator: di chuyển và giữ lệnh
 
-Đây là hệ thống cuối cùng trong chuỗi xử lý di chuyển (chạy sau ORCA), chịu trách nhiệm tổng hợp các lực, cập nhật vị trí thực tế của Unit và xử lý các tình huống bị kẹt (Stuck).
+Cập nhật 2026-10-12. Chạy bước cố định sau ORCA.
 
----
+stuckTime tăng khi độ dời XZ <10% speed×deltaTime, đặt lại khi có tiến triển. Kẹt xa đích vẫn giữ lệnh.
 
-## 1. Safety Net: Lực đẩy vật lý (Separation Force)
-Dù hệ thống có ORCA để né tránh trong tương lai, đôi khi các Unit vẫn bị chồng lấn (Hard Overlap) do chênh lệch vận tốc hoặc không gian hẹp. Lớp Separation Force giải quyết triệt để việc này:
-- Lực này lấy trực tiếp từ `avoidance.separationForce` (tính toán ở ORCASystem).
-- Nó đẩy dạt các Unit ra xa nhau ngay lập tức ở cấp độ Positional (Vị trí) trước cả khi áp dụng vận tốc mới, đảm bảo 100% không bao giờ đè lên nhau.
+CrowdedDestination chỉ xảy ra khi có hàng xóm, closestDistance<bán kính×2,5; cách realTarget<=tối đa(stoppingDistance,bán kính×2); stuckTime>0,5 s và ClearSegment tới đích clear. Khi đó hastarget=false, velocity/preferredVelocity zero, isSettled=true và ghi stopReason.
 
----
+Separation correction giới hạn 1,5 bán kính mỗi bước mô phỏng, Y=0, đi qua MoveAndSlide. Sau đó velocity×deltaTime cũng qua MoveAndSlide; velocity cập nhật theo độ dời thực tế.
 
-## 2. Xử lý kẹt vật lý (Anti-Deadlock / Stuck Detection)
-Hệ thống sử dụng cơ chế đếm thời gian kẹt (Stuck Time) tinh vi dựa trên độ dời vật lý thực tế:
-- **Theo dõi vị trí & đích điều hướng thực tế:** So sánh vị trí hiện tại so với `lastPosition` ở frame trước, đồng thời tính khoảng cách `distToTarget` tới `move.realTarget` (đích điều hướng thực tế: tâm ô resolved, chu vi công trình, hoặc `IslandSeed`).
-- **Tính toán quãng đường:** Nếu quãng đường di chuyển thực tế nhỏ hơn 10% so với lý thuyết (`move.speed * DeltaTime`), hệ thống nhận diện Unit đang bị chặn cứng bởi vật thể/tòa nhà, và tăng nhanh `stuckTime`. Nếu đang lách qua được, thời gian này tăng rất chậm.
-- **Ngưỡng chịu đựng (Threshold):**
-  - Bị bao vây bởi neighbor: 1.0 giây.
-  - Đã vào tầm dàn đội hình (gần `move.realTarget`): 1.5 giây.
-  - Còn ở xa đích: 2.5 giây.
-- **Early Settle:** Khi vượt quá ngưỡng, Unit tự động bị neo lại (`isSettled = true`), triệt tiêu vận tốc thành 0. Động thái này báo cho hệ thống bên trên (ví dụ: `MoveOverrideSystem`, `WorkerGatherSystem`) biết rằng Unit không thể đi tiếp được nữa để xử lý logic tiếp theo.
+Separation không bảo đảm 100% hết chồng lấn. Endpoint điều kiện chặn không phải depenetration và không bảo vệ transform update sau bộ thực thi chuyển động.
 
----
+XZ đổi thì bật PendingHeight. Actuator giữ Y; độ cao đạt mẫu lại sau đó. Quay theo velocity hoặc currentworldtarget khi đứng.
 
-## 3. Cập nhật Vị trí & Quay mặt (Motion & Rotation)
-- **Vận tốc (Velocity):** Lấy trực tiếp từ `move.velocity` do ORCA tính toán.
-- **Quay mặt:** Sử dụng `math.slerp` để xoay dần theo hướng vận tốc hiện tại khi đang di chuyển. Khi đã dừng tại đích, hướng nhìn vẫn ưu tiên quay về `move.currentworldtarget` (tọa độ gốc nơi người chơi đã click).
-
----
-
-## 4. Thứ tự thực thi
-Chạy **SAU** `MovementAgentORCASystem` để lấy được vận tốc an toàn cuối cùng. Khâu này "chốt" mọi thông số xuống `LocalTransform` cho Unity render.
+isSettled có thể true khi vận tốc zero nhưng hastarget vẫn true. Đọc stopReason/hastarget để phân biệt đứng chờ với kết thúc lệnh. arrivalRadius không phải điều kiện bỏ lệnh.

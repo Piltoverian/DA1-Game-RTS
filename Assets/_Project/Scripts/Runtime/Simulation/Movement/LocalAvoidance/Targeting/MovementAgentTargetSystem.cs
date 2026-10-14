@@ -21,9 +21,9 @@ public partial struct MovementAgentTargetSystem : ISystem
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var deltaTime = SystemAPI.Time.DeltaTime;
 
-        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalToWorld>().Build();
+        var blockageQuery = SystemAPI.QueryBuilder().WithAll<BlockageData, LocalTransform>().Build();
         var blockageDatas = blockageQuery.ToComponentDataArray<BlockageData>(Allocator.TempJob);
-        var blockageLocalToWorlds = blockageQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
+        var blockageLocalToWorlds = BlockageTransforms.Capture(blockageQuery, Allocator.TempJob);
 
         var job = new UnitTargetJob
         {
@@ -32,6 +32,7 @@ public partial struct MovementAgentTargetSystem : ISystem
             IslandSeedLookup = SystemAPI.GetBufferLookup<IslandSeed>(true),
             GridIslands = SystemAPI.GetBuffer<GridIsland>(gridEntity).AsNativeArray(),
             GridCosts = SystemAPI.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(),
+            AvoidanceLookup = SystemAPI.GetComponentLookup<MovementAgentAvoidanceComponent>(true),
             BlockageDatas = blockageDatas,
             BlockageLocalToWorlds = blockageLocalToWorlds,
             DeltaTime = deltaTime
@@ -50,6 +51,7 @@ public partial struct MovementAgentTargetSystem : ISystem
         [ReadOnly] public BufferLookup<IslandSeed> IslandSeedLookup;
         [ReadOnly] public NativeArray<GridIsland> GridIslands;
         [ReadOnly] public NativeArray<GridNodeCost> GridCosts;
+        [ReadOnly] public ComponentLookup<MovementAgentAvoidanceComponent> AvoidanceLookup;
         [ReadOnly] public NativeArray<BlockageData> BlockageDatas;
         [ReadOnly] public NativeArray<LocalToWorld> BlockageLocalToWorlds;
         [ReadOnly] public float DeltaTime;
@@ -60,7 +62,7 @@ public partial struct MovementAgentTargetSystem : ISystem
         {
             float3 pos = transform.Position;
             float3 globalTarget = move.currentworldtarget;
-            float distToGlobal = math.distance(pos, globalTarget);
+            float distToGlobal = math.distance(pos.xz, globalTarget.xz);
             float3 islandGoal = globalTarget;
 
             move.preferredVelocity = float3.zero;
@@ -111,7 +113,7 @@ public partial struct MovementAgentTargetSystem : ISystem
                             if (GridCosts[pIndex].cost < 255 && GridCosts[pIndex].cost != int.MaxValue && GridIslands[pIndex].islandID == unitIsland)
                             {
                                 float3 slotWorldPos = GridHelper.GridToWorld(new int2(x, y), Grid);
-                                float dSq = math.distancesq(pos, slotWorldPos);
+                                float dSq = math.distancesq(pos.xz, slotWorldPos.xz);
                                 if (dSq < minDistSq)
                                 {
                                     minDistSq = dSq;
@@ -160,20 +162,21 @@ public partial struct MovementAgentTargetSystem : ISystem
 
             move.realTarget = islandGoal;
             float3 finalGoal = move.realTarget;
-            float distToFinal = math.distance(pos, finalGoal);
+            float distToFinal = math.distance(pos.xz, finalGoal.xz);
 
             // --- 2. ARRIVAL CHECK ---
             if (distToFinal < steering.stoppingDistance)
             {
                 move.hastarget = false;
+                move.stopReason = MovementStopReason.Arrived;
                 steering.isSettled = true;
                 return;
             }
 
             // --- 3. CALCULATE DESIRED VELOCITY ---
-            float3 flowVelocity = UnitMovementMath.CalculateFlowVelocity(
-                pos, buffer.AsNativeArray(), Grid.origin, Grid.cellsize, Grid.width, Grid.height, move.speed
-            );
+            float radius = AvoidanceLookup.HasComponent(entity) ? AvoidanceLookup[entity].radius : 0;
+            float3 flowVelocity = UnitMovementMath.CalculateSafeFlowVelocity(
+                pos, buffer.AsNativeArray(), GridCosts, Grid, radius, move.speed);
 
             float3 directDir = finalGoal - pos;
             directDir.y = 0;
@@ -184,6 +187,8 @@ public partial struct MovementAgentTargetSystem : ISystem
             float blendRange = math.max(steering.arrivalRadius * 1.5f, Grid.cellsize * 2f);
             float targetWeight = math.clamp(1.0f - (distToFinalGoal / blendRange), 0f, 1f);
             if (distToFinalGoal < Grid.cellsize * 2f) targetWeight = math.max(targetWeight, 0.5f);
+            if (targetWeight > 0 && !GridObstacleAvoidance.ClearSegment(pos.xz, finalGoal.xz, radius, GridCosts, Grid))
+                targetWeight = 0; // Never blend direct aim through a wall or a blocked corner.
 
             move.preferredVelocity = math.lerp(flowVelocity, directVelocity, targetWeight);
 

@@ -1,5 +1,21 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Collections;
+using Unity.Transforms;
+
+public static class BlockageTransforms
+{
+    // Blockage rectangles are already sized in world units. Model recentering in
+    // PostTransformMatrix affects rendering, not the logical footprint anchor.
+    public static NativeArray<LocalToWorld> Capture(EntityQuery query, Allocator allocator)
+    {
+        using var anchors = query.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+        var result = new NativeArray<LocalToWorld>(anchors.Length, allocator);
+        for (int i = 0; i < anchors.Length; i++)
+            result[i] = new LocalToWorld { Value = float4x4.Translate(anchors[i].Position) };
+        return result;
+    }
+}
 
 /// <summary>
 /// Dữ liệu kích thước vật cản 2D trên mặt phẳng XZ.

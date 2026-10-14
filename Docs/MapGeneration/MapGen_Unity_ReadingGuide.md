@@ -1,30 +1,41 @@
-# Terrain gameplay trong Unity
+# Chạy và chỉnh địa hình trong Unity
 
-Pipeline hiện tại chỉ phục vụ gameplay; scene preview, menu preview/check, debug hook, Gizmos và harness Tests/TerrainPort đã được bỏ.
+**Mở scene Main rồi bấm Play — khoảng2phút để bắt đầu nếu Unity đã nhập xong dữ liệu.**
 
-## Chạy trong Main
+Main dùng SharedVertexSlopes,MoonTerrain/LunarTheme.asset và camera chiếu song song. Gameplay/tầm/điều hướng dùng XZ;Y lấy độ cao địa hình và offset pivot. Thử nghiệm ép phẳng đã bỏ. [Luồng ECS](EcsMapPipeline.md).
 
-1. GridAuthoring trên plane trong EntitySubscene bật generateTerrain và có terrainSettings.
-2. Baker gọi TerrainGeneration.Generate, ghi GridTerrain và GridSpawnCell vào entity grid. Plane gốc bị DisableRendering nhưng vẫn giữ collider.
-3. GridInitSystem tạo cost/island từ walkable rồi tắt sau lần khởi tạo đầu tiên.
-4. TerrainMapRenderer trong Main chờ subscene có grid đã bake, gọi TerrainVisualCompiler và tạo mesh theo chunk. Renderer không sinh một map riêng.
-5. MovementAgent dùng grid cost/island và flowfield hiện có.
+## Chạy Main
 
-Cliff bị chặn ở ô cao có sprite cliff, kể cả góc lõm. Ramp mở đường xuyên dải cliff phía cao. Các kiểm tra bảo vệ spawn, núi, crossing, khoảng cách ramp và một đảo walkable vẫn nằm trong generator; chúng quyết định candidate có hợp lệ cho gameplay hay không.
+1. Mở `Assets/_Project/Scenes/Main.unity`,chờ Unity nhập/biên dịch.
+2. Kiểm tra `Assets/_Project/Tests/Fixtures/MapGeneration/MapGenConfig.asset`. Đây vẫn là cấu hình Main dù nằm trong Tests.
+3. TerrainMapRenderer dùng theme `Assets/_Project/Data/Terrain/Generated/MoonTerrain/LunarTheme.asset`. Camera chỉ thu phóng/di chuyển,không xoay.
+4. Sau sửa cấu hình/bộ sinh map,dừng Play,chờ SubScene bake lại rồi Play. Baker ghi công thức;MapTerrainGenerationSystem sinh địa hình khi chạy. Không thay địa hình của trận đang diễn ra.
+5. MapTerrainPresentationSystem chờ TerrainReady,không sinh map thứ hai. LocalBaseCameraSnapSystem chờ renderer/BootstrapReady rồi hướng tới nhà chính cục bộ một lần. Khi tắt snapOnReady,frameRampOnLoad mới dùng trình bày ramp.
 
-## Thay texture
+## Chỉnh thông số
 
-Tạo asset qua Create > RTS > Terrain Theme hoặc duplicate V17Theme.asset. Gán các Sprite theo tên trong nhóm Cliffs, Ramps và Ground, rồi gán theme vào TerrainMapRenderer trong Main. Theme có cliffStraight, cliffOuterCorner, cliffInnerCorner, rampSingle, rampLeft, rampMiddle, rampRight, groundGrass và groundSoil; không dùng array trong Inspector.
+| Bạn muốn đổi | Nơi chỉnh | Sau đó |
+|---|---|---|
+| Seed,cỡ map,player,vùng sinh | MapGenConfig | Bake lại và bắt đầu trận mới |
+| Height,noise,cliff band,ramp width | Cấu hình terrain | Bake lại,kiểm tra hợp lệ |
+| Màu đất/dốc/vách/núi | PNG/TerrainTheme | Nhập lại,Stop/Play |
+| Thu phóng/khung nhìn | IsometricTerrainCamera | Kiểm tra Main |
+| Cỡ lính | MovementAgentAuthoring.diameterCells | Đơn vị đường kính ô;bake/Play lại |
 
-Dùng Sprite Single/Full Rect, giữ hướng gốc tương ứng của bộ V17. Material mặc định nằm ở Assets/_Project/Data/Maps/Terrain.mat. Đổi theme không đổi dữ liệu địa hình hoặc thuật toán di chuyển.
+Cellsize=chiều rộng lưới/số ô. Plane rộng1000,map512cho1.953125. MinimumCellSize là giới hạn kiểm tra,không thay công thức. Camera chuẩn pitch30°,yaw45°;đổi PNG không yêu cầu đổi camera. [Art/atlas](../TerrainVisualizer/05_Atlas_ArtPipeline.md).
 
-## Code đang dùng
+## Nhập bộ ảnh mới
 
-- GridHelper.cs: nguồn chung cho cell ↔ index và world ↔ cell; xem [quy ước chiều rộng hàng](MapGen_Unity_Rules.md#grid-helper) khi dùng buffer vertex hoặc chunk.
-- TerrainGeneration.cs: settings, spawn, noise/height, núi, cliff, ramp và kiểm tra candidate.
-- MapGenerator.cs / MapGenRNG.cs: Perlin, fBm và RNG.
-- TerrainVisualCompiler.cs: ánh xạ địa hình sang loại sprite và rotation.
-- TerrainTheme.cs: các trường Sprite có tên và material.
-- TerrainMapRenderer.cs: dựng mesh gameplay từ grid đã bake, giải phóng mesh/material khi component bị tắt hoặc hủy.
-- GridAuthoring.cs / GridInitSystem.cs: bake grid và khởi tạo cost/island.
+Làm theo [workflow atlas Unity](../TerrainVisualizer/14_SuDung_Atlas_Implementation.md):atlas nguồn→importer→cập nhật cùng SO→preview/Main. Không chạy menu renderer stock đã nghỉ dùng.
 
+## Kiểm tra
+
+| Menu giữ tên đúng trong Unity | Nội dung |
+|---|---|
+| `Tools/MapGen/Test resource planner only` | Dữ liệu riêng:footprint,khoảng cách núi,mỏ khởi đầu,seed |
+| `Tools/MapGen/Test Main resource spawn and grid snapper` | Scene Main:sinh resource/căn lưới |
+| `RTS/Tests/Validate Current Terrain Atlas` | Atlas hiện tại |
+| `RTS/Tests/Validate Selected Terrain Theme` | Theme được chọn |
+| `RTS/Tests/Validate Mountain Integration` | Generation,núi,kết nối/spawn |
+
+[Danh mục kiểm thử](../../Assets/_Project/Tests/README.md) phân biệt harness hiện hành và các harness gameplay đã xóa. Compile thành công không thay kết quả Play Mode hoặc benchmark tải.

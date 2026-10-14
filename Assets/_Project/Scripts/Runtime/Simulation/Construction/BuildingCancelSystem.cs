@@ -35,14 +35,10 @@ public partial struct BuildingCancelSystem : ISystem
                 continue;
             }
 
-            if (em.HasComponent<EntityOwner>(req.BuildingEntity))
+            if (!CommandAuthority.CanControl(em, req.PlayerId, req.BuildingEntity))
             {
-                var unit = em.GetComponentData<EntityOwner>(req.BuildingEntity);
-                if (unit.PlayerID != req.PlayerId)
-                {
-                    ecb.DestroyEntity(reqEntity);
-                    continue;
-                }
+                ecb.DestroyEntity(reqEntity);
+                continue;
             }
 
             // Construction progress is independent of damage. Completed buildings never refund their build cost.
