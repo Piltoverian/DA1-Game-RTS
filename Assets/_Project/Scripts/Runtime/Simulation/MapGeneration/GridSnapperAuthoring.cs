@@ -20,6 +20,7 @@ public class GridSnapperAuthoring : MonoBehaviour
                 math.any((float3)transform.lossyScale <= 0))
                 throw new InvalidOperationException("Grid snapper needs a positive size, root BoxCollider, positive scale and unrotated root.");
             var entity = GetEntity(TransformUsageFlags.Dynamic);
+            var visual = ModelSnapSource.CaptureVisualBounds(authoring.gameObject, new Bounds(box.center, box.size));
             AddComponent(entity, new GridFootprint { Cells = authoring.GridScale });
             if(!GetComponent<MovementAgentAuthoring>()&&!GetComponent<ModelSnapperAuthoring>()){
                 AddComponent(entity,ModelSnapSource.Capture(authoring.gameObject,authoring.GridScale,0));
@@ -29,7 +30,9 @@ public class GridSnapperAuthoring : MonoBehaviour
             {
                 Size = (float3)box.size * (float3)transform.lossyScale,
                 Center = (float3)box.center * (float3)transform.lossyScale,
-                RootScale = transform.lossyScale
+                RootScale = transform.lossyScale,
+                VisualSize = (float3)visual.size * (float3)transform.lossyScale,
+                VisualCenter = (float3)visual.center * (float3)transform.lossyScale
             });
         }
     }
@@ -41,6 +44,7 @@ public struct GridSnapperSource : IComponentData
     public float3 Size;
     public float3 Center;
     public float3 RootScale;
+    public float3 VisualSize, VisualCenter;
 }
 
 public struct GridFootprint : IComponentData
@@ -53,9 +57,15 @@ public static class GridSnapperMath
 {
     public static float3 Scale(float3 sourceSize, int cells, float cellSize)
     {
-        float side = cells * cellSize;
-        float x = side / sourceSize.x, z = side / sourceSize.z;
-        return new float3(x, math.min(x, z), z);
+        return Scale(sourceSize, cells * cellSize);
+    }
+
+    public static float3 Scale(float3 sourceSize, float side)
+    {
+        if (!(side > 0) || !math.isfinite(side) || !math.all(math.isfinite(sourceSize)) || math.any(sourceSize.xz <= 0))
+            throw new InvalidOperationException("Snapping needs positive finite horizontal visual bounds and target size.");
+        // Fit the largest horizontal visual extent; preserve the model's proportions.
+        return new float3(side / math.max(sourceSize.x, sourceSize.z));
     }
 
     public static float3 Snap(float3 position, GridComponent grid, int cells)

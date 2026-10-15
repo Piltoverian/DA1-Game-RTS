@@ -10,6 +10,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
+using Unity.VisualScripting;
 using UnityEngine;
 
 
@@ -17,12 +18,14 @@ using UnityEngine;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct SelectSystem : ISystem
 {
+    [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<SelectableBucketContainer>();
         state.RequireForUpdate<Selected>();
     }
 
+    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -68,6 +71,12 @@ partial struct SelectSystem : ISystem
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
         var selectedLookup = state.GetComponentLookup<Selected>(true);
 
+        foreach (var (selectable,tags, selected, entity) in SystemAPI.Query<Selectable,SingleSelectableEntity, Selected>().WithEntityAccess())
+        {
+            if (selectable.playerID != request.playerId)
+                continue;
+            ecb.SetComponentEnabled<Selected>(entity, false);
+        }
         Trapezoid trapezoid = new Trapezoid(
             request.v1,
             request.v2,
