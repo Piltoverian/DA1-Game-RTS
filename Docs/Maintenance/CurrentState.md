@@ -1,8 +1,10 @@
-# Trạng thái hiện tại — 14/10/2026
+# Trạng thái hiện tại — 15/10/2026
 
 **Bắt đầu từ [lộ trình](Roadmap.md) nếu muốn biết việc tiếp theo. Đọc trang này khoảng 3 phút.**
 
 ## Lối chơi và dữ liệu
+
+Cập nhật 15/10: snapper fit bounds mesh bằng scale đều, thay chuẩn collider; xem [công thức và kiểm chứng](../MapGeneration/GridSnapper_ResourceSpawn.md). Drag đã bỏ nhánh terrain ghi Selected trực tiếp: click/drag đều gửi SelectionRequest tới SelectSystem. Build thành công; chưa nghiệm thu hai thay đổi trong Play Mode. [Handoff](Handoff.md) ghi việc tiếp theo và phạm vi còn lại. Hủy nhà gửi CancelBuildingRequest riêng là chủ ý được người dùng xác nhận, không chuyển sang CommandQueue. Zoom/camera snap chưa sửa.
 
 | Phần | Trạng thái dùng để tiếp tục |
 |---|---|

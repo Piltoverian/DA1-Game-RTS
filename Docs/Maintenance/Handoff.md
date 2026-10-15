@@ -1,10 +1,26 @@
-# Bàn giao ca tiếp theo — 14/10/2026
+# Bàn giao ca tiếp theo — 15/10/2026
+
+## Bàn giao mới nhất: snapper và selection
+
+**Mục tiêu/phạm vi:** sửa tỷ lệ unit 0.75 ô so với resource 1 ô và nhà 7 ô; khôi phục đường request của drag. Các phần registry/UI ở dưới vẫn là công việc chưa nghiệm thu độc lập.
+
+**Đã triển khai:** ModelSnapSource thêm VisualSize/VisualCenter và capture bounds mesh có transform con, bỏ health bar/sprite chọn. GridSnapperAuthoring, GridSnapperMath, GridSnapperBakingSystem và GridSnapperSystem dùng scale đều theo cạnh bounds XZ lớn nhất; physics/avoidance/blockage giữ footprint logic. [Tài liệu chính](../MapGeneration/GridSnapper_ResourceSpawn.md). SelectManager.DragSelect đã bỏ nhánh TerrainVisualSurface ghi trực tiếp Selected rồi return; click/drag đều đi SelectionRequest → SelectSystem. Giữ nguyên diff SelectSystem.cs đã có trước ca này, không nhận là thay đổi của ca.
+
+**Quyết định người dùng:** CancelBuildingRequest đi riêng ngoài CommandQueue là chủ ý. SelectionMode.Add/Remove/Clear còn TODO, người dùng chưa có thời gian xử lý; không tự mở rộng sửa hai phần này. Yêu cầu tăng zoom sensitivity và mở góc camera snap về base đã khảo sát nhưng chưa triển khai; đề xuất trước là 2 → 3 đơn vị/nấc và mức nhìn ban đầu xa hơn, chưa được nghiệm thu.
+
+**Nơi tiếp tục:** code nằm tại `D:\Unity\TechTextAndChosingForRTS sample`, dưới Assets/_Project/Scripts/Runtime/Simulation/MapGeneration và Presentation/Input/GameManager/Manager/SelectManager.cs. Khi kết thúc sửa code, các thay đổi chưa commit; lúc cập nhật docs, git status chỉ còn bốn file docs được sửa, không còn báo diff source. Không suy đoán ai đã commit hoặc đồng bộ giữa hai thời điểm. Branch/revision chưa xác nhận; không có patch/snapshot riêng. Docs của lượt này chưa commit. Không reset diff người dùng.
+
+**Bằng chứng:** dotnet build Assembly-CSharp.csproj --no-restore --verbosity quiet thành công sau sửa selection và bản snapper cuối: 0 lỗi, 5 cảnh báo. Gọi hàm GridSnapperMath.Scale thực từ Temp/bin/Debug/Assembly-CSharp.dll qua PowerShell, ba trường hợp đích 0.75/1/7 đều khớp trong sai số 0.00001 và scale đều. Không có log/receipt mới được giữ. Kiểm tra này không bao phủ capture mesh, baking thực, physics hay render. Rà code tĩnh input/command không thấy thêm nhánh UI ghi state trực tiếp như drag; không phải nghiệm thu mọi pipeline bằng Play Mode.
+
+**Còn lại:** rebake và kiểm tra kích thước mesh/physics/child transforms trong Main; kiểm tra click nhà rồi drag unit có bỏ single select, cả terrain và đường picking dự phòng. Zoom/camera vẫn chờ làm. Không coi PASS Main lịch sử ở docs là PASS công thức mới.
+
+**Hành động đầu tiên:** mở Main trong Unity, rebake dữ liệu rồi vào Play; đối chiếu bounds XZ và collider của Worker/Soldier 0.75, resource 1 và TownHall 7 theo cùng cellsize. Cạnh mesh XZ dài nhất phải bằng số ô đã khai báo, hình dáng được giữ và collider nằm tại anchor logic.
 
 ## 1. Mục tiêu và phạm vi
 
 Lượt chốt session: đã dọn 4 bộ Editor test và helper dogfood sau kết quả cuối 51/51 PASS; xóa artifact thử nghiệm cũ của session, giữ XML/log cuối và receipt bàn giao. Skill brainstorm chỉ còn bản cá nhân ngoài project. Chủ dự án đã chuyển việc gán RegistryAuthoring.Instance từ Awake sang Baker.Bake. Giữ nguyên sửa đổi runtime của người dùng; đã nghỉ dùng và xóa tests/helper của session. Hướng dẫn chính: [registry/UI](../Guides/GameData/RegistryPresentation.md), [BuildingPipeline](../Architecture/BuildingPipeline.md), [CurrentState](CurrentState.md), [Roadmap](Roadmap.md).
 
-Mọi cập nhật tiếp theo phải khảo sát → brainstorm → trình pipeline → chờ duyệt theo [skill](C:/Users/Legion/.codex/skills/brainstorm-before-change/SKILL.md) và [AGENTS.md](../../AGENTS.md). Phê duyệt đã có vẫn hiệu lực; không hỏi lại cùng pipeline. Không tự stage/commit/push/PR/merge, không reset diff chưa hiểu hoặc tạo lại harness đã xóa.
+Mọi cập nhật tiếp theo phải khảo sát → brainstorm → trình pipeline → chờ duyệt theo [skill](C:/Users/Legion/.codex/skills/brainstorm-before-change/SKILL.md) và hướng dẫn AGENTS.md do người dùng cung cấp trong hội thoại. Phê duyệt đã có vẫn hiệu lực; không hỏi lại cùng pipeline. Không tự stage/commit/push/PR/merge, không reset diff chưa hiểu hoặc tạo lại harness đã xóa.
 
 ## 2. Thay đổi và quyết định
 
@@ -35,7 +51,7 @@ Artifact thử nghiệm cũ của session đã xóa theo yêu cầu; giữ regis
 - Multiplayer transport/server+2client/resync, 2.000 unit/30 FPS và simulation20Hz chưa thực hiện. Không biến bằng chứng dogfood cục bộ thành multiplayer.
 - Không tạo lại prototype/formation/hierarchy/portal, renderer cũ hoặc các gameplay harness đã xóa. [Handoff chuyển động](VerificationHistory.md) là phạm vi độc lập.
 
-## 5. Một hành động tiếp theo
+## 5. Hành động tiếp theo của phạm vi registry cũ
 
 Đề xuất pipeline kiểm chứng vòng đời registry/UI trong Main: reset khi vào Play → có/không rebake → chọn TownHall → kiểm tra Instance và sprite. Trình người dùng duyệt trước hành động mới; kết quả mong đợi là xác định tham chiếu UI còn hợp lệ sau reset và khi dùng dữ liệu bake sẵn.
 

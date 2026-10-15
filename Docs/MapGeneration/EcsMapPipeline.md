@@ -40,7 +40,7 @@ khởi tạo lập toàn bộ đặt nhà trước, sau đó ghi Instantiate/Set
 - tác nhân: đường kính XZ = `DiameterCells × grid.cellsize`. Giá trị Inspector cũ `radius` được chuyển tên thành `diameterCells`, giữ nguyên số và hiểu là đường kính. bán kính nội bộ né vật cản = `DiameterCells × grid.cellsize / 2`.
 - Không có tác nhân: cạnh XZ = `Cells × grid.cellsize`, lấy từ GridScale của thiết lập dữ liệu.
 - tỷ lệ tính từ mã nguồn ban đầu, không nhân tiếp tỷ lệ đã căn lưới. Bật lại request không làm mô hình phình thêm.
-- Model được tỷ lệ theo khối va chạm nguồn: XZ khớp đường kính, Y nhân theo hệ số nhỏ hơn của hai trục XZ. Diameter ô = 0,75 nghĩa là rộng 0,75 ô; không nhân đôi. Không còn clamp cũ bắt bán kính tối thiểu 0,75.
+- Model được fit đều X/Y/Z theo bounds hình học: cạnh XZ dài nhất bằng kích thước đích; không kéo riêng hai trục. Collider và avoidance vẫn dùng footprint logic. Công thức, cách capture và giới hạn kiểm chứng hiện hành nằm ở [GridSnapper_ResourceSpawn](GridSnapper_ResourceSpawn.md). Không nhân đôi diameter và không clamp bán kính tối thiểu 0,75.
 - tác nhân giữ vị trí đang di chuyển. Model không phải tác nhân được căn vị trí theo lưới.
 - Cập nhật khối va chạm, vùng chiếm chỗ và chặn lối tương ứng; chỉ disable request khi xử lý thành công.
 
