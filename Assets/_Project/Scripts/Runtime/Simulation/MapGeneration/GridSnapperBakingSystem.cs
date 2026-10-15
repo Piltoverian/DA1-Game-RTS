@@ -30,15 +30,18 @@ public partial class GridSnapperBakingSystem : SystemBase
                 throw new InvalidOperationException("Grid snapper source collider must have positive finite dimensions.");
             var footprint = em.GetComponentData<GridFootprint>(entity);
             float side = footprint.Cells * grid.cellsize;
-            float3 resize = GridSnapperMath.Scale(source.Size, footprint.Cells, grid.cellsize);
+            if (!math.all(math.isfinite(source.VisualSize)) || math.any(source.VisualSize.xz <= 0))
+                throw new InvalidOperationException("Grid snapper visual bounds must have positive finite horizontal dimensions.");
+            float3 resize = GridSnapperMath.Scale(source.VisualSize, footprint.Cells, grid.cellsize);
             float3 center = source.Center * resize;
             var transform = em.GetComponentData<LocalTransform>(entity);
             transform.Scale = 1;
             transform.Rotation = quaternion.identity;
             if (!em.HasComponent<Prefab>(entity)) transform.Position = GridSnapperMath.Snap(transform.Position, grid, footprint.Cells);
             em.SetComponentData(entity, transform);
-            // Art and child transforms follow the same resizing and XZ recentering as the collider.
-            var matrix = new PostTransformMatrix { Value = float4x4.TRS(new float3(-center.x, 0, -center.z),
+            // Center the actual model inside the logical square footprint.
+            var visualCenter = source.VisualCenter * resize;
+            var matrix = new PostTransformMatrix { Value = float4x4.TRS(new float3(-visualCenter.x, 0, -visualCenter.z),
                 quaternion.identity, source.RootScale * resize) };
             if (em.HasComponent<PostTransformMatrix>(entity)) em.SetComponentData(entity, matrix);
             else em.AddComponentData(entity, matrix);

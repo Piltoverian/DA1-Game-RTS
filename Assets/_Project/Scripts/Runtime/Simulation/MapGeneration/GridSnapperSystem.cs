@@ -33,7 +33,7 @@ public partial class GridSnapperSystem : SystemBase
         bool agent=em.HasComponent<MovementAgentAvoidanceComponent>(entity);
         float side=agent?source.DiameterCells*grid.cellsize:source.Cells*grid.cellsize;
         if(!(side>0)||!math.isfinite(side)||math.any(source.Size<=0))throw new InvalidOperationException("Invalid snapping radius/size");
-        float3 resize=new float3(side/source.Size.x,math.min(side/source.Size.x,side/source.Size.z),side/source.Size.z);
+        float3 resize=GridSnapperMath.Scale(source.VisualSize,side);
         float3 center=new float3(0,source.Center.y*resize.y,0);
         float3 size=new float3(side,source.Size.y*resize.y,side);
         BlobAssetReference<Unity.Physics.Collider> collider=default;
@@ -56,7 +56,7 @@ public partial class GridSnapperSystem : SystemBase
         // Absolute scale from immutable source, so re-enabling the tag is idempotent.
         var transform=em.GetComponentData<LocalTransform>(entity);transform.Scale=1;
         if(!agent&&!em.HasComponent<Prefab>(entity))transform.Position=GridSnapperMath.Snap(transform.Position,grid,source.Cells);
-        var post=new PostTransformMatrix{Value=float4x4.TRS(new float3(-source.Center.x*resize.x,0,-source.Center.z*resize.z),quaternion.identity,source.RootScale*resize)};
+        var post=new PostTransformMatrix{Value=float4x4.TRS(new float3(-source.VisualCenter.x*resize.x,0,-source.VisualCenter.z*resize.z),quaternion.identity,source.RootScale*resize)};
         if(em.HasComponent<PostTransformMatrix>(entity))em.SetComponentData(entity,post);else em.AddComponentData(entity,post);
         em.SetComponentData(entity,transform);
         if(em.HasComponent<PendingHeight>(entity))em.SetComponentEnabled<PendingHeight>(entity,true);
