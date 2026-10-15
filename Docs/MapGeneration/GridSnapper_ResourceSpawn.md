@@ -2,20 +2,21 @@
 
 `GridSnapperAuthoring.GridScale` là **số ô mỗi cạnh**, không phải thế giới ECS tỷ lệ. Đặt 7 nghĩa là vùng chiếm chỗ vuông 7 ×7 ô. Cạnh thế giới ECS bằng `7 * GridComponent.cellsize`.
 
-## ECS mô hình căn lưới hiện hành — 2026-10-12
+## ECS mô hình căn lưới hiện hành — 15/10/2026
 
 `GridSnapperSystem` chạy Initialization trước physics, xử lý request enableable `Snapping` cùng `ModelSnapSource`. Request được disable sau căn lưới thành công; không dùng Unity GameObject tag. mẫu đối tượng cũng được xử lý để instance thừa hưởng kích thước đã căn lưới.
 
 - tác nhân: `MovementAgentAuthoring.diameterCells` là đường kính theo ô; 0,75 nghĩa là model/collider rộng 0,75 ô. Field serialized cũ `radius` giữ giá trị qua FormerlySerializedAs nhưng được hiểu theo đường kính; bỏ clamp bán kính tối thiểu0,75. Avoidance dùng bán kính thế giới ECS = diameterCells × cellsize / 2.
 - Không có tác nhân: dùng GridScale của GridSnapperAuthoring, hoặc phương án dự phòng ModelSnapperAuthoring.GridScale.
-- Model tỷ lệ từ kích thước khối va chạm nguồn; XZ khớp cạnh/đường kính, Y tỷ lệ theo hệ số nhỏ hơn của XZ. Không nhân dồn khi căn lưới lại; không di chuyển vị trí tác nhân.
+- Model dùng bounds hình học, không lấy collider làm chuẩn scale. `side = (DiameterCells hoặc Cells) × cellsize`; `scale = side / max(VisualSize.x, VisualSize.z)`. Cùng một hệ số cho X/Y/Z giữ hình dáng; cạnh dài nhất XZ khớp side, cạnh còn lại có thể nhỏ hơn. Không nhân dồn khi căn lưới lại; không di chuyển vị trí tác nhân.
+- `ModelSnapSource.CaptureVisualBounds` hợp nhất bounds MeshFilter/MeshRenderer và SkinnedMeshRenderer trong hệ tọa độ root, có tính transform con. Bỏ renderer bị tắt, hình học dưới HealthBarAuthoring và sprite chọn; không có mesh hợp lệ thì dùng bounds collider dự phòng. VisualSize/VisualCenter lưu riêng với Size/Center của collider. Tâm hình ảnh XZ được đưa về anchor; collider/avoidance/footprint vẫn dùng cạnh logic side.
 - Hỗ trợ gốc box/sphere/capsule Y; compound chưa hỗ trợ. khối va chạm bộ nhớ đệm thuộc thế giới ECS; giữ collision filter, friction/restitution/combine và các trục inverse inertia bị khóa. Building cập nhật footprint/blockage và vị trí căn lưới.
 
 Yêu cầu căn lưới lại bằng `EntityManager.SetComponentEnabled<Snapping>(entity, true)` trên thực thể đã có mã nguồn. `GridSnapperBakingSystem` dưới đây vẫn chuẩn bị vùng chiếm chỗ nhà cho validation/planner; khi chạy bộ căn lưới quản lý request mô hình. [Chi tiết luồng xử lý](EcsMapPipeline.md).
 
 ## Sau baking
 
-Gắn `GridSnapperAuthoring` và BoxCollider trên gốc mẫu đối tượng công trình/resource. Root cần không có parent, rotation identity và tỷ lệ dương. `GridSnapperBakingSystem` chạy trong PostBakingSystemGroup khi lưới và transform đã chuyển dữ liệu sang ECS: tính tỷ lệ từ khối va chạm nguồn, đưa tâm XZ khối va chạm về điểm gốc gốc, tỷ lệ art/child qua PostTransformMatrix, tạo physics box mới và sửa BlockageData cùng kích thước. Blob khối va chạm được đăng ký trong BlobAssetStore của baking; không mutate khối va chạm dùng chung.
+Gắn `GridSnapperAuthoring` và BoxCollider trên gốc mẫu đối tượng công trình/resource. Root cần không có parent, rotation identity và tỷ lệ dương. `GridSnapperBakingSystem` chạy trong PostBakingSystemGroup: dùng cùng GridSnapperMath.Scale với runtime để fit bounds hình ảnh, căn giữa XZ qua PostTransformMatrix, tạo physics box có cạnh XZ bằng side và sửa BlockageData. Chiều cao/tâm Y collider lấy từ collider nguồn nhân hệ số scale. Blob được đăng ký trong BlobAssetStore của baking; không mutate collider dùng chung.
 
 Source baking giữ lại kích thước gốc, nên chuyển dữ liệu sang ECS lại không nhân tỷ lệ nhiều lần. GridFootprint lưu Cells/WorldSize cho khi chạy. Thay ô size hoặc GridScale rồi chuyển dữ liệu sang ECS lại để cập nhật. Đây là thao tác trên thực thể sau chuyển dữ liệu sang ECS; Transform của mẫu đối tượng GameObject nguồn không bị ghi đè.
 
@@ -32,6 +33,8 @@ khởi tạo giữ chỗ tất cả nhà trước, lập bố trí tài nguyên 
 Bộ assets/config/script kiểm thử hiện nằm ở [Assets/_Project/Tests/Fixtures/MapGeneration](../../Assets/_Project/Tests/Fixtures/MapGeneration). Trữ lượng gán từ AmountPerMine khi tạo bản sao đối tượng; mỏ chưa cấp cấu hình giữ ResourceNodePendingConfig, không bị coi là mỏ cạn.
 
 ## Bộ kiểm thử Main hiện tại
+
+Ngày 15/10/2026: `dotnet build Assembly-CSharp.csproj --no-restore --verbosity quiet` thành công, 0 lỗi/5 cảnh báo. Gọi trực tiếp GridSnapperMath.Scale trong assembly mới biên dịch cho ba đầu vào kích thước đích 0.75/1/7: cạnh XZ lớn nhất khớp đích trong sai số 0.00001 và scale X/Y/Z bằng nhau. Đây là kiểm tra hàm scale, chưa kiểm chứng CaptureVisualBounds, prefab/child transforms, physics hoặc hình ảnh trong Play Mode. Cần rebake rồi kiểm tra Main. Các kết quả Main phía dưới thuộc trước thay đổi công thức này.
 
 Lượt mới nhất: Main512 có 8 người chơi, 40 thợ, 8 nhà chính và 1.952 tài nguyên; hai lượt Burst bật hoàn thành 600 frame/lượt, sổ theo dõi 2.000 instance và render/camera đạt. Các số 4 người chơi và kết quả headless phía dưới thuộc fixture/lượt lịch sử.
 
