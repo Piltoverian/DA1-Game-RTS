@@ -1,19 +1,15 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[BurstCompile]
 public partial struct WorkerGatherSystem : ISystem
 {
-    [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
     }
 
-    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         float dt = SystemAPI.Time.DeltaTime;
@@ -84,13 +80,22 @@ public partial struct WorkerGatherSystem : ISystem
 
         foreach (var (workerTransform, unit, gather, targetCache, workerEntity) in
                  SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityOwner>, RefRW<WorkerGatherData>, RefRW<TargetCache>>()
-                     .WithAll<WorkerTag>()
+                     .WithAll<WorkerTag>().WithNone<FogTargetTravel>()
                      .WithEntityAccess())
         {
             if (SystemAPI.HasComponent<EntityWork>(workerEntity)) gather.ValueRW.WorkRate = SystemAPI.GetComponent<EntityWork>(workerEntity).Rate;
             float3 workerPos = workerTransform.ValueRO.Position;
             int workerIsland = GetIslandID(workerPos, grid, islandBuffer);
 
+            if (gather.ValueRO.State == WorkerGatherState.GoingToNode && gather.ValueRO.KnownTarget.HasValue
+                && !FogOrderRules.IsVisible(state.EntityManager, unit.ValueRO.PlayerID, gather.ValueRO.TargetNode)
+                && !FogOrderRules.KnownAreaVisible(state.EntityManager, unit.ValueRO.PlayerID, gather.ValueRO.KnownTarget)
+                && math.distancesq(workerPos.xz, math.clamp(workerPos.xz, gather.ValueRO.KnownTarget.Min, gather.ValueRO.KnownTarget.Max))
+                    > math.max(.25f, gather.ValueRO.StopDistanceSq))
+            {
+                ecb.AddComponent(workerEntity, new FogTargetTravel { PlayerId = unit.ValueRO.PlayerID, Known = gather.ValueRO.KnownTarget });
+                continue;
+            }
             switch (gather.ValueRO.State)
             {
                 case WorkerGatherState.Idle:
@@ -111,7 +116,7 @@ public partial struct WorkerGatherSystem : ISystem
                         ref moveOverrideLookup,
                         grid,
                         ref nodeSpatialCache,
-                        ref ecb);
+                        ref ecb, state.EntityManager, unit.ValueRO.PlayerID);
                     break;
 
                 case WorkerGatherState.Gathering:
@@ -129,7 +134,7 @@ public partial struct WorkerGatherSystem : ISystem
                         ref steeringLookup,
                         grid,
                         ref nodeSpatialCache,
-                        ref ecb);
+                        ref ecb, state.EntityManager, unit.ValueRO.PlayerID);
                     break;
 
                 case WorkerGatherState.ReturningDepot:
@@ -151,7 +156,7 @@ public partial struct WorkerGatherSystem : ISystem
                         grid,
                         ref depotCache,
                         ref nodeSpatialCache,
-                        ref ecb);
+                        ref ecb, state.EntityManager, unit.ValueRO.PlayerID);
                     break;
             }
         }
@@ -178,7 +183,7 @@ public partial struct WorkerGatherSystem : ISystem
         ref ComponentLookup<MoveOverride> moveOverrideLookup,
         in GridComponent grid,
         ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache,
-        ref EntityCommandBuffer ecb)
+        ref EntityCommandBuffer ecb, EntityManager em, int viewer)
     {
         Entity targetNode = gather.ValueRO.TargetNode;
 
@@ -186,10 +191,11 @@ public partial struct WorkerGatherSystem : ISystem
             || !NodeReachable(targetNode, workerIsland, grid, ref transformLookup, ref blockageLookup, ref nodeSpatialCache))
         {
             float3 searchCenter = math.lengthsq(targetCache.ValueRO.lastTargetPosition) > 0.001f ? targetCache.ValueRO.lastTargetPosition : workerPos;
-            Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache);
+            Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache, em, viewer);
             if (altNode != Entity.Null)
             {
                 gather.ValueRW.TargetNode = altNode;
+                gather.ValueRW.KnownTarget = RememberNode(altNode, gather.ValueRO.CurrentResourceType, ref transformLookup, ref blockageLookup);
                 targetCache.ValueRW.targetEntity = altNode;
                 targetNode = altNode;
             }
@@ -224,6 +230,12 @@ public partial struct WorkerGatherSystem : ISystem
             ? blockageLookup[targetNode].GetWorldCenter(rawNodePos)
             : rawNodePos;
 
+        gather.ValueRW.KnownTarget = new FogKnownTarget {
+            HasValue = true, Kind = FogRenderKind.Resource, Position = nodePos,
+            ResourceType = gather.ValueRO.CurrentResourceType,
+            Min = blockageLookup.HasComponent(targetNode) ? rawNodePos.xz + blockageLookup[targetNode].LocalRect.MinPoint : nodePos.xz - .1f,
+            Max = blockageLookup.HasComponent(targetNode) ? rawNodePos.xz + blockageLookup[targetNode].LocalRect.MaxPoint : nodePos.xz + .1f
+        };
         targetCache.ValueRW.lastTargetPosition = nodePos;
         targetCache.ValueRW.targetEntity = targetNode;
 
@@ -253,7 +265,7 @@ public partial struct WorkerGatherSystem : ISystem
         ref ComponentLookup<MovementSteeringComponent> steeringLookup,
         in GridComponent grid,
         ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache,
-        ref EntityCommandBuffer ecb)
+        ref EntityCommandBuffer ecb, EntityManager em, int viewer)
     {
         Entity targetNode = gather.ValueRO.TargetNode;
 
@@ -267,10 +279,11 @@ public partial struct WorkerGatherSystem : ISystem
             else
             {
                 float3 searchCenter = math.lengthsq(targetCache.ValueRO.lastTargetPosition) > 0.001f ? targetCache.ValueRO.lastTargetPosition : workerPos;
-                Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache);
+                Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache, em, viewer);
                 if (altNode != Entity.Null)
                 {
                     gather.ValueRW.TargetNode = altNode;
+                gather.ValueRW.KnownTarget = RememberNode(altNode, gather.ValueRO.CurrentResourceType, ref transformLookup, ref blockageLookup);
                     targetCache.ValueRW.targetEntity = altNode;
                     if (transformLookup.HasComponent(altNode))
                     {
@@ -345,7 +358,7 @@ public partial struct WorkerGatherSystem : ISystem
         in GridComponent grid,
         ref NativeParallelMultiHashMap<DepotKey, DepotInfo> depotCache,
         ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache,
-        ref EntityCommandBuffer ecb)
+        ref EntityCommandBuffer ecb, EntityManager em, int viewer)
     {
         Entity targetDepot = gather.ValueRO.TargetDepot;
 
@@ -397,6 +410,12 @@ public partial struct WorkerGatherSystem : ISystem
             gather.ValueRW.CarryAmount = 0;
 
             Entity oldNode = gather.ValueRO.TargetNode;
+            if (gather.ValueRO.KnownTarget.HasValue && !FogOrderRules.IsVisible(em, viewer, oldNode)
+                && !FogOrderRules.KnownAreaVisible(em, viewer, gather.ValueRO.KnownTarget))
+            {
+                gather.ValueRW.State = WorkerGatherState.GoingToNode;
+                return;
+            }
             if (oldNode != Entity.Null && nodeLookup.HasComponent(oldNode) && nodeLookup[oldNode].Amount > 0)
             {
                 gather.ValueRW.State = WorkerGatherState.GoingToNode;
@@ -404,10 +423,11 @@ public partial struct WorkerGatherSystem : ISystem
             else
             {
                 float3 searchCenter = math.lengthsq(targetCache.ValueRO.lastTargetPosition) > 0.001f ? targetCache.ValueRO.lastTargetPosition : workerPos;
-                Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache);
+                Entity altNode = FindNearestNodeSpatial(searchCenter, gather.ValueRO.CurrentResourceType, workerIsland, grid, ref nodeSpatialCache, em, viewer);
                 if (altNode != Entity.Null)
                 {
                     gather.ValueRW.TargetNode = altNode;
+                gather.ValueRW.KnownTarget = RememberNode(altNode, gather.ValueRO.CurrentResourceType, ref transformLookup, ref blockageLookup);
                     targetCache.ValueRW.targetEntity = altNode;
                     if (transformLookup.HasComponent(altNode))
                     {
@@ -431,6 +451,18 @@ public partial struct WorkerGatherSystem : ISystem
         {
             MoveTo(ref ecb, workerEntity, depotPos, ref moveOverrideLookup);
         }
+    }
+
+    private static FogKnownTarget RememberNode(Entity node, ResourceType type, ref ComponentLookup<LocalTransform> transforms,
+        ref ComponentLookup<BlockageData> blockages)
+    {
+        if (!transforms.HasComponent(node)) return default;
+        var raw = transforms[node].Position;
+        bool footprint = blockages.HasComponent(node);
+        return new FogKnownTarget { HasValue = true, Kind = FogRenderKind.Resource, ResourceType = type,
+            Position = footprint ? blockages[node].GetWorldCenter(raw) : raw,
+            Min = footprint ? raw.xz + blockages[node].LocalRect.MinPoint : raw.xz - .1f,
+            Max = footprint ? raw.xz + blockages[node].LocalRect.MaxPoint : raw.xz + .1f };
     }
 
     private static bool HasReachedTarget(
@@ -539,9 +571,9 @@ public partial struct WorkerGatherSystem : ISystem
         ResourceType requiredType,
         int workerIsland,
         in GridComponent grid,
-        ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache)
+        ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache, EntityManager em, int viewer)
     {
-        const int cellRadius = 5;
+        const int cellRadius = FogOrderRules.NearbyCellRadius;
         int2 centerCell = GridHelper.WorldToGrid(centerPos, grid);
 
         Entity bestNode = Entity.Null;
@@ -561,7 +593,7 @@ public partial struct WorkerGatherSystem : ISystem
                 {
                     do
                     {
-                        if (nodeInfo.Type == requiredType && nodeInfo.Amount > 0)
+                        if (nodeInfo.Type == requiredType && nodeInfo.Amount > 0 && FogOrderRules.IsVisible(em, viewer, nodeInfo.Entity))
                         {
                             if (workerIsland > 0 && nodeInfo.IslandID == workerIsland)
                             {

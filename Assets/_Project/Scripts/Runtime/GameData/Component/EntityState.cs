@@ -1,7 +1,14 @@
 using Unity.Collections;
 using Unity.Entities;
 
-public struct EntityOwner : IComponentData { public int PlayerID; }
+public struct EntityOwner : IComponentData
+{
+    public int PlayerID;
+}
+public struct EntityVision : IComponentData
+{
+    public int VisionRadiusCells;
+}
 public struct EntityHealth : IComponentData
 {
     public float CurrentHP;

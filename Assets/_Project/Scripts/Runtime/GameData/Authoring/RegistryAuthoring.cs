@@ -38,6 +38,7 @@ public class RegistryAuthoring : MonoBehaviour
         private readonly Dictionary<GameObject, int> prefabs = new();
         private readonly HashSet<TechTreeDef> trees = new();
         private readonly List<RegistryBlobElement> blobEntries = new();
+        private readonly Dictionary<TechEffect, int> effects = new();
 
         public override void Bake(RegistryAuthoring authoring)
         {
@@ -50,6 +51,7 @@ public class RegistryAuthoring : MonoBehaviour
             prefabs.Clear();
             trees.Clear();
             blobEntries.Clear();
+            effects.Clear();
             try
             {
                 DependsOn(authoring.gameDataRegistry);
@@ -57,6 +59,7 @@ public class RegistryAuthoring : MonoBehaviour
                 AddComponent<GameDataRegistryComponent>(et);
                 AddBuffer<RegistryBlobElement>(et);
                 AddBuffer<RegistryPrefabElement>(et);
+                AddBuffer<RegistryTechEffectElement>(et);
                 if (authoring.bakeMode == BakeMode.BakeAll || authoring.bakeMode == BakeMode.ParameterBake)
                 {
                     foreach (var unit in authoring.gameDataRegistry.Units) BakeUnits(unit, et);
@@ -72,7 +75,7 @@ public class RegistryAuthoring : MonoBehaviour
                 foreach (var entry in blobEntries.OrderBy(entry => entry))
                     AppendToBuffer(et, entry);
             }
-            finally { prefabs.Clear(); trees.Clear(); blobEntries.Clear(); }
+            finally { prefabs.Clear(); trees.Clear(); blobEntries.Clear(); effects.Clear(); }
         }
 
         private void AddBlobToReg<T>(Entity et, ref BlobBuilder builder) where T : unmanaged, IGameBlobAsset
@@ -102,8 +105,11 @@ public class RegistryAuthoring : MonoBehaviour
         private void BakeBase(BasedSO authoring, Entity et, ref BlobBuilder builder, ref BaseBlob blob)
         {
             DependsOn(authoring);
+            if (authoring.VisionRadiusCells < 0)
+                throw new InvalidOperationException("BasedSO.VisionRadiusCells must be non-negative.");
             blob.ID = authoring.ID;
             blob.MaxHP = authoring.MaxHP;
+            blob.VisionRadiusCells = authoring.VisionRadiusCells;
             blob.WorkRate = authoring.WorkRate;
             blob.JobCapacity = authoring.JobCapacity;
             blob.PrefabIndex = PrefabIndex(authoring.Prefab, et);
@@ -192,6 +198,24 @@ public class RegistryAuthoring : MonoBehaviour
                         blob.Job.WorkLoad = research.WorkLoad;
                         blob.Tech.ID = research.TechDefinition.IDs;
                         Copy(ref builder, ref blob.Tech.Cost, research.TechDefinition.Cost);
+                        var sourceEffects = research.TechDefinition.Effects;
+                        if (sourceEffects == null)
+                            throw new InvalidOperationException("TechDefinition.Effects must not be null.");
+                        var effectIndices = builder.Allocate(ref blob.Tech.EffectIndices, sourceEffects.Count);
+                        for (int i = 0; i < sourceEffects.Count; i++)
+                        {
+                            var effect = sourceEffects[i];
+                            if (effect == null)
+                                throw new InvalidOperationException($"TechDefinition '{research.TechDefinition.name}' has a missing effect at index {i}.");
+                            DependsOn(effect);
+                            if (!effects.TryGetValue(effect, out int index))
+                            {
+                                index = effects.Count;
+                                effects.Add(effect, index);
+                                AppendToBuffer(et, new RegistryTechEffectElement { Effect = effect });
+                            }
+                            effectIndices[i] = index;
+                        }
                         AddBlobToReg<ResearchBlob>(et, ref builder);
                         break;
                     }

@@ -6,6 +6,8 @@ Shader "RTS/Terrain Material Atlas"
         _GeometryMap("Canonical tier height",2D)="black"{}
         _SourceAtlas("Six materials",2D)="white"{}
         _FadeOpacity("Mountain opacity",Range(0,1))=.25
+        _FogMask("Explored and visible cells",2D)="white"{}
+        _FogEnabled("Use local fog",Float)=0
     }
     SubShader
     {
@@ -23,19 +25,22 @@ Shader "RTS/Terrain Material Atlas"
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_GeometryMap); SAMPLER(sampler_GeometryMap);
             TEXTURE2D(_SourceAtlas); SAMPLER(sampler_SourceAtlas);
+            TEXTURE2D(_FogMask); SAMPLER(sampler_FogMask);
             CBUFFER_START(UnityPerMaterial)
             float4 _SourceAtlas_TexelSize;
             float4 _Grid; // origin X,Z,cell size,ground region cells
             float4 _ViewForward;
             float _VisualSeed, _FadeOpacity;
+            float4 _FogSize;
+            float _FogEnabled;
             float4 _FadeAnchors[16]; // world XYZ, radius world; positive radius enabled
             CBUFFER_END
-            struct Attributes { float4 positionOS:POSITION;float2 uv:TEXCOORD0;float4 face:TEXCOORD1; };
-            struct Varyings { float4 positionCS:SV_POSITION;float2 uv:TEXCOORD0;float3 plane:TEXCOORD1;nointerpolation float4 face:TEXCOORD2; };
+            struct Attributes { float4 positionOS:POSITION;float2 uv:TEXCOORD0;float4 face:TEXCOORD1;float2 fogCell:TEXCOORD2; };
+            struct Varyings { float4 positionCS:SV_POSITION;float2 uv:TEXCOORD0;float3 plane:TEXCOORD1;nointerpolation float4 face:TEXCOORD2;nointerpolation float2 fogCell:TEXCOORD3; };
             Varyings Vert(Attributes input)
             {
                 Varyings o;o.plane=TransformObjectToWorld(input.positionOS.xyz);o.positionCS=TransformWorldToHClip(o.plane);
-                o.uv=input.uv;o.face=input.face;return o;
+                o.uv=input.uv;o.face=input.face;o.fogCell=input.fogCell;return o;
             }
             float Hash(float2 p) { return frac(sin(dot(p,float2(127.1,311.7))+_VisualSeed*.013)*43758.5453); }
             float Noise(float2 p)
@@ -96,6 +101,7 @@ Shader "RTS/Terrain Material Atlas"
                 #if defined(SHADER_API_GLCORE) || defined(SHADER_API_GLES) || defined(SHADER_API_GLES3)
                 depth=depth*.5+.5;
                 #endif
+                if(_FogEnabled>.5){float fog=SAMPLE_TEXTURE2D(_FogMask,sampler_FogMask,input.fogCell/_FogSize.xy).r;clip(fog-.001);color.rgb*=fog;}
                 Output result;result.color=color;result.depth=depth;return result;
             }
             ENDHLSL

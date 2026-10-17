@@ -14,6 +14,7 @@ namespace RTS.DataValidation
                     c.Id(b, b.ID, nameof(b.ID), typeof(BasedSO));
                     c.Required(b.Prefab, b, nameof(b.Prefab));
                     c.Number(b.MaxHP, 0, b, nameof(b.MaxHP), true);
+                    c.Number(b.VisionRadiusCells, 0, b, nameof(b.VisionRadiusCells));
                     c.Number(b.WorkRate, 0, b, nameof(b.WorkRate), true);
                     c.References(b.Abilities, b, nameof(b.Abilities), c.IsRegisteredAbility,
                         "BASE_ABILITY_NOT_IN_REGISTRY", "GameDataRegistry.Abilities");
@@ -59,6 +60,9 @@ namespace RTS.DataValidation
                 case TechDefinition tech:
                     c.Id(tech, tech.IDs.ToString(), nameof(tech.IDs), typeof(TechDefinition));
                     Costs(tech.Cost, tech, nameof(tech.Cost), c);
+                    if (c.List(tech.Effects, tech, nameof(tech.Effects)))
+                        for (int i = 0; i < tech.Effects.Count; i++)
+                            c.Required(tech.Effects[i], tech, $"Effects[{i}]");
                     break;
                 case AbilityDefinition ability:
                     c.Id(ability, ability.Id, nameof(ability.Id), ability.GetType());

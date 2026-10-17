@@ -31,6 +31,7 @@ public class BuildingPlacer : MonoBehaviour
     [Header("Ghost Materials")]
     [SerializeField] private Material validGhostMaterial;
     [SerializeField] private Material invalidGhostMaterial;
+    [SerializeField] private Material unknownGhostMaterial;
 
     [Header("Raycast")]
     [SerializeField] private LayerMask groundMask;
@@ -151,7 +152,7 @@ public class BuildingPlacer : MonoBehaviour
         }
 
         currentGhostRenderers = currentGhost.GetComponentsInChildren<Renderer>(true);
-        SetGhostMaterial(true);
+        SetGhostMaterial(BuildingPreviewState.Unknown);
         isPlacing = true;
         UpdatePlacementPreview();
     }
@@ -209,14 +210,18 @@ public class BuildingPlacer : MonoBehaviour
         Vector3 hitPoint;
         if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(ray,out var logical,out _)) hitPoint=logical;
         else if(Physics.Raycast(ray,out RaycastHit hit,500f,groundMask)) hitPoint=hit.point;
-        else {currentCanPlace=false;SetGhostMaterial(false);currentGhost.SetActive(false);return;}
+        else if (new Plane(Vector3.up, Vector3.zero).Raycast(ray, out float distance)) hitPoint = ray.GetPoint(distance);
+        else {currentCanPlace=false;SetGhostMaterial(BuildingPreviewState.Invalid);currentGhost.SetActive(false);return;}
         currentSnappedPosition=SnapToGrid(hitPoint);
         Vector3 visiblePosition=currentSnappedPosition;
         if(TerrainVisualSurface.Active!=null)visiblePosition.y+=TerrainVisualSurface.Active.Sample(visiblePosition.x,visiblePosition.z);
         currentGhost.transform.position=visiblePosition;
 
-        currentCanPlace = CanPlace(currentSnappedPosition) && CanAffordBuilding(selectedBuildingPrefab);
-        SetGhostMaterial(currentCanPlace);
+        var preview = FogOrderRules.Preview(entityManager, localPlayerId, currentSnappedPosition, currentLocalRect);
+        bool affordable = CanAffordBuilding(selectedBuildingPrefab);
+        if (preview == BuildingPreviewState.Valid && !affordable) preview = BuildingPreviewState.Invalid;
+        currentCanPlace = preview != BuildingPreviewState.Invalid && affordable;
+        SetGhostMaterial(preview);
         currentGhost.SetActive(true);
     }
 
@@ -245,21 +250,6 @@ public class BuildingPlacer : MonoBehaviour
         }
 
         return new Vector3(Mathf.Round(hitPoint.x), 0f, Mathf.Round(hitPoint.z));
-    }
-
-    private bool CanPlace(Vector3 rootPosition)
-    {
-        if (entityManager == default) return false;
-        using var gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
-        if (gridQuery.CalculateEntityCount() != 1) return false;
-        Entity gridEntity = gridQuery.GetSingletonEntity();
-        var grid = entityManager.GetComponentData<GridComponent>(gridEntity);
-        if (!entityManager.HasBuffer<GridTerrain>(gridEntity) || !entityManager.HasBuffer<GridNodeCost>(gridEntity)) return false;
-        using var bucketQuery = entityManager.CreateEntityQuery(typeof(MovementAgentBucket));
-        var bucket = bucketQuery.CalculateEntityCount() == 1 ? bucketQuery.GetSingleton<MovementAgentBucket>().Bucket : default;
-        return BuildingPlacementValidator.Validate(grid, entityManager.GetBuffer<GridTerrain>(gridEntity).AsNativeArray(),
-            entityManager.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(), rootPosition, currentLocalRect, bucket, out _, out _)
-            == BuildingPlacementFailure.None;
     }
 
     private bool CanAffordBuilding(Entity buildingPrefab)
@@ -324,11 +314,12 @@ public class BuildingPlacer : MonoBehaviour
         selectedBuildingPrefab = Entity.Null;
     }
 
-    private void SetGhostMaterial(bool canPlace)
+    private void SetGhostMaterial(BuildingPreviewState preview)
     {
         if (currentGhostRenderers == null) return;
 
-        Material targetMat = canPlace ? validGhostMaterial : invalidGhostMaterial;
+        Material targetMat = preview == BuildingPreviewState.Valid ? validGhostMaterial : invalidGhostMaterial;
+        if (preview == BuildingPreviewState.Unknown) targetMat = unknownGhostMaterial;
         if (targetMat == null) return;
 
         foreach (var r in currentGhostRenderers)
@@ -336,6 +327,12 @@ public class BuildingPlacer : MonoBehaviour
             if (r != null)
                 r.sharedMaterial = targetMat;
         }
+    }
+
+    private void OnDestroy()
+    {
+        CancelPlacement();
+        if (_instance == this) _instance = null;
     }
 
     private void SetLayerRecursively(GameObject obj, int layer)

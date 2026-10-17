@@ -15,6 +15,7 @@ MonoBehaviour:
   ID: dogfood.worker
   Name: Worker
   MaxHP: 100
+  VisionRadiusCells: 10
   Icon: {fileID: 0}
   Prefab: {fileID: 3382223461976398644, guid: 6466deff236c943439172622eda95da9, type: 3}
   WorkRate: 5

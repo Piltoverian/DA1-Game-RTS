@@ -1,6 +1,14 @@
-# Trạng thái hiện tại — 15/10/2026
+# Trạng thái hiện tại — 17/10/2026
 
 **Bắt đầu từ [lộ trình](Roadmap.md) nếu muốn biết việc tiếp theo. Đọc trang này khoảng 3 phút.**
+
+## Fog of War local và bước multiplayer
+
+Render FOW local đã nối vào Main, được người dùng chốt để chuyển bước. Native graphics hiện khi visible; unit/đạn khuất thì ẩn, building/resource giữ mesh/material/matrix cuối thấy và xóa ký ức khi nhìn lại footprint trống. Terrain dựng từ full tập Explored nhận mỗi Collect, mask 1 / 80/255 / 0. Frame bỏ WorldId/MapId/MapRevision; TerrainBaseLevel giữ mốc height chung để unknown không làm terrain cao lệch unit.
+
+Lượt render: 33 assertion và Main Play graphics pass, Unity exit 0, trước sửa datum height. Lượt height sau đó: 5 unit từ lệch 1,59472 về 0, đã xem ảnh camera; không phải chạy lại toàn suite. Điều kiện drag cuối: >0,05 giây AND rộng >Screen.width/40, build 0 lỗi/5 warning cũ, chưa Play lại. Người dùng chọn không kiểm tra thêm local trước handoff.
+
+Xem [kiến trúc render](../Architecture/FogOfWarRendering.md) và [handoff FOW](FogOfWarHandoff.md) cho source và giới hạn. [Multiplayer](../Multiplayer/README.md) là quyết định tiếp theo: client Mono qua adapter, server ECS/Netcode, RPC giữ payload command, Ghost/serializer theo package đã kiểm tra compatibility. Chưa cài Netcode, chưa chuyển presentation systems sang Mono, chưa có server+2client hoặc nghiệm thu UI/picking theo FOW.
 
 ## Lối chơi và dữ liệu
 

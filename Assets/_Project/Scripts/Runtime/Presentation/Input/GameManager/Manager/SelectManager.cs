@@ -16,7 +16,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 {
     [SerializeField] private StartEndRect selectingRect;
     public TestPlayer currentContext{ get; private set; }
-    float holdbuffer = 0;
+    float holdbuffer;
     bool leftHeld;
     bool pressStartedOverUI;
     Camera cam = null;  
@@ -76,9 +76,11 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         }
         if (pressStartedOverUI) return;
         holdbuffer += Time.fixedDeltaTime;
-        if (holdbuffer <= 0.05f) return;
-        selectingRect.isNotNull = true;
         selectingRect.ExpandTo(mousePos);
+        float2 size = selectingRect.MaxPoint - selectingRect.MinPoint;
+        selectingRect.isNotNull = holdbuffer > 0.05f
+            && size.x > Screen.width / 40f;
+        if (!selectingRect.isNotNull) return;
         if (TryGetSelectionManager(out var manager)) DragSelect(mousePos, manager);
     }
 

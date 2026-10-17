@@ -8,7 +8,7 @@ using UnityEngine;
 // Shared instance state only. RegistryAuthoring owns all immutable definition blobs.
 public abstract class EntityDefinitionBaker<T> : Baker<T> where T : Component
 {
-    protected void BakeBase(Entity entity, BasedSO definition,float initialHealth)
+    protected void BakeBase(Entity entity, BasedSO definition, float initialHealth, int playerId = -1)
     {
         DependsOn(definition);
         if (definition == null)
@@ -18,11 +18,14 @@ public abstract class EntityDefinitionBaker<T> : Baker<T> where T : Component
             throw new InvalidOperationException("BasedSO.ID must be non-empty and fit in FixedString64Bytes.");
         if (!math.isfinite(definition.MaxHP) || definition.MaxHP <= 0f)
             throw new InvalidOperationException("BasedSO.MaxHP must be finite and positive.");
+        if (definition.VisionRadiusCells < 0)
+            throw new InvalidOperationException("BasedSO.VisionRadiusCells must be non-negative.");
         if (!math.isfinite(initialHealth) ||
             (initialHealth != -1f && (initialHealth < 0f || initialHealth > definition.MaxHP)))
             throw new InvalidOperationException("Initial HP must be -1 (full health) or between 0 and MaxHP.");
 
-        AddComponent(entity, new EntityOwner { PlayerID = -1});
+        AddComponent(entity, new EntityOwner { PlayerID = playerId });
+        AddComponent(entity, new EntityVision { VisionRadiusCells = definition.VisionRadiusCells });
         AddComponent(entity, new EntityHealth
         {
             CurrentHP = initialHealth == -1f ? definition.MaxHP : initialHealth,

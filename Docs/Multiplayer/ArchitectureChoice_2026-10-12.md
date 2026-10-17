@@ -2,7 +2,7 @@
 
 ## Quyết định của tác nhân theo ủy quyền
 
-Chọn **máy chủ quyết định trạng thái + ảnh trạng thái/phần thay đổi đồng bộ trạng thái + nội suy phía máy khách**, dùng ECS và Netcode for thực thể làm hướng tích hợp. máy chủ là nơi quyết định chuyển động, collision/blockage, sát thương, economy, sản xuất và nghiên cứu. máy khách gửi lệnh, nhận trạng thái, dựng hình và nội suy.
+Chọn **máy chủ quyết định trạng thái + ảnh trạng thái/phần thay đổi đồng bộ trạng thái + nội suy phía máy khách**, dùng ECS và Netcode for thực thể làm hướng tích hợp. máy chủ là nơi quyết định chuyển động, collision/blockage, sát thương, economy, sản xuất và nghiên cứu. máy khách gửi lệnh, nhận trạng thái và dựng hình. Cập nhật 17/10/2026: client presentation/input/UI/camera dùng Mono qua adapter ECS/Netcode; Ghost authoring và serializer quyết định interpolation, không tạo tầng nội suy song song. Quyết định dữ liệu/RPC/FOW mới nhất ở [Multiplayer](README.md).
 
 Mục tiêu người dùng: khoảng 20 tick/s, 2.000 lính tổng toàn trận, bản đồ tối đa 512 ×512, 2–10 người chơi. Địa hình cố định, động chặn lối thay đổi; lối chơi trên XZ; camera thu phóng, không xoay; không triển khai đội hình.
 
@@ -25,7 +25,7 @@ máy khách interpolation phù hợp các lính RTS không được điều khi�
 - lệnh gồm match/session identity, authenticated người chơi, sequence/tick, lính IDs, action và mục tiêu. máy chủ phân giải ID → thực thể và kiểm tra owner/team/capability/resources. PlayerID của gói không được tự coi là danh tính đã xác thực.
 - Group lệnh cùng đích dùng target/field chia sẻ; không tạo một mục tiêu+trường hướng cho mỗi lính để dựng đội hình. Mỗi bước mô phỏng có ngân sách trường requests và thống kê hàng đợi depth/cache hit/build time.
 - địa hình ảnh trạng thái gửi lúc loading: algorithm/config version, lưới, cells/spawns, revision/hash. máy chủ sinh bản đồ; không yêu cầu máy khách nhiễu float tạo lại cùng kết quả trên mọi máy. máy khách dựng visuals từ ảnh trạng thái. động vật chặn lifetime/cost và lính trạng thái được replicate riêng.
-- Unit trạng thái tối thiểu là ID/owner/team, XZ/orientation, state/HP và thông tin cần dựng hình. trường hướng trường và ORCA internals ở máy chủ. Các thay đổi resource/research/job hàng đợi là dữ liệu lối chơi, cần đồng bộ có thứ tự và phục hồi khi kết nối lại.
+- Unit trạng thái tối thiểu là ID/owner/team, XZ/orientation, state/HP và thông tin cần dựng hình. trường hướng trường và ORCA internals ở máy chủ. Resource/research/job là dữ liệu gameplay cần phục hồi khi reconnect; snapshot render chỉ có ability/job đang active, không mặc định gửi toàn queue.
 - AOE/target validity đọc quan hệ đội ở mô phỏng. Same PlayerID không đủ để bảo vệ người chơi đồng minh; quyền sở hữu vẫn riêng cho mỗi người chơi.
 
 Ước lượng minh họa, không phải số đo: nếu mỗi lính cần 16 byte và gửi toàn bộ 2.000 lính ở 10 Hz thì 320 kB/s/client, khoảng 3,2 MB/s cho 10 máy khách, chưa tính header/reliability. phần thay đổi, quantization, mức liên quan và event đồng bộ trạng thái cần được đo; không mặc định full-trạng thái broadcast cho toàn trận. Camera loại phần không nhìn thấy không thay thế sương mù-of-war hoặc quyền nhìn dữ liệu của người chơi.
@@ -45,10 +45,10 @@ Các môi trường ngoài cục bộ Editor ở bảng này là kế hoạch ch
 
 ## Gaps phải xử lý trước khi dùng môi trường mạng
 
-1. Tách authoritative mô phỏng khỏi hiển thị-driven độ cao. XZ lối chơi đã chốt, nhưng projectile/collider hiện đọc Y; cần thiết kế projection/picking và máy chủ collision trước khi refactor, không tùy tiện ép mọi thực thể Y=0.
+1. TerrainHeightCacheSystem hiện đã lấy height từ grid simulation, không phụ thuộc renderer. FixedTerrainHeightSystem/TerrainHeightSystem hiện chỉ áp Y ở local/client; khi chuyển server phải chốt nơi áp height cho collider/projectile và projection/picking, không tùy tiện ép mọi entity Y=0. Client terrain phải giữ cùng TerrainBaseLevel để hình không lệch simulation.
 2. Gắn WorldSystemFilter phù hợp cho gameplay/presentation; bỏ mặc định-world/static được quản lý phụ thuộc và dùng explicit match lifecycle/tick. máy khách không tự chạy lại economy/damage/production.
 3. Ownership/payment đã có backend; kiểm chứng lại hợp đồng trong máy chủ thế giới ECS. Team relationship/AOE và vòng đời bên sản xuất death/destruction cần nghiệm thu trong môi trường đó, giữ chính sách hoàn tiền hiện hành.
-4. Net IDs, command/ack contracts, máy chủ bản đồ bắt tay, snapshots và kết nối lại. Chọn phiên bản Netcode/Transport tương thích trước cài đặt.
+4. Ghost identity/serialization, RPC giữ command payload hiện tại, tải trận và reconnect theo [hướng 17/10](README.md). Frame FOW không mang WorldId/MapId/MapRevision; không tự dựng lại protocol nội bộ Netcode. Chọn package tương thích trước cài đặt.
 5. Chạy đo hiệu năng tải và kiểm thử mạng adverse conditions; chưa chọn máy/dịch vụ bằng suy đoán FPS Editor.
 
 Quyết định này thay mốc so sánh host/Relay của lộ trình cũ đã loại khỏi bộ tài liệu. Quyết định ở đây thay mốc so sánh nghiệm thu thành chuyên dụng máy chủ quyết định trạng thái, đồng thời vẫn cho phép máy chủ kiêm máy chơi kiêm máy khách trong development. Relay là lựa chọn kết nối cho máy chủ kiêm máy chơi mode, không phải máy chủ chạy mô phỏng của trò chơi.
