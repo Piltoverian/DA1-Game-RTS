@@ -1040,6 +1040,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuildingPlacer
   validGhostMaterial: {fileID: 2100000, guid: b4768b00b7fc05e4f90c0703efa494e2, type: 2}
   invalidGhostMaterial: {fileID: 2100000, guid: 633ef79ccc92a8b43af6bf3ccbf12f1d, type: 2}
+  unknownGhostMaterial: {fileID: 2100000, guid: 550a1c3ecd474ce99117a43b39d67615, type: 2}
   groundMask:
     serializedVersion: 2
     m_Bits: 8

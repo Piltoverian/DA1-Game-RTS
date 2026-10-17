@@ -29,5 +29,6 @@ public struct WorkerGatherData : IComponentData,IEnableableComponent
     public float StopDistanceSq;
 
     public ResourceType CurrentResourceType;
+    public FogKnownTarget KnownTarget;
 }
 

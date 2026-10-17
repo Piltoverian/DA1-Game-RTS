@@ -29,6 +29,9 @@ public class UnitController : MonoBehaviour
         if (!GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.rightButton))
             return;
         var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        if (FogOrderRules.HasFog(entityManager)
+            && FogCommandPicking.Local(World.DefaultGameObjectInjectionWorld, GetCurrentPlayerId()) == null)
+        { CommandMove(entityManager); return; }
 
         if (TryCommandAttack(entityManager))
         {
@@ -83,6 +86,22 @@ public class UnitController : MonoBehaviour
         int playerId = GetCurrentPlayerId();
         if (playerId < 0)
             return false;
+
+        var fog = FogCommandPicking.Local(World.DefaultGameObjectInjectionWorld, playerId);
+        if (fog != null)
+        {
+            if (!FogCommandPicking.TryPick(fog, Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition),
+                FogRenderKind.Resource, out var snapshot, out var known)) return false;
+            int sent = 0;
+            foreach (var worker in SelectHelper.GetAllSelectedEntitiesByplayerID(playerId))
+            {
+                if (!entityManager.HasComponent<WorkerGatherData>(worker) || !entityManager.HasComponent<MoveOverride>(worker)) continue;
+                CommandDataHelper.AddCommandToQueue(entityManager, playerId, worker, CommandType.TargetTo,
+                    targetEntity: snapshot.Entity, position: known.Position, knownTarget: known);
+                sent++;
+            }
+            return sent > 0;
+        }
 
         UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
         if (!Physics.Raycast(ray, out UnityEngine.RaycastHit hit, 500f))
@@ -240,6 +259,10 @@ public class UnitController : MonoBehaviour
         int hitEntityPlayerId = entityManager.GetComponentData<EntityOwner>(hitEntity).PlayerID;
         if (myPlayerId==hitEntityPlayerId)
             return false;
+        if (!FogOrderRules.IsVisible(entityManager, myPlayerId, hitEntity)) return false;
+        using (var contexts = entityManager.CreateEntityQuery(typeof(PlayerContext)))
+        using (var players = contexts.ToComponentDataArray<PlayerContext>(Allocator.Temp))
+            if (PlayerContextHelper.AreAllies(players, myPlayerId, hitEntityPlayerId)) return false;
         var selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(myPlayerId);
         if (selectedEntities.Count == 0)
             return false;
@@ -254,7 +277,8 @@ public class UnitController : MonoBehaviour
                 myPlayerId,
                 unit,
                 CommandType.TargetTo,
-                targetEntity: hitEntity
+                targetEntity: hitEntity,
+                position: MouseWorldPosition.Instance.GetPosition()
             );
             attackCommandedCount++;
         }
@@ -266,6 +290,31 @@ public class UnitController : MonoBehaviour
         int playerId = GetCurrentPlayerId();
         if (playerId < 0)
             return false;
+
+        var fog = FogCommandPicking.Local(World.DefaultGameObjectInjectionWorld, playerId);
+        if (fog != null)
+        {
+            if (!FogCommandPicking.TryPick(fog, Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition),
+                FogRenderKind.Building, out var snapshot, out var known) || snapshot.OwnerId != playerId) return false;
+            if (snapshot.IsVisible && !BuildingHelper.CanBuildOrRepair(entityManager, snapshot.Entity)) return false;
+            bool unfinished = snapshot.ConstructionPhase == ConstructionPhase.Planned || snapshot.ConstructionPhase == ConstructionPhase.UnderConstruction;
+            // Even an apparently healthy remembered building may now need repair: inspect only on arrival.
+            int sent = 0;
+            foreach (var worker in SelectHelper.GetAllSelectedEntitiesByplayerID(playerId))
+            {
+                if (!entityManager.HasComponent<BuilderComponent>(worker) || !entityManager.HasComponent<MoveOverride>(worker)
+                    || !entityManager.HasBuffer<BuildOffer>(worker)) continue;
+                bool allowed = false;
+                foreach (var offer in entityManager.GetBuffer<BuildOffer>(worker))
+                    if (snapshot.GameRegId.HasValue && offer.DefinitionID == snapshot.GameRegId.Value) allowed = true;
+                if (!allowed) continue;
+                CommandDataHelper.AddCommandToQueue(entityManager, playerId, worker,
+                    unfinished ? CommandType.Build : CommandType.TargetTo,
+                    targetEntity: snapshot.Entity, position: known.Position, knownTarget: known);
+                sent++;
+            }
+            return sent > 0;
+        }
 
         UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
 
@@ -300,7 +349,7 @@ public class UnitController : MonoBehaviour
                 entityManager,
                 playerId,
                 worker,
-                CommandType.Build,
+                BuildingHelper.IsUnderConstruction(entityManager, targetBuilding) ? CommandType.Build : CommandType.TargetTo,
                 targetEntity: targetBuilding
             );
             Debug.Log($"Command Build issued for worker {worker.Index} on building {targetBuilding.Index}.");

@@ -18,6 +18,7 @@ public partial class LocalFogPresentationSystem : SystemBase
     public FogOfWarRenderView View { get; } = new();
     public int ScopeVersion { get; private set; }
     public Texture2D Mask { get; private set; }
+    public readonly Dictionary<Entity, ResourceType> ResourceTypes = new();
     readonly Dictionary<Entity, Entity> owners = new();
     readonly HashSet<Entity> hidden = new();
     readonly Dictionary<Entity, bool> hiddenSprites = new();
@@ -67,6 +68,12 @@ public partial class LocalFogPresentationSystem : SystemBase
         { ResetMemory(); viewer = player; gridEntity = currentGrid; ScopeVersion++; }
         FogOfWarSnapshot.Collect(EntityManager, player, Frame);
         View.Apply(Frame);
+        foreach (var data in Frame.Entities)
+            if (data.Kind == FogRenderKind.Resource && EntityManager.HasComponent<ResourceNodeData>(data.Entity))
+                ResourceTypes[data.Entity] = EntityManager.GetComponentData<ResourceNodeData>(data.Entity).Type;
+        removed.Clear();
+        foreach (var pair in ResourceTypes) if (!View.Entities.ContainsKey(pair.Key)) removed.Add(pair.Key);
+        foreach (var entity in removed) ResourceTypes.Remove(entity);
         UpdateMask();
         owners.Clear();
         using var roots = EntityManager.CreateEntityQuery(new EntityQueryDesc { Any = new[] {
@@ -201,7 +208,7 @@ public partial class LocalFogPresentationSystem : SystemBase
     void RestoreCamera() { if (fogCamera) { fogCamera.clearFlags = cameraFlags; fogCamera.backgroundColor = cameraBackground; } fogCamera = null; }
     void ResetMemory()
     {
-        View.Clear(); foreach (var memory in memories.Values) memory.Clear(); memories.Clear();
+        View.Clear(); ResourceTypes.Clear(); foreach (var memory in memories.Values) memory.Clear(); memories.Clear();
     }
     protected override void OnDestroy()
     {

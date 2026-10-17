@@ -24,6 +24,7 @@ public struct CommandQueueElement : IBufferElementData
     public Entity SourcesEntity;
     public Vector3 position;
     public GridRect gridRect;
+    public FogKnownTarget KnownTarget;
 }
 
 public struct CommandQueueComponent : IComponentData
@@ -57,7 +58,8 @@ public static class CommandDataHelper
         GameBlobReference progression = default,
         Entity targetEntity = default,
         Vector3 position = default,
-        GridRect gridRect = default)
+        GridRect gridRect = default,
+        FogKnownTarget knownTarget = default)
     {
         using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>());
         var commandQueueEntity = query.GetSingletonEntity();
@@ -71,6 +73,7 @@ public static class CommandDataHelper
             targetEntity = targetEntity,
             position = position,
             gridRect = gridRect,
+            KnownTarget = knownTarget,
         });
     }
 }
@@ -162,6 +165,16 @@ partial struct CommandQueue : ISystem
             if (allowed && !duplicate) workers.Add(worker);
         }
         if (workers.Length == 0) return;
+        if (FogOrderRules.HasFog(em) && FogOrderRules.TryGrid(em, out _, out var grid)
+            && em.HasComponent<BlockageData>(command.targetEntity)
+            && PlayerSpawnPlacement.TryFootprint(grid, command.position,
+                em.GetComponentData<BlockageData>(command.targetEntity).LocalRect, out var min, out var max)
+            && !FogOrderRules.CellsVisible(em, command.PlayerId, min, max, true))
+        {
+            foreach (var worker in workers)
+                BuilderSystem.EnqueuePlan(em, worker, command.targetEntity, command.position);
+            return;
+        }
         Entity reqEntity = em.CreateEntity();
         em.AddComponentData(reqEntity, new PlaceBuildingRequest
         {
@@ -206,6 +219,10 @@ partial struct CommandQueue : ISystem
 
     private static bool CanHandleTargetTo(EntityManager entityManager, CommandQueueElement command)
     {
+        if (command.KnownTarget.HasValue &&
+            ((command.KnownTarget.Kind == FogRenderKind.Resource && entityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
+            || (command.KnownTarget.Kind == FogRenderKind.Building && entityManager.HasComponent<BuilderComponent>(command.sourceEntity))))
+            return true;
         if (command.targetEntity == Entity.Null || !entityManager.Exists(command.targetEntity))
         {
             return false;
@@ -266,6 +283,16 @@ partial struct CommandQueue : ISystem
 
     private static void HandleTargetTo(ref SystemState state, CommandQueueElement command)
     {
+        if (command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Resource
+            && state.EntityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
+        { HandleGather(ref state, command); return; }
+        if (command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Building
+            && state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity))
+        { HandleBuild(ref state, command); return; }
+        if (state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity)
+            && EntityCapabilities.CanBuild(state.EntityManager, command.sourceEntity, command.targetEntity)
+            && BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
+        { HandleBuild(ref state, command); return; }
         if (state.EntityManager.HasComponent<WorkerGatherData>(command.sourceEntity) &&
             state.EntityManager.HasComponent<ResourceNodeTag>(command.targetEntity))
         {
@@ -290,18 +317,22 @@ partial struct CommandQueue : ISystem
             return;
         }
 
-        if (command.targetEntity == Entity.Null || !em.Exists(command.targetEntity) || em.HasComponent<Prefab>(command.targetEntity))
+        bool remembered = command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Building
+            && !FogOrderRules.IsVisible(em, command.PlayerId, command.targetEntity);
+        if (!remembered && !FogOrderRules.IsVisible(em, command.PlayerId, command.targetEntity))
+        { DeactiveAllAbility(em, command.sourceEntity); HandleMove(ref state, command); return; }
+        if (!remembered && (command.targetEntity == Entity.Null || !em.Exists(command.targetEntity) || em.HasComponent<Prefab>(command.targetEntity)))
         {
             return;
         }
 
-        if (!EntityCapabilities.CanBuild(em, command.sourceEntity, command.targetEntity) || !BuildingHelper.CanBuildOrRepair(em, command.targetEntity))
+        if (!remembered && (!EntityCapabilities.CanBuild(em, command.sourceEntity, command.targetEntity) || !BuildingHelper.CanBuildOrRepair(em, command.targetEntity)))
             return;
 
         var builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
         if (command.Type == CommandType.Build &&
             em.IsComponentEnabled<BuilderComponent>(command.sourceEntity) &&
-            builder.State != BuilderState.Idle &&
+            builder.State != BuilderState.Idle && !builder.RepairOnly && !builder.WaitingForPlacement &&
             em.HasBuffer<BuilderQueueElement>(command.sourceEntity))
         {
             if (builder.TargetConstructionSite == command.targetEntity)
@@ -310,13 +341,18 @@ partial struct CommandQueue : ISystem
             for (int i = 0; i < pending.Length; i++)
                 if (pending[i].BuildingEntity == command.targetEntity)
                     return;
-            pending.Add(new BuilderQueueElement { BuildingEntity = command.targetEntity });
+            pending.Add(new BuilderQueueElement { BuildingEntity = command.targetEntity, KnownTarget = command.KnownTarget });
             return;
         }
 
-        DeactiveAllAbility(em, command.sourceEntity);
+        if (!builder.WaitingForPlacement) DeactiveAllAbility(em, command.sourceEntity);
         builder = em.GetComponentData<BuilderComponent>(command.sourceEntity);
         builder.TargetConstructionSite = command.targetEntity;
+        builder.PlannedPrefab = Entity.Null;
+        builder.WaitingForPlacement = false;
+        builder.RepairOnly = command.Type == CommandType.TargetTo;
+        builder.KnownTarget = command.KnownTarget;
+        builder.FogApproachRequested = false;
         builder.State = BuilderState.GoingToSite;
         em.SetComponentData(command.sourceEntity, builder);
         em.SetComponentEnabled<BuilderComponent>(command.sourceEntity, true);
@@ -325,7 +361,8 @@ partial struct CommandQueue : ISystem
         {
             var targetCache = em.GetComponentData<TargetCache>(command.sourceEntity);
             targetCache.targetEntity = command.targetEntity;
-            if (em.HasComponent<LocalTransform>(command.targetEntity))
+            if (remembered) targetCache.lastTargetPosition = command.KnownTarget.Position;
+            else if (em.HasComponent<LocalTransform>(command.targetEntity))
             {
                 targetCache.lastTargetPosition = em.GetComponentData<LocalTransform>(command.targetEntity).Position;
             }
@@ -336,6 +373,18 @@ partial struct CommandQueue : ISystem
     private static void HandleAttack(ref SystemState state, CommandQueueElement command)
     {
         var em = state.EntityManager;
+        bool enemy = em.HasComponent<EntityOwner>(command.targetEntity)
+            && em.GetComponentData<EntityOwner>(command.targetEntity).PlayerID != command.PlayerId;
+        using (var contexts = em.CreateEntityQuery(typeof(PlayerContext)))
+        using (var players = contexts.ToComponentDataArray<PlayerContext>(Allocator.Temp))
+            if (enemy && PlayerContextHelper.AreAllies(players, command.PlayerId,
+                em.GetComponentData<EntityOwner>(command.targetEntity).PlayerID)) enemy = false;
+        if (!enemy || !FogOrderRules.IsVisible(em, command.PlayerId, command.targetEntity))
+        {
+            if (em.HasComponent<Target>(command.sourceEntity)) em.SetComponentData(command.sourceEntity, new Target());
+            HandleMove(ref state, command);
+            return;
+        }
 
         if (em.HasComponent<ShootAttack>(command.sourceEntity))
         {
@@ -364,26 +413,34 @@ partial struct CommandQueue : ISystem
     private static void HandleGather(ref SystemState state, CommandQueueElement command)
     {
         var gatherData = state.EntityManager.GetComponentData<WorkerGatherData>(command.sourceEntity);
-        var nodeData = state.EntityManager.GetComponentData<ResourceNodeData>(command.targetEntity);
+        bool remembered = command.KnownTarget.HasValue &&
+            !FogOrderRules.IsVisible(state.EntityManager, command.PlayerId, command.targetEntity);
+        if (!remembered && !FogOrderRules.IsVisible(state.EntityManager, command.PlayerId, command.targetEntity))
+        { HandleMove(ref state, command); return; }
+        var resourceType = remembered ? command.KnownTarget.ResourceType
+            : state.EntityManager.GetComponentData<ResourceNodeData>(command.targetEntity).Type;
 
-        if (gatherData.CurrentResourceType != nodeData.Type)
+        if (gatherData.CurrentResourceType != resourceType)
         {
             gatherData.CarryAmount = 0;
-            gatherData.CurrentResourceType = nodeData.Type;
+            gatherData.CurrentResourceType = resourceType;
         }
 
         gatherData.TargetNode = command.targetEntity;
+        gatherData.KnownTarget = command.KnownTarget;
         gatherData.TargetDepot = Entity.Null;
         gatherData.GatherTimer = 0f;
         gatherData.State = WorkerGatherState.GoingToNode;
         state.EntityManager.SetComponentData(command.sourceEntity, gatherData);
         state.EntityManager.SetComponentEnabled<WorkerGatherData>(command.sourceEntity, true);
+        if (remembered) FogOrderRules.BeginTravel(state.EntityManager, command.sourceEntity, command.PlayerId, command.KnownTarget);
 
         if (state.EntityManager.HasComponent<TargetCache>(command.sourceEntity))
         {
             var targetCache = state.EntityManager.GetComponentData<TargetCache>(command.sourceEntity);
             targetCache.targetEntity = command.targetEntity;
-            if (state.EntityManager.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
+            if (remembered) targetCache.lastTargetPosition = command.KnownTarget.Position;
+            else if (state.EntityManager.HasComponent<Unity.Transforms.LocalTransform>(command.targetEntity))
             {
                 float3 rawPos = state.EntityManager.GetComponentData<Unity.Transforms.LocalTransform>(command.targetEntity).Position;
                 targetCache.lastTargetPosition = state.EntityManager.HasComponent<BlockageData>(command.targetEntity)
@@ -396,6 +453,15 @@ partial struct CommandQueue : ISystem
 
     public static void DeactiveAllAbility(EntityManager em, Entity entity)
     {
+        if (em.HasComponent<BuilderComponent>(entity))
+        {
+            var builder = em.GetComponentData<BuilderComponent>(entity);
+            if (builder.WaitingForPlacement && em.Exists(builder.PlacementRequest)) em.DestroyEntity(builder.PlacementRequest);
+            builder.WaitingForPlacement = false; builder.PlannedPrefab = Entity.Null; builder.KnownTarget = default;
+            em.SetComponentData(entity, builder);
+        }
+        if (em.HasComponent<FogTargetTravel>(entity)) em.RemoveComponent<FogTargetTravel>(entity);
+        if (em.HasComponent<Target>(entity)) em.SetComponentData(entity, new Target());
         if (em.HasBuffer<BuilderQueueElement>(entity))
             em.GetBuffer<BuilderQueueElement>(entity).Clear();
         if (em.HasComponent<MoveOverride>(entity))
