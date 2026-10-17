@@ -372,7 +372,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82284fc1dad91984aac6fc63acec54dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlowFieldDebugDrawer
-  mode: 0
+  mode: 6
   drawStep: 1
   arrowScale: 0.5
   showLabel: 0
@@ -381,6 +381,9 @@ MonoBehaviour:
   drawThroughTerrain: 1
   movementPlaneY: 0.03
   alignToVisibleTerrain: 1
+  fogPlayerId: 1
+  fogVisibleColor: {r: 0, g: 1, b: 0, a: 1}
+  fogExploredColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
 --- !u!4 &321679047
 Transform:
   m_ObjectHideFlags: 0
@@ -1069,7 +1072,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1380869600081090826, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 88
+      value: 200
       objectReference: {fileID: 0}
     - target: {fileID: 1380869600081090826, guid: d82a17da6d4512d449d8d18655b8eece, type: 3}
       propertyPath: m_LocalPosition.z

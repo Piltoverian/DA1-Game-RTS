@@ -6,8 +6,8 @@ using UnityEngine.Rendering;
 // PNGs carry the shape. Runtime emits only flat, unwarped image rectangles.
 public static class CanonicalIsometricSprites
 {
-    struct Face { public Vector3 anchor; public Texture2D texture; public float depth; public Color metadata; public int sequence; public int kind; public float tierRise; }
-    public static GameObject Build(GeneratedTerrain map,TerrainTheme theme,TerrainVisualSurface surface,Vector3 forward,Material material,Dictionary<Texture2D,int> ids,Rect[] atlasRects,List<Mesh> ownedMeshes){
+    struct Face { public Vector3 anchor; public Texture2D texture; public float depth; public Color metadata; public int sequence; public int kind; public float tierRise; public Vector2 cell; }
+    public static GameObject Build(GeneratedTerrain map,TerrainTheme theme,TerrainVisualSurface surface,Vector3 forward,Material material,Dictionary<Texture2D,int> ids,Rect[] atlasRects,List<Mesh> ownedMeshes,IReadOnlyDictionary<int,GridTerrain> known=null){
         if(Mathf.Abs(forward.y+.5f)>.001f)throw new InvalidOperationException("Canonical 2:1 sprites require orthographic pitch30/yaw45");
         var root=new GameObject("Terrain presentation chunks (no colliders)");
         var faces=new List<Face>();float size=map.grid.cellsize,rise=surface.rise;
@@ -18,10 +18,11 @@ public static class CanonicalIsometricSprites
         Vector3 screenUp=new Vector3(forward.x,0,forward.z).normalized/Mathf.Abs(forward.y);
         void Add(int x,int z,float height,Texture2D texture,Color metadata,Vector3? sortPosition=null,int kind=-1,float? tierRise=null){
             var anchor=new Vector3(map.grid.origin.x+(x+.5f)*size,height,map.grid.origin.z+(z+.5f)*size);
-            faces.Add(new Face{anchor=anchor,texture=texture,depth=Vector3.Dot(sortPosition??anchor,forward),metadata=metadata,sequence=faces.Count,kind=kind<0?(int)metadata.a:kind,tierRise=tierRise??rise});
+            faces.Add(new Face{anchor=anchor,texture=texture,depth=Vector3.Dot(sortPosition??anchor,forward),metadata=metadata,sequence=faces.Count,kind=kind<0?(int)metadata.a:kind,tierRise=tierRise??rise,cell=new Vector2(x+.5f,z+.5f)});
         }
         for(int z=0;z<map.grid.height;z++)for(int x=0;x<map.grid.width;x++){
             int i=z*map.grid.width+x;
+            if(known!=null&&!known.ContainsKey(i))continue;
             float[] h={surface.CellHeight(i,0,0),surface.CellHeight(i,1,0),surface.CellHeight(i,1,1),surface.CellHeight(i,0,1)};
             float bottom=Mathf.Min(Mathf.Min(h[0],h[1]),Mathf.Min(h[2],h[3]));int mask=0;
             for(int k=0;k<4;k++){float tier=(h[k]-bottom)/rise;if(tier>1.001f)throw new InvalidOperationException("Top cell spans more than one sprite tier");if(tier>.5f)mask|=1<<k;}
@@ -58,7 +59,7 @@ public static class CanonicalIsometricSprites
         faces.Sort((a,b)=>{int d=b.depth.CompareTo(a.depth);return d!=0?d:a.sequence.CompareTo(b.sequence);});
         const int batchSize=2048;
         for(int first=0;first<faces.Count;first+=batchSize){
-            var vertices=new List<Vector3>();var uv=new List<Vector2>();var colors=new List<Color>();var faceData=new List<Vector4>();var triangles=new List<int>();
+            var vertices=new List<Vector3>();var uv=new List<Vector2>();var fogCells=new List<Vector2>();var colors=new List<Color>();var faceData=new List<Vector4>();var triangles=new List<int>();
             for(int f=first;f<Math.Min(first+batchSize,faces.Count);f++){
                 var face=faces[f];var anchor=face.anchor-forward*(face.anchor.y/forward.y);anchor.y=0;
                 // Canonical artwork is anchored to one logical cell, including mountains.
@@ -68,11 +69,12 @@ public static class CanonicalIsometricSprites
                 for(int k=0;k<4;k++){
                     float u=k==1||k==2?1:0,v=k>=2?1:0;
                     var p=anchor+right*((u-pivot.x)*width)+screenUp*((v-pivot.y)*height);p.y=0;vertices.Add(p);
+                    fogCells.Add(face.cell);
                     uv.Add(new Vector2(Mathf.Lerp(rect.xMin,rect.xMax,u),Mathf.Lerp(rect.yMin,rect.yMax,v)));colors.Add(face.metadata);faceData.Add(new Vector4(face.anchor.y,face.tierRise,face.kind,theme.UsesManualColor(face.texture)?1:0));
                 }
                 triangles.AddRange(new[]{start,start+2,start+1,start,start+3,start+2});
             }
-            var mesh=new Mesh{name="Canonical isometric sprites "+first,indexFormat=IndexFormat.UInt32};mesh.SetVertices(vertices);mesh.SetUVs(0,uv);mesh.SetUVs(1,faceData);mesh.SetColors(colors);mesh.SetTriangles(triangles,0);mesh.RecalculateBounds();ownedMeshes.Add(mesh);
+            var mesh=new Mesh{name="Canonical isometric sprites "+first,indexFormat=IndexFormat.UInt32};mesh.SetVertices(vertices);mesh.SetUVs(0,uv);mesh.SetUVs(1,faceData);mesh.SetUVs(2,fogCells);mesh.SetColors(colors);mesh.SetTriangles(triangles,0);mesh.RecalculateBounds();ownedMeshes.Add(mesh);
             var go=new GameObject(mesh.name);go.transform.SetParent(root.transform,false);go.AddComponent<MeshFilter>().sharedMesh=mesh;
             var renderer=go.AddComponent<MeshRenderer>();renderer.sharedMaterial=material;renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;renderer.sortingOrder=first/batchSize-faces.Count/batchSize-1;
         }

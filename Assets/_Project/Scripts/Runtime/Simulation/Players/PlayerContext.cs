@@ -8,10 +8,17 @@ public struct PlayerContextCachePendingTag : IComponentData
 {
 }
 
+public enum FogMode : byte
+{
+    Player,
+    Team
+}
+
 public struct PlayerContextCache : IComponentData
 {
     public int PlayerId;
     public int TeamID;
+    public FogMode FogMode;
     public int civilizationId;
     public FixedString64Bytes CivID;
     public Age age;
@@ -22,6 +29,7 @@ public struct PlayerContextCache : IComponentData
     {
         PlayerId = context.PlayerId;
         TeamID = context.TeamID;
+        FogMode = context.FogMode;
         civilizationId = context.civilizationId;
         CivID = context.CivID;
         this.age = context.age;
@@ -33,6 +41,7 @@ public struct PlayerContextCache : IComponentData
     {
         PlayerId = context.PlayerId;
         TeamID = context.TeamID;
+        FogMode = context.FogMode;
         civilizationId = context.civilizationId;
         CivID = context.CivID;
         age = context.age;
@@ -78,6 +87,7 @@ public struct PlayerContext : IComponentData
 {
     public int PlayerId;
     public int TeamID;
+    public FogMode FogMode;
     public int civilizationId;
     public FixedString64Bytes CivID;
     public Age age;
@@ -88,6 +98,7 @@ public struct PlayerContext : IComponentData
     {
         PlayerId = playerId;
         TeamID = teamId;
+        FogMode = global::FogMode.Player;
         this.civilizationId = civilizationId;
         CivID = civId;
         this.age = age;

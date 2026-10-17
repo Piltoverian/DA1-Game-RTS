@@ -7,6 +7,7 @@ public class BasedSO : ScriptableObject
     public string ID;
     public string Name;
     [Min(0.001f)] public float MaxHP = 100f;
+    [Min(0)] public int VisionRadiusCells;
     public Sprite Icon;
     public GameObject Prefab;
 

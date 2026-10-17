@@ -83,6 +83,8 @@ partial struct ArtilleryBulletSystem : ISystem
                 int radiusInCells = (int)math.ceil(aoeRadius / gridComponent.cellsize);
                 int2 aoeMin = math.clamp(centerCell - radiusInCells, 0, gridMax);
                 int2 aoeMax = math.clamp(centerCell + radiusInCells, 0, gridMax);
+                // A building may be indexed in several footprint cells inside this explosion.
+                using var visited = new NativeHashSet<Entity>(16, Allocator.Temp);
 
                 for (int y = aoeMin.y; y <= aoeMax.y; y++)
                 {
@@ -93,6 +95,7 @@ partial struct ArtilleryBulletSystem : ISystem
                         {
                             do
                             {
+                                if (!visited.Add(victim)) continue;
                                 if (unitLookup.HasComponent(victim) &&
                                     !PlayerContextHelper.AreAllies(contexts, unitLookup[victim].PlayerID, shooterPID))
                                 {

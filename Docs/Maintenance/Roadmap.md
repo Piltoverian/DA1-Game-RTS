@@ -1,8 +1,12 @@
-# Việc tiếp theo — 14/10/2026
+# Việc tiếp theo — 17/10/2026
 
-**Bắt đầu bằng đề xuất pipeline nghiệm thu builder clamp trong Play Mode. Trang này khoảng 2 phút.**
+**Bước tiếp theo là chuẩn bị multiplayer; render FOW local đã được người dùng chốt. Các mục builder/combat dưới đây vẫn là backlog độc lập.**
 
 [Trạng thái đã làm](CurrentState.md) · [Quy tắc lối chơi đã chốt](VerificationHistory.md)
+
+## Chuẩn bị multiplayer sau local
+
+Đọc [handoff FOW](FogOfWarHandoff.md) và [quyết định multiplayer](../Multiplayer/README.md). Việc đầu tiên là bảng phân chia component/system/prefab/caller thành server ECS / Ghost data / client Mono / adapter, bao phủ chức năng hiện có. Sau đó chốt package compatibility, pipeline và cách triển khai. Chưa cài Netcode hoặc refactor client Mono; không coi bước local là protocol mạng. Người dùng không yêu cầu kiểm tra thêm điều kiện drag trước bước này.
 
 ## 1. Builder/combat correctness sau unit tests
 
@@ -20,7 +24,7 @@ Sau correctness mới đo workload2.000 lính trên bộ dựng hình hiện hà
 
 Tách authoritative mô phỏng khỏi hiển thị và đầu vào cục bộ. Chọn phiên bản Netcode/Transport sau khi kiểm tra compatibility chính thức tại thời điểm triển khai. Không serialize Entity handles; người phát lệnh phải lấy từ kết nối đã xác thực.
 
-Pilot máy chủ+2client: bản đồ snapshot/revision/hash và Ready bắt tay; lệnh sequence/ack/dedup; ảnh trạng thái/phần thay đổi, nội suy phía máy khách, reconnect/full đồng bộ lại. Server20Hz, ảnh trạng thái cadence cấu hình được. Kiểm tra duplicate/out-of-thứ tự, mất gói, disconnect và foreign lệnh trước tăng bot/client.
+Nghiệm thu server+2client theo [hướng hiện hành](../Multiplayer/README.md): Ghost/relevancy và ký ức FOW, terrain full Explored, client Mono qua adapter, RPC bọc payload command/request. Không thêm lại WorldId/MapId/MapRevision vào frame hoặc tự dựng cơ chế ack/nội suy trùng Netcode. Kiểm tra mọi chức năng hiện có, quyền điều khiển, mất gói, disconnect/reconnect và đổi trận trước tăng tải.
 
 [Kiến trúc và tải mục tiêu](../Multiplayer/ArchitectureChoice_2026-10-12.md) · [bản đồ loading hợp đồng](../Multiplayer/ServerMapLoading.md)
 

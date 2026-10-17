@@ -25,7 +25,7 @@ public class TerrainChunkRenderer : MonoBehaviour
     readonly List<Mesh> meshes = new List<Mesh>();
     public GameObject PresentationRoot => root;
 
-    public void Build(GeneratedTerrain map, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld=null)
+    public void Build(GeneratedTerrain map, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld=null, IReadOnlyDictionary<int,GridTerrain> known=null)
     {
         var profile=MeasureBuild?new BuildProfile():null;
         long start=profile==null?0:System.Diagnostics.Stopwatch.GetTimestamp(),stamp=start;
@@ -94,7 +94,7 @@ public class TerrainChunkRenderer : MonoBehaviour
 
             surface = new TerrainVisualSurface(map, rise);
             if(profile!=null)Mark(ref profile.surfaceMs);
-            root = CanonicalIsometricSprites.Build(map, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes);
+            root = CanonicalIsometricSprites.Build(map, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes,known);
             root.AddComponent<TerrainMountainFade>().Initialize(groundMaterial,camera,surface,theme.mountainFadeRadiusCells,presentationWorld);
             if(profile!=null)Mark(ref profile.meshMs);
             foreach (var filter in root.GetComponentsInChildren<MeshFilter>())
@@ -122,6 +122,13 @@ public class TerrainChunkRenderer : MonoBehaviour
             view.orthographic = true;
             if (!warned) { Debug.LogWarning("Canonical terrain keeps camera angle fixed; pan and orthographic zoom remain available."); warned = true; }
         }
+    }
+    public void SetFog(Texture2D mask)
+    {
+        if(!groundMaterial)return;
+        groundMaterial.SetTexture("_FogMask",mask);
+        groundMaterial.SetFloat("_FogEnabled",mask?1:0);
+        if(mask)groundMaterial.SetVector("_FogSize",new Vector4(mask.width,mask.height,0,0));
     }
     void OnEnable() { if (root) root.SetActive(true); surface?.Activate(); }
     void OnDisable() { if (root) root.SetActive(false); surface?.Deactivate(); }

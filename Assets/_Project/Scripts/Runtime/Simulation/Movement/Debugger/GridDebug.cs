@@ -11,7 +11,8 @@ public enum FlowFieldDebugMode
     Islands,      // Chế độ xem các hòn đảo
     Integration,  // Chi phí tích lũy
     Direction,    // Hướng di chuyển
-    Walkability   // Actual movement cost cells at logical Y=0
+    Walkability,  // Actual movement cost cells at logical Y=0
+    FogOfWar
 }
 
 public class FlowFieldDebugDrawer : MonoBehaviour
@@ -31,6 +32,11 @@ public class FlowFieldDebugDrawer : MonoBehaviour
     public float movementPlaneY = 0.03f;
     [Tooltip("Lift the same movement cells onto the visible terrain for alignment. Disable to inspect the logical Y=0 plane.")]
     public bool alignToVisibleTerrain = true;
+
+    [Header("Fog of War (visible / explored but not visible)")]
+    [Min(0)] public int fogPlayerId = 1;
+    public Color fogVisibleColor = Color.green;
+    public Color fogExploredColor = Color.yellow;
 
 #if UNITY_EDITOR
     [UnityEditor.MenuItem("RTS/Debug/Audit Movement Navigation (Play Mode)")]
@@ -124,7 +130,10 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         switch (mode)
         {
             case FlowFieldDebugMode.Walkability:
-                if(em.HasBuffer<GridNodeCost>(gridEntity))DrawWalkability(em,gridEntity,grid);
+                if(em.HasBuffer<GridNodeCost>(gridEntity))DrawCellOverlay(em,gridEntity,grid);
+                break;
+            case FlowFieldDebugMode.FogOfWar:
+                DrawCellOverlay(em,gridEntity,grid);
                 break;
             case FlowFieldDebugMode.Grid:
                 DrawGrid(grid);
@@ -144,13 +153,22 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         }
     }
 
-    void DrawWalkability(EntityManager em, Entity entity, GridComponent grid)
+    void DrawCellOverlay(EntityManager em, Entity entity, GridComponent grid)
     {
-        var costs=em.GetBuffer<GridNodeCost>(entity,true);
-        if(grid.cellsize<=0 || costs.Length!=grid.width*grid.height)return;
+        bool fogMode=mode==FlowFieldDebugMode.FogOfWar;
+        var costs=fogMode?default:em.GetBuffer<GridNodeCost>(entity,true);
+        if(grid.cellsize<=0 || grid.width<=0 || grid.height<=0
+            || (!fogMode&&costs.Length!=grid.width*grid.height))return;
+        FogOfWarSpatialSystemData fog=default;
+        if(fogMode){
+            using var fogQuery=em.CreateEntityQuery(typeof(FogOfWarSpatialSystemData));
+            if(fogQuery.CalculateEntityCount()!=1)return;
+            fog=fogQuery.GetSingleton<FogOfWarSpatialSystemData>();
+            if(!fog.Visible.IsCreated||!fog.Explored.IsCreated)return;
+        }
         bool hasTerrain=em.HasBuffer<GridTerrain>(entity);
         var terrain=hasTerrain?em.GetBuffer<GridTerrain>(entity,true):default;
-        hasTerrain=hasTerrain&&terrain.Length==costs.Length;
+        hasTerrain=hasTerrain&&terrain.Length==grid.width*grid.height;
         var surface=alignToVisibleTerrain?TerrainVisualSurface.Active:null;
         if(surface!=null&&(surface.map.grid.width!=grid.width||surface.map.grid.height!=grid.height||surface.map.grid.cellsize!=grid.cellsize||!surface.map.grid.origin.Equals(grid.origin)))surface=null;
         Camera camera=Camera.current?Camera.current:Camera.main;
@@ -161,9 +179,17 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         var corners=new Vector3[4];
         for(int z=Mathf.Max(0,center.y-radius);z<=Mathf.Min(grid.height-1,center.y+radius);z+=step)
         for(int x=Mathf.Max(0,center.x-radius);x<=Mathf.Min(grid.width-1,center.x+radius);x+=step){
-            int i=z*grid.width+x;bool open=costs[i].cost<255;
-            Color color=open?Color.green:Color.red;
-            if(hasTerrain){if(!terrain[i].walkable&&open)color=Color.magenta;else if(open&&terrain[i].RampId>=0)color=Color.cyan;}
+            int i=z*grid.width+x;
+            Color color;
+            if(fogMode){
+                bool visible=fog.IsVisibleTo(i,fogPlayerId);
+                if(!visible&&!fog.IsExploredBy(i,fogPlayerId))continue;
+                color=visible?fogVisibleColor:fogExploredColor;
+            }else{
+                bool open=costs[i].cost<255;
+                color=open?Color.green:Color.red;
+                if(hasTerrain){if(!terrain[i].walkable&&open)color=Color.magenta;else if(open&&terrain[i].RampId>=0)color=Color.cyan;}
+            }
             Vector3 p=GridHelper.GridToWorld(new int2(x,z),grid);p.y=movementPlaneY;
             float h=grid.cellsize*.46f;
             corners[0]=p+new Vector3(-h,0,-h);corners[1]=p+new Vector3(h,0,-h);

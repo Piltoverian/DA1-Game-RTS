@@ -1,6 +1,14 @@
-# Bàn giao ca tiếp theo — 15/10/2026
+# Bàn giao ca tiếp theo — 17/10/2026
 
-## Bàn giao mới nhất: snapper và selection
+## Phạm vi đang tiếp tục: chuẩn bị multiplayer sau FOW local
+
+**Bắt đầu từ [FogOfWarHandoff](FogOfWarHandoff.md)**: render local đã nối và chạy trong Main, 33 assertion của lượt render; sửa height sau đó đo 5 unit lệch 0. Các lượt kiểm chứng có source/giới hạn riêng, không phải toàn suite đã chạy lại sau mọi sửa đổi. Snapshot trả full Explored; chỉ building/resource giữ hình cuối; không có WorldId/MapId/MapRevision trong frame. Điều kiện drag cuối là thời gian >0,05 giây AND chiều rộng rect > Screen.width/40; chỉ build pass, người dùng không yêu cầu Play lại trước bàn giao.
+
+Hướng mới ở [Multiplayer](../Multiplayer/README.md): server ECS authoritative, client Mono qua adapter, Ghost/variants/templates theo package tương thích, RPC bọc payload command/request hiện có. Chưa cài Netcode; client presentation/camera hiện vẫn còn ECS systems, chưa chuyển Mono. Việc đầu tiên: kiểm kê component/system/prefab/caller và ranh giới server/Ghost/Mono/adapter bao phủ các chức năng hiện có. Không dừng bản đầu ở Worker/TownHall; không coi snapshot Entity local là wire protocol.
+
+## Phạm vi độc lập còn giữ: snapper và selection (bàn giao lịch sử)
+
+Các trạng thái workspace/bằng chứng bên dưới thuộc lượt snapper/registry cũ; không thay thế trạng thái ngày 17/10 ở handoff FOW phía trên.
 
 **Mục tiêu/phạm vi:** sửa tỷ lệ unit 0.75 ô so với resource 1 ô và nhà 7 ô; khôi phục đường request của drag. Các phần registry/UI ở dưới vẫn là công việc chưa nghiệm thu độc lập.
 
