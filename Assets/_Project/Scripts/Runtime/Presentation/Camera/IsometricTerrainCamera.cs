@@ -24,7 +24,17 @@ public sealed class IsometricTerrainCamera : MonoBehaviour
     }
     void OnEnable(){if(gameObject.scene.IsValid())Apply();}
     void OnValidate(){if(gameObject.scene.IsValid())Apply();}
-    void Update(){if(!gameObject.scene.IsValid())return;if(Application.isPlaying&&Mouse.current!=null){float scroll=Mouse.current.scroll.ReadValue().y;if(Mathf.Abs(scroll)>.01f)size=Mathf.Clamp(size-scroll/120f*2,8,60);}Apply();}
+    void Update()
+    {
+        if (!gameObject.scene.IsValid()) return;
+        if (Application.isPlaying && Application.isFocused && Mouse.current != null &&
+            !GameplayInputGate.IsEditingText && !GameplayInputGate.IsPointerOverUI())
+        {
+            float scroll = Mouse.current.scroll.ReadValue().y;
+            if (Mathf.Abs(scroll) > .01f) size = Mathf.Clamp(size - scroll / 120f * 2, 8, 60);
+        }
+        Apply();
+    }
     public static void Configure(Camera camera){if(!camera)return;var setup=camera.GetComponent<IsometricTerrainCamera>();if(!setup)setup=camera.gameObject.AddComponent<IsometricTerrainCamera>();setup.Apply();}
     public static void FrameNearestRamp(GeneratedTerrain map,Camera camera)
     {

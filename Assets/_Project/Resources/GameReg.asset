@@ -18,6 +18,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c126a5d65473fa94b95653723dfdaed1, type: 2}
   Buildings:
   - {fileID: 11400000, guid: 91d0a124679aca14cb65b2d249aa2908, type: 2}
+  - {fileID: 11400000, guid: 91d0a124679aca14cb65b2d249aa2908, type: 2}
   Abilities:
   - {fileID: 11400000, guid: 9fbcd506527868b4c9901751c549b12a, type: 2}
   - {fileID: 11400000, guid: 105fee079b464db1ab49f872225e0fc2, type: 2}

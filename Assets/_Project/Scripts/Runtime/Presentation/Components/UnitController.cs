@@ -21,12 +21,14 @@ public class UnitController : MonoBehaviour
     private void Update()
     {
         if (!SelectHelper.TryGetLocalPlayerId(out _) || Mouse.current == null) return;
-        if (Keyboard.current != null && Keyboard.current.deleteKey.wasPressedThisFrame)
+        if (GameplayInputGate.BlocksWorldInput || GameplayInputGate.IsPointerOverUI()) return;
+        if (Keyboard.current != null && Keyboard.current.deleteKey.wasPressedThisFrame && !ResourceInspection.TryGet(out _))
         {
             TryCancelSelectedBuildings();
         }
 
-        if (!GameManager.Instance.GetModule<FixedUpdateInputTracker>().IsJustPress(Mouse.current.rightButton))
+        // Handle this render-frame edge once, rather than a FixedUpdate status that can persist.
+        if (!Mouse.current.rightButton.wasPressedThisFrame)
             return;
         var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 

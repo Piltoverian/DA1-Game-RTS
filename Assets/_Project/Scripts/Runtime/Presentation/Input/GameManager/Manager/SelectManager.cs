@@ -55,6 +55,15 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     public void FixedUpdateModule()
     {
         var mouse = Mouse.current;
+        if (GameplayInputGate.BlocksWorldInput)
+        {
+            // A placement click must not replace the workers captured for PlanBuild.
+            leftHeld = mouse != null && mouse.leftButton.isPressed;
+            pressStartedOverUI = leftHeld;
+            holdbuffer = 0;
+            selectingRect.DeleteRect();
+            return;
+        }
         if (mouse == null || !mouse.leftButton.isPressed)
         {
             leftHeld = false;
@@ -70,8 +79,13 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             holdbuffer = 0;
             selectingRect.DeleteRect();
             selectingRect.StartPoint = mousePos;
-            pressStartedOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-            if (!pressStartedOverUI && TryGetSelectionManager(out var em)) SingleSelecting(mousePos, em);
+            pressStartedOverUI = GameplayInputGate.IsPointerOverUI();
+            if (!pressStartedOverUI && TryGetSelectionManager(out var em))
+            {
+                SingleSelecting(mousePos, em);
+                // A deliberate inspection click is not also a drag-selection gesture.
+                if (ResourceInspection.TryGet(out _)) pressStartedOverUI = true;
+            }
             return;
         }
         if (pressStartedOverUI) return;
@@ -107,6 +121,8 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         
         if (em != null)
         {
+            if (ResourceInspection.TryInspect(cam, currentMousePos, em, playerId)) return;
+            ResourceInspection.Clear();
             Entity selectmanagerentity = em.CreateEntityQuery(typeof(DOTSSelectManagerComponent)).GetSingletonEntity();
             var selectBuffer = em.GetBuffer<SelectionRequest>(selectmanagerentity);
             selectBuffer.Add(new SelectionRequest
@@ -126,6 +142,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 
     public void DragSelect(Vector2 currentMousePos, EntityManager em)
     {
+        ResourceInspection.Clear();
         if (!TryGetPlayerId(out int playerId)) return;
         if (em != null)
         {

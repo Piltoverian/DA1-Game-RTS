@@ -14,6 +14,7 @@ public class CameraScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!Application.isFocused || GameplayInputGate.IsEditingText) return;
         if (GameManager.Instance.GetModule<SelectManager>().GetCurrentSelectionRect().isNotNull)
         {
             return;

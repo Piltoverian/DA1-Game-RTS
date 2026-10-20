@@ -15,7 +15,7 @@ MonoBehaviour:
   ID: dogfood.soldier
   Name: Test Soldier
   MaxHP: 100
-  Icon: {fileID: 21300000, guid: 702a972822a5ac6428f47c7626994156, type: 3}
+  Icon: {fileID: 21300000, guid: 7d31029006b1a80419931dc8741e793e, type: 3}
   Prefab: {fileID: 3382223461976398644, guid: b770e44db12b9464e9c44181dd2b0129, type: 3}
   WorkRate: 2.74
   JobCapacity: 5

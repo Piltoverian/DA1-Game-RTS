@@ -4,12 +4,13 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
-using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class BuildingPlacer : MonoBehaviour
 {
     [Header("Singleton")]
     private static BuildingPlacer _instance;
+    public static bool IsPlacementActive => _instance != null && _instance.isActiveAndEnabled && _instance.isPlacing;
 
     public static BuildingPlacer Instance
     {
@@ -68,21 +69,29 @@ public class BuildingPlacer : MonoBehaviour
 
     private void Update()
     {
-        if (!isPlacing || currentGhost == null)
+        if (!Application.isFocused || !isPlacing)
             return;
+        if (currentGhost == null) { CancelPlacement(); return; }
 
-        if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
+        var mouse = Mouse.current;
+        var keyboard = Keyboard.current;
+        if ((mouse != null && mouse.rightButton.wasPressedThisFrame) ||
+            (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && !GameplayInputGate.IsEditingText))
         {
             CancelPlacement();
             return;
         }
 
+        if (mouse == null || GameplayInputGate.IsPointerOverUI() || GameplayInputGate.IsEditingText)
+        {
+            currentCanPlace = false;
+            currentGhost.SetActive(false);
+            return;
+        }
+
         UpdatePlacementPreview();
 
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            return;
-
-        if (Input.GetMouseButtonDown(0) && currentCanPlace)
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame && currentCanPlace)
         {
             if (!CanAffordBuilding(selectedBuildingPrefab))
                 return;
@@ -203,9 +212,9 @@ public class BuildingPlacer : MonoBehaviour
     private void UpdatePlacementPreview()
     {
         Camera cam = Camera.main;
-        if (cam == null) return;
+        if (cam == null || Mouse.current == null) { currentCanPlace = false; return; }
 
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
         Vector3 hitPoint;
         if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(ray,out var logical,out _)) hitPoint=logical;
         else if(Physics.Raycast(ray,out RaycastHit hit,500f,groundMask)) hitPoint=hit.point;
@@ -314,6 +323,8 @@ public class BuildingPlacer : MonoBehaviour
 
     public void CancelPlacement()
     {
+        // Preserve ownership of the gesture even if UnitController runs after this Update.
+        if (isPlacing) GameplayInputGate.SuppressWorldInputUntilRelease();
         if (currentGhost != null)
             Destroy(currentGhost);
 
@@ -323,6 +334,8 @@ public class BuildingPlacer : MonoBehaviour
         currentBuildingId = default;
         selectedBuildingPrefab = Entity.Null;
     }
+
+    private void OnDisable() => CancelPlacement();
 
     private void SetGhostMaterial(bool canPlace)
     {

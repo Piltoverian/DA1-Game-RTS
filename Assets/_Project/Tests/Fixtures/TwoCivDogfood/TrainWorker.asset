@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b86de31210ad69149876f7046774c9ed, type: 3}
-  m_Name: TrainWorker
+  m_Name: Worker
   m_EditorClassIdentifier: Assembly-CSharp::Train
   Id: dogfood.train.worker
   DisplayName: TrainWorker
-  Icon: {fileID: 0}
+  Icon: {fileID: 21300000, guid: a75f5699288e1b14dab7e6d02ea81537, type: 3}
   WorkLoad: 25
   OutputUnit: {fileID: 11400000, guid: c126a5d65473fa94b95653723dfdaed1, type: 2}
