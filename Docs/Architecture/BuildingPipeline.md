@@ -1,10 +1,10 @@
 # Luồng đặt nhà và xây công trình
 
-Tài liệu mô tả implementation hiện tại ngày 14/10/2026. [CurrentState](../Maintenance/CurrentState.md) giữ trạng thái kiểm chứng; [Handoff](../Maintenance/Handoff.md) giữ việc tiếp theo.
+Tài liệu mô tả implementation hiện tại ngày 17/10/2026. [CurrentState](../Maintenance/CurrentState.md) giữ trạng thái kiểm chứng; [Handoff](../Maintenance/Handoff.md) giữ việc tiếp theo.
 
 ## Hai ý định, hai command
 
-`PlanBuild` đặt một công trình mới. `Build` giao một worker xây/sửa công trình đã tồn tại. Không dùng sự có/không có `BuildingConstruction` để chọn giữa hai path.
+`PlanBuild` đặt một công trình mới. `Build` giao công trình dở và có FIFO; Repair dùng `TargetTo` với `RepairOnly`, không queue. Không dùng sự có/không có `BuildingConstruction` để chọn giữa hai path.
 
 ```text
 Worker được chọn → nút BuildOffer → BuildingPlacer preview
@@ -19,9 +19,13 @@ Click phải công trình đang dở → UnitController
 
 `AddPlanBuildToQueue` giữ danh sách sources trong buffer của entity payload, được tham chiếu bằng `SourcesEntity`. Selection thay đổi sau khi gửi không thay đổi lệnh đã gửi. `HandlePlanBuild` lọc chủ sở hữu, khả năng di chuyển/xây, offer phù hợp, worker còn sống và trùng lặp; payload được hủy sau xử lý. Nếu không có worker hợp lệ, không phát placement request.
 
-Placement kiểm tra cấu trúc prefab, offer/quyền của worker, vị trí/footprint và tài nguyên. Khi tạo nhà thành công, gửi `Build` cho tất cả worker hợp lệ trong request tới cùng entity công trình. Không tạo một nhà riêng cho từng worker. Placement lỗi không được giữ khoản thanh toán/công trình đã tạo; rollback có trong hệ thống hiện tại.
+Khi toàn footprint đang Visible, PlanBuild theo đường placement chung bên dưới. Với Unknown, CommandQueue lưu prefab/vị trí trong builder hoặc FIFO; worker tới kiểm tra rồi mới phát request. Requests trì hoãn thuộc từng worker, được xác minh lại; không coi toàn bộ path Unknown là một request nhóm ngay khi click. Thành công gán công trình vừa tạo và giữ FIFO; thất bại chuyển phần tử tiếp theo. Move hủy request đang chờ và queue.
 
-`HandleBuild` xác nhận quyền, khả năng xây và trạng thái công trình; đặt `GoingToSite` hoặc thêm công trình vào `BuilderQueueElement` nếu worker đang xây. Đây là validation nghiệp vụ của `Build`, không phải phép phân loại command.
+Preview có Valid/Invalid/Unknown; không đọc occupancy khuất để báo màu. Terrain bất biến đã biết có thể báo Invalid trước khi toàn vùng Visible. Gán GhostGreen/GhostRed/[GhostUnknown](../../Assets/_Project/Art/Materials/GhostUnknown.mat) cho ba field material trên BuildingPlacer; Main đã gán. [Luật FOW chính](FogOfWarRendering.md#lệnh-và-thông-tin-đã-biết).
+
+Placement kiểm tra cấu trúc prefab, offer/quyền của worker, vị trí/footprint và tài nguyên. Khi tạo nhà thành công, gửi `Build` cho worker hợp lệ trong request tới cùng entity công trình. Request nhóm ở vùng thấy tạo một nhà chung; các lần thử Unknown kiểm tra lại occupancy khi tới nơi. Placement lỗi không được giữ khoản thanh toán/công trình đã tạo; rollback có trong hệ thống hiện tại.
+
+`HandleBuild` xác nhận quyền, khả năng xây và trạng thái công trình; đặt `GoingToSite` hoặc thêm công trình vào `BuilderQueueElement` nếu worker đang xây. Mục tiêu từ snapshot đang khuất được tiếp cận trước khi dùng trạng thái thật. Hoàn thành/thất bại tiếp tục FIFO; hết queue tìm nhà dở đang thấy trong cửa sổ ±5 ô theo cách lọc island của Gather. RepairOnly hết việc thì Idle, không tự nối nhà khác.
 
 ## Tiếp cận bằng clamp
 

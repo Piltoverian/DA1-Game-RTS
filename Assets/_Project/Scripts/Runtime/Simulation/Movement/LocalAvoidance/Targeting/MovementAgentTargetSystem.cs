@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(FlowDirectionSystem))]
 public partial struct MovementAgentTargetSystem : ISystem
 {
@@ -17,6 +18,7 @@ public partial struct MovementAgentTargetSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var deltaTime = SystemAPI.Time.DeltaTime;

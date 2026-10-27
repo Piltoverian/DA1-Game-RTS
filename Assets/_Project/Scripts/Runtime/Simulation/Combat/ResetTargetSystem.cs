@@ -11,6 +11,7 @@ public partial struct ResetTargetSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         foreach (var (target, findTarget, transform) in
             SystemAPI.Query<
                 RefRW<Target>,

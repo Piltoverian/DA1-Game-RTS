@@ -25,7 +25,7 @@ public class TerrainChunkRenderer : MonoBehaviour
     readonly List<Mesh> meshes = new List<Mesh>();
     public GameObject PresentationRoot => root;
 
-    public void Build(GeneratedTerrain map, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld=null, IReadOnlyDictionary<int,GridTerrain> known=null)
+    public void Build(GeneratedTerrain map, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld=null, IReadOnlyDictionary<int,TerrainCellVisualData> visualCells=null)
     {
         var profile=MeasureBuild?new BuildProfile():null;
         long start=profile==null?0:System.Diagnostics.Stopwatch.GetTimestamp(),stamp=start;
@@ -92,9 +92,17 @@ public class TerrainChunkRenderer : MonoBehaviour
             }
             if(profile!=null)Mark(ref profile.materialMs);
 
-            surface = new TerrainVisualSurface(map, rise);
+            // Editor previews have a complete map. Runtime supplies already filtered payloads.
+            if(visualCells==null){
+                float capRise=rise*Mathf.Max(1,(theme.mountainCaps[0].height-96)/32f);
+                var compiled=TerrainCellVisualCompiler.Compile(map,rise,capRise,theme.mountainVisualTiers,theme.groundVisualSeed);
+                var all=new Dictionary<int,TerrainCellVisualData>(compiled.Length);
+                for(int i=0;i<compiled.Length;i++)all.Add(i,compiled[i]);
+                visualCells=all;
+            }
+            surface = new TerrainVisualSurface(map, rise, visualCells);
             if(profile!=null)Mark(ref profile.surfaceMs);
-            root = CanonicalIsometricSprites.Build(map, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes,known);
+            root = CanonicalIsometricSprites.Build(map, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes,visualCells);
             root.AddComponent<TerrainMountainFade>().Initialize(groundMaterial,camera,surface,theme.mountainFadeRadiusCells,presentationWorld);
             if(profile!=null)Mark(ref profile.meshMs);
             foreach (var filter in root.GetComponentsInChildren<MeshFilter>())

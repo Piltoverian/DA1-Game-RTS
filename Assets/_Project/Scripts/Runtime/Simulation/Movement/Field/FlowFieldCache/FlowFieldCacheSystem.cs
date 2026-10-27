@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct FlowFieldCacheInitSystem : ISystem
 {
     [BurstCompile]

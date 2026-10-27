@@ -5,9 +5,11 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 // Gameplay acquisition is a circle on XZ, independent of collider/terrain height.
-[UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
+[UpdateAfter(typeof(MovementAgentActuatorSystem))]
 [UpdateBefore(typeof(ShootAttackSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [BurstCompile]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct FindTargetSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
@@ -19,6 +21,7 @@ public partial struct FindTargetSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var grid = SystemAPI.GetSingleton<GridComponent>();
         if (grid.cellsize <= 0) return;
         var bucket = SystemAPI.GetSingleton<UnitSpatialBucket>().Bucket;

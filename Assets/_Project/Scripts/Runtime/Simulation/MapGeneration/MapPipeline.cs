@@ -103,7 +103,7 @@ public partial class MapTerrainGenerationSystem : SystemBase
     }
 }
 
-[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation|WorldSystemFilterFlags.ServerSimulation|WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation|WorldSystemFilterFlags.ServerSimulation)]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [UpdateBefore(typeof(PlayerBootstrapSystem))]
 public partial class MapBuildProgressSystem : SystemBase

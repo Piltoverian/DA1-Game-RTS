@@ -4,6 +4,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(FlowDirectionSystem))]
 [UpdateBefore(typeof(MovementAgentTargetSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]

@@ -2,8 +2,8 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateBefore(typeof(ProductionSystem))]
 public partial struct PopulationSystem : ISystem
 {
     public void OnUpdate(ref SystemState state)

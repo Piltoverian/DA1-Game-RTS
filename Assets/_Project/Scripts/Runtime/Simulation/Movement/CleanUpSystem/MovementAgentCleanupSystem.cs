@@ -2,6 +2,8 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 public partial struct MovementAgentCleanupSystem : ISystem
 {

@@ -1,8 +1,8 @@
-# Fog of War — bàn giao local và chuẩn bị multiplayer, 17/10/2026
+# Fog of War — bàn giao render và bộ lệnh local, 17/10/2026
 
 ## 1. Mục tiêu và phạm vi
 
-Người dùng đã chốt dừng bước local để chuyển sang chuẩn bị multiplayer. Render FOW local đã nối trong Main; chưa có Netcode/transport. Đây là nguồn chính cho trạng thái, bằng chứng và hành động tiếp theo. Chi tiết runtime ở [kiến trúc render](../Architecture/FogOfWarRendering.md); hướng multiplayer ở [Multiplayer](../Multiplayer/README.md).
+Người dùng đã tạm gác multiplayer để chốt và triển khai bộ lệnh FOW local. Render, Attack mới, Build/preview/FIFO, Repair và Gather theo snapshot đã nối. Luật và source chính ở [kiến trúc FOW](../Architecture/FogOfWarRendering.md), xây dựng ở [BuildingPipeline](../Architecture/BuildingPipeline.md). [Multiplayer](../Multiplayer/README.md) giữ hướng đã bàn để dùng khi người dùng mở lại, chưa triển khai Netcode.
 
 Yêu cầu mới: client presentation/input/UI/camera ưu tiên MonoBehaviour, dùng adapter nhận dữ liệu từ ECS/Netcode. Đây là hướng đã yêu cầu, **chưa refactor**: LocalFogPresentationSystem, MapTerrainPresentationSystem và LocalBaseCameraSnapSystem vẫn tồn tại. Không coi client full Mono là đã hoàn tất.
 
@@ -25,9 +25,15 @@ Yêu cầu mới: client presentation/input/UI/camera ưu tiên MonoBehaviour, d
 
 [SelectManager](../../Assets/_Project/Scripts/Runtime/Presentation/Input/GameManager/Manager/SelectManager.cs) chỉ gửi Drag khi `holdbuffer > 0.05f && size.x > Screen.width / 40f`. Đây là AND giữa thời gian và **chiều rộng**, không còn ngưỡng diện tích 64 px². Click vẫn đi SelectionRequest → SelectSystem. Bản điều kiện cuối chỉ build pass, chưa thao tác Play Mode lại; người dùng chọn không kiểm tra thêm trước bàn giao. Giữ CancelBuildingRequest riêng và FIFO chỉ của build; không tự gộp mọi command/request.
 
+### Bộ lệnh và material mới
+
+Luật chi tiết ở [FOW: lệnh và thông tin đã biết](../Architecture/FogOfWarRendering.md#lệnh-và-thông-tin-đã-biết). Một ô Visible cập nhật toàn entity; preview xây xanh/đỏ thông thường cần toàn footprint Visible. Unknown vẫn nhận kế hoạch để đi thử. Build tiếp tục FIFO rồi tìm nhà dở theo cửa sổ ±5 ô/cách lọc island của Gather; Repair không có queue. Có xử lý mục tiêu snapshot đã mất, movement thất bại và Move hủy placement chờ.
+
+GhostUnknown.mat vàng nhạt alpha 0.65 đã gán Main; runtime fallback đã bỏ. Picking snapshot chọn đối tượng tĩnh gần ray nhất; bounds còn là footprint/hộp cao 2. SelectSystem.HandleClick đổi sang SystemAPI.GetSingleton để bỏ managed array trong nhánh Burst, không đổi luật click/drag.
+
 ### Vị trí khôi phục
 
-Workspace `D:/Unity/TechTextAndChosingForRTS sample`, branch `Fog-of-wars`, HEAD khảo sát `9f8ea41`. Thay đổi còn trong working tree, có nhiều untracked gồm FOW source/docs. Chưa commit/push, không có patch/snapshot riêng. Checkout HEAD không khôi phục các file mới; chuyển workspace phải mang cả tracked diff và untracked. Giữ thay đổi Main/fixture/gameplay có từ trước, không quy toàn bộ diff cho lượt FOW.
+Workspace `D:/Unity/TechTextAndChosingForRTS sample`, branch `Fog-of-wars`, HEAD khảo sát hiện tại `352e9ec` (`FOW command link complete`). Trước lượt docs này working tree sạch: source lệnh/material/Main/regression đã nằm trong HEAD hiện tại; không quy việc commit cho lượt docs. Docs đang cập nhật chưa commit/push, không có patch/snapshot riêng. Chuyển workspace cần commit trên và diff docs này.
 
 ## 3. Bằng chứng kiểm chứng
 
@@ -41,20 +47,30 @@ Các kết quả dưới đây là từ các lượt code trong hội thoại ng
 | Height sau sửa TerrainBaseLevel | Chạy trực tiếp Main trong Editor đang mở: 5 unit trước sửa lệch 1,59472; sau sửa cả unit/cache/mặt terrain đều Y=3,18944, sai lệch 0. Đã xem ảnh mới thấy chân unit/nhà đúng mặt đất. Không phải kiểm thử toàn bộ ramp/movement dài. |
 | Build sau điều kiện drag cuối | `dotnet build Assembly-CSharp.csproj --no-restore --verbosity quiet -p:UseSharedCompilation=false`: 0 lỗi, 5 warning cũ. Chưa Play Mode lại drag. |
 
+Bổ sung của lượt bộ lệnh và material (không chạy lại trong lượt docs):
+
+| Kiểm tra | Kết quả và giới hạn |
+|---|---|
+| Regression lệnh | **20/20 pass** lịch sử trong Unity Editor; source test đã xóa theo yêu cầu ngày 20/10/2026. Bao phủ Attack khuất → Move, preview/terrain/occupancy, snapshot đã mất, FIFO/tìm gần, placement thành công/thất bại/hủy, retry và picking bị nhà che. Là fixture ECS/picking, không phải thao tác chuột toàn Main. |
+| Build runtime + Editor | `dotnet build Assembly-CSharp-Editor.csproj --no-restore --verbosity quiet -p:UseSharedCompilation=false`: 0 lỗi, 5 warning cũ ở lượt đầy đủ. |
+| Smoke Main | Play Main: 14 entity visible, 377 ô Explored, worker Move khoảng 0,9097 đơn vị, bộ đếm lỗi runtime helper = 0; trả Editor về Edit Mode. Trước hai chỉnh sửa cuối picking và singleton selection, không gọi là nghiệm thu lại toàn Main sau mọi thay đổi. |
+| Material Unknown riêng | Kiểm tra asset/meta/GUID/reference Main và build runtime sau bỏ fallback: 0 lỗi/5 warning cũ. Chưa xem lại preview asset riêng trong Play; 20 ca chạy trước lượt tách material. |
+
+Source regression FOW, terrain và cache server đã xóa theo yêu cầu ngày 20/10; không còn menu/batch runner để chạy lại. Helper smoke/marker/result/log một lần đã dọn; không có receipt mới. Các kết quả phía trên là lịch sử, không phải kiểm chứng runtime của lượt dọn.
+
 33 assertion thuộc source trước sửa datum height; không mô tả là toàn suite đã chạy lại sau mọi sửa đổi. Build Editor sau cleanup height pass; từng lượt build có thể không lặp warning do incremental. Unity còn log Visual Scripting không tìm được type Readme; chưa sửa phạm vi đó. Không có nghiệm thu server+2client, reconnect hay tải 2.000 unit.
 
 Helper FogSnapshotCheck/FogRenderCheck/FogHeightVerification, meta và log/result dùng một lần đã được dọn; không giữ runner/receipt để chứng minh công việc. Ảnh giao người dùng nằm ngoài repo trong thư mục visualizations của Codex, không phải dependency để tiếp tục; ảnh sau sửa tên FowHeightFixed.png. Các số 11/24/34 ca trong handoff cũ là bằng chứng lịch sử, không phải suite còn trên đĩa.
 
 ## 4. Việc còn lại và trở ngại
 
-- Chưa cài com.unity.netcode; chưa chọn/pin phiên bản tương thích Unity 6000.3.13f1, Entities 1.4.5 và Physics/Graphics hiện có.
-- Chuyển client presentation sang Mono theo yêu cầu; giữ một adapter rõ ràng thay vì mỗi Mono tự query World.Default. Camera snap và FOW hiện vẫn là ECS systems.
-- Chốt Ghost prefab/component variants, serializer/template và identity trước thay schema local. Không gửi Entity.Index/Version hay BlobAssetReference/pointer local nguyên trạng qua mạng.
-- Command RPC bọc payload hiện có; connection xác định người phát lệnh, ánh xạ entity/reference và danh sách payload qua mạng rồi gọi đúng backend hiện tại. Không tự thay luật gameplay/queue.
-- Phải thiết kế xóa ký ức khi nhìn lại vùng có building/resource đã mất, và phục hồi ký ức/Explored khi reconnect. Ghost mất relevancy không tự cho biết đó là chết hay khuất.
-- Sprite selection/minimap đã được chặn render; picking, panel UI, command targeting và các ngoại lệ tài sản của chủ sở hữu chưa tích hợp đầy đủ visibility. Chưa đo hiệu năng việc rebuild terrain khi tập Explored tăng.
-- Backlog builder/combat và tải thực độc lập vẫn ở [Roadmap](Roadmap.md); không coi local smoke là nghiệm thu toàn gameplay.
+- Nghiệm thu bằng chuột trong Main: màu preview asset riêng, lệnh tới snapshot đã mất/thay đổi, nhiều worker/queue dài, chuyển lệnh/cancel, Gather/depot/tìm node mới.
+- Chưa chốt Attack đang chạy rồi mất vision. Không coi đề xuất chase vị trí cuối thấy là luật đã duyệt.
+- Panel UI/selection nói chung và ngoại lệ thông tin tài sản chủ sở hữu chưa tích hợp/kiểm chứng đầy đủ FOW. Picking bộ lệnh đã nối; không ghi toàn bộ command targeting là chưa làm.
+- Chưa đo terrain rebuild khi Explored tăng, tải 2.000 unit hoặc nhiều island/địa hình phức tạp trong Main.
+- Client full Mono chưa refactor. Multiplayer tạm gác: compatibility, Ghost/identity, RPC, reconnect/late join/session lifecycle chưa triển khai; xem [hướng đã lưu](../Multiplayer/README.md) khi người dùng mở lại.
+- Backlog registry/combat độc lập ở [Roadmap](Roadmap.md). Không tái tạo harness đã xóa; kiểm chứng tiếp theo chọn phương pháp phù hợp với tác vụ.
 
 ## 5. Một hành động đầu tiên ca sau
 
-Lập bảng ánh xạ các component/system đang dùng trong Main sang **server simulation / dữ liệu Ghost đồng bộ / client Mono / adapter**, bắt đầu ở LocalFogPresentationSystem, LocalBaseCameraSnapSystem, EntityState, WorkerGatherData, BuilderComponent, production và CommandQueue. Kết quả cần bao phủ movement, combat/đạn, build, gather/resource, production/research, health, UI và FOW/terrain hiện có; không chốt bàn giao chỉ Worker/TownHall. Sau bảng này mới trình pipeline chuyển đổi và xác nhận package compatibility theo [hướng multiplayer](../Multiplayer/README.md).
+Trong Main, kiểm tra bằng chuột **preview Unknown dùng GhostUnknown.mat → nhận PlanBuild → worker tới thử → placement hợp lệ hoặc chuyển phần tử FIFO kế tiếp khi bị block**. Chọn vùng chưa thấy đầy đủ và một kế hoạch tiếp theo; đối chiếu màu preview, thời điểm tạo nhà/chi tiền và target builder. Mục tiêu là xác nhận asset riêng cùng input thật; chưa mở lại multiplayer hoặc tự mở rộng luật Attack.

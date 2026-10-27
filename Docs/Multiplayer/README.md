@@ -1,10 +1,12 @@
-# Multiplayer — chuẩn bị sau FOW local, 17/10/2026
+# Multiplayer — terrain trước, unit tiếp theo
 
-Bước local đã được người dùng chốt để chuyển sang multiplayer. [Handoff FOW](../Maintenance/FogOfWarHandoff.md) ghi source, bằng chứng và việc đầu tiên; [render local](../Architecture/FogOfWarRendering.md) mô tả implementation đang chạy. Tài liệu này là nguồn chính cho quyết định multiplayer mới nhất, thay các đề xuất transport/schema cũ khi có khác biệt.
+Multiplayer đã tiếp tục theo yêu cầu ngày 20/10/2026. AI triển khai luồng terrain local/server/client; người dùng phụ trách unit. [Terrain và cách test Main](ServerMapLoading.md) là nguồn hiện trạng cho phần terrain. [Handoff FOW](../Maintenance/FogOfWarHandoff.md) giữ bằng chứng lịch sử; [render local](../Architecture/FogOfWarRendering.md) mô tả FOW/entity local.
 
 ## Hiện trạng và mục tiêu
 
-Project dùng Unity 6000.3.13f1, Entities 1.4.5; chưa có com.unity.netcode trong manifest. Chưa cài/pin Netcode hoặc nghiệm thu server+2client. Hướng chọn là Netcode for Entities, server authoritative; mục tiêu cũ simulation 20Hz, 2.000 unit, map 512×512, 2–10 player vẫn là mục tiêu, chưa có đo tải chứng minh. [Lý do kiến trúc](ArchitectureChoice_2026-10-12.md).
+Bài học và khảo sát source ngày 19/10: [Bảng source và trách nhiệm multiplayer](SourceResponsibilityMap.md). Trang này lần theo Move và phân chia các nhóm gameplay hiện có; chưa triển khai mạng hoặc thay trạng thái nghiệm thu bên dưới.
+
+Project dùng Unity 6000.3.13f1; đã cài Netcode for Entities 1.14.3, Transport 2.7.4, Entities được resolve lên 1.5.0. Terrain Ghost/RPC đã nối source và prefab vào Main, chưa nghiệm thu server+2client qua mạng thật. Server authoritative; mục tiêu cũ simulation 20Hz, 2.000 unit, map 512×512, 2–10 player vẫn là mục tiêu, chưa có đo tải chứng minh. [Lý do kiến trúc](ArchitectureChoice_2026-10-12.md).
 
 Bản đầu chuyển đổi phải bao phủ chức năng hiện có: movement, combat/đạn, build/repair/cancel, gather/resource, production/train/research, health/owner/team, UI, FOW và terrain. Có thể kiểm chứng từng đối tượng bên trong, nhưng không dừng bàn giao ở Worker/TownHall. Không tự sửa luật gameplay để thuận tiện cho network.
 
@@ -48,7 +50,7 @@ Người dùng chốt RPC bọc đúng payload command/request hiện có, khôn
 
 Server quyết định visibility theo connection/player và luật team. Relevancy có thể ngừng replicate/despawn Ghost ở một client dù entity server còn sống. Client giữ ký ức building/resource độc lập Ghost; unit/đạn khuất thì bỏ hình. Cần thiết kế identity ổn định trong vòng đời đối tượng và đường xóa ký ức khi nhìn lại footprint trống. Không coi despawn là tín hiệu chết để chạy death animation. [Unity relevancy](https://docs.unity.cn/Packages/com.unity.netcode@1.0/manual/optimizations.html#relevancy).
 
-Không đồng bộ thay đổi mới của building/resource đang khuất. Entity mới xây trong ô đã Explored không tự được biết. Reconnect/late join cần chính sách phục hồi Explored và ký ức; chưa có implementation. Picking/panel UI/targeting phải dùng dữ liệu được phép, không chỉ ẩn mesh.
+Không đồng bộ thay đổi mới của building/resource đang khuất. Entity mới xây trong ô đã Explored không tự được biết. Reconnect/late join cần chính sách phục hồi Explored và ký ức; chưa có implementation. Picking/targeting bộ lệnh local đã nối theo [luật FOW hiện hành](../Architecture/FogOfWarRendering.md); panel UI/selection nói chung chưa nghiệm thu đầy đủ. Chuyển mạng phải giữ các luật này, không chỉ ẩn mesh.
 
 ## Terrain và session
 

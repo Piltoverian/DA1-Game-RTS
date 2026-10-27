@@ -3,18 +3,20 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[UpdateBefore(typeof(HealthDeadTestSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct ShootAttackSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
         state.RequireForUpdate<GameDataRegistryComponent>();
-        state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
+        state.RequireForUpdate<BeginFixedStepSimulationEntityCommandBufferSystem.Singleton>();
     }
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         float deltaTime = SystemAPI.Time.DeltaTime;
 
         GridComponent gridComponent =
@@ -22,7 +24,7 @@ public partial struct ShootAttackSystem : ISystem
 
         EntityCommandBuffer ecb =
             SystemAPI
-                .GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .GetSingleton<BeginFixedStepSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
         ComponentLookup<MoveOverride> moveOverrideLookup =
@@ -87,13 +89,21 @@ public partial struct ShootAttackSystem : ISystem
             float attackDistanceSq =attackBlob.Range * attackBlob.Range;
             if (distanceSq > attackDistanceSq)
             {
-                if (SystemAPI.HasComponent<MovementAgentComponent>(entity)) MovementAgentAPI.SetTarget(
-                    state.EntityManager,
-                    entity,
-                    targetPosition,
-                    gridComponent,
-                    ecb
-                );
+                if (SystemAPI.HasComponent<MovementAgentComponent>(entity))
+                {
+                    MovementAgentAPI.SetTarget(
+                        state.EntityManager,
+                        entity,
+                        targetPosition,
+                        gridComponent,
+                        ecb
+                    );
+                }
+                else
+                {
+                    // Stationary weapons cannot chase a target outside firing range.
+                    target.ValueRW.targetEntity = Entity.Null;
+                }
 
                 continue;
             }

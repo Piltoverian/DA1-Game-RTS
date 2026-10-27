@@ -1,6 +1,8 @@
 using Unity.Entities;
 using Unity.Burst;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct MatchTime : ISystem
 {
@@ -14,6 +16,7 @@ public partial struct MatchTime : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var matchTime = SystemAPI.GetSingletonRW<MatchTimeComponent>();
         matchTime.ValueRW.Value += SystemAPI.Time.DeltaTime;
     }

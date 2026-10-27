@@ -12,6 +12,7 @@ using UnityEngine;
 /// 
 [UpdateAfter(typeof(PlayerContextCacheInitSystem))]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerContextSyncSystem : ISystem
 {
      private static EventBus s_CachedEventBus;

@@ -1,13 +1,12 @@
 using System;
-using System.Diagnostics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateBefore(typeof(CommandQueue))]
-[UpdateBefore(typeof(BlockageGridBakeSystem))]
 public partial struct BuildingPlacementSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
@@ -17,6 +16,7 @@ public partial struct BuildingPlacementSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         if (!SystemAPI.TryGetSingletonEntity<GridComponent>(out Entity gridEntity))
@@ -40,7 +40,6 @@ public partial struct BuildingPlacementSystem : ISystem
         using var requests = query.ToEntityArray(Allocator.Temp);
         foreach (Entity reqEntity in requests)
         {
-            Debug.WriteLine(em.HasComponent<PlaceBuildingRequest>(reqEntity), "Entity in PlaceBuildingRequest query does not have PlaceBuildingRequest component");
 
             PlaceBuildingRequest req = em.GetComponentData<PlaceBuildingRequest>(reqEntity);
 
@@ -151,7 +150,6 @@ public partial struct BuildingPlacementSystem : ISystem
             {
                 var h = em.GetComponentData<EntityHealth>(building);
                 h.CurrentHP = math.min(1f, h.MaxHP);
-                h.Changed = true;
                 em.SetComponentData(building, h);
             }
 

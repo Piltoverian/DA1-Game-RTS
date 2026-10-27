@@ -8,6 +8,7 @@ using Unity.Transforms;
 [UpdateAfter(typeof(MovementAgentPathRequestSystem))]
 [UpdateAfter(typeof(GridIslandSystem))]
 [UpdateBefore(typeof(IntegrationFieldSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct FlowFieldAssignmentSystem : ISystem
 {
     private EntityQuery m_RequestQuery;
@@ -26,6 +27,7 @@ public partial struct FlowFieldAssignmentSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (m_RequestQuery.IsEmptyIgnoreFilter)
             return;
 

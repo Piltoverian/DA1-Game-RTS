@@ -15,6 +15,7 @@ using UnityEngine;
 
 
 [UpdateAfter(typeof(SelectableSpatialSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct SelectSystem : ISystem
 {

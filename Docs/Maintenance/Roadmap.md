@@ -1,12 +1,14 @@
 # Việc tiếp theo — 17/10/2026
 
-**Bước tiếp theo là chuẩn bị multiplayer; render FOW local đã được người dùng chốt. Các mục builder/combat dưới đây vẫn là backlog độc lập.**
+**Ưu tiên hiện tại là test terrain local rồi host + client trong Main. AI làm pipeline terrain; người dùng làm unit. Xem [terrain và checklist Play Mode](../Multiplayer/ServerMapLoading.md). Nghiệm thu input FOW local bên dưới vẫn còn cần.**
 
-[Trạng thái đã làm](CurrentState.md) · [Quy tắc lối chơi đã chốt](VerificationHistory.md)
+[Trạng thái](CurrentState.md) · [Handoff FOW](FogOfWarHandoff.md) · [Luật FOW hiện hành](../Architecture/FogOfWarRendering.md)
 
-## Chuẩn bị multiplayer sau local
+## FOW local sau triển khai bộ lệnh
 
-Đọc [handoff FOW](FogOfWarHandoff.md) và [quyết định multiplayer](../Multiplayer/README.md). Việc đầu tiên là bảng phân chia component/system/prefab/caller thành server ECS / Ghost data / client Mono / adapter, bao phủ chức năng hiện có. Sau đó chốt package compatibility, pipeline và cách triển khai. Chưa cài Netcode hoặc refactor client Mono; không coi bước local là protocol mạng. Người dùng không yêu cầu kiểm tra thêm điều kiện drag trước bước này.
+Việc đầu tiên: trong Main kiểm tra preview Unknown bằng GhostUnknown.mat riêng → đặt kế hoạch → worker tới thử → tạo nhà hoặc chuyển FIFO khi thất bại. Tiếp theo mới nghiệm thu nhiều worker/queue dài, repair/gather snapshot mất, depot/cancel và selection/panel UI theo FOW. 20/20 regression và smoke Move không thay nghiệm thu chuột toàn gameplay. Attack đang chạy rồi mất vision còn chưa chốt; không tự thêm chase theo đề xuất cũ.
+
+Multiplayer đã tiếp tục và đã cài Netcode; xem [hiện trạng](../Multiplayer/README.md). Pipeline terrain đã nối source, chưa nghiệm thu transport thật/Play Mode và chưa refactor full Mono.
 
 ## 1. Builder/combat correctness sau unit tests
 

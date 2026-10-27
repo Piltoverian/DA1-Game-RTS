@@ -17,7 +17,7 @@ public partial class LocalBaseCameraSnapSystem : SystemBase
         foreach(var entity in entities){
             if(EntityManager.GetComponentData<MapPresentationState>(entity).Phase!=MapPresentationPhase.Ready)continue;
             var binding=EntityManager.GetComponentObject<MapPresentationBinding>(entity);
-            var camera=Camera.main;if(!camera||!binding.Snapper||!binding.Snapper.isActiveAndEnabled)continue;
+            var camera=binding.Owner?binding.Owner.ResolveCamera():null;if(!camera||!binding.Snapper||!binding.Snapper.isActiveAndEnabled)continue;
             if(!binding.Snapper.snapOnReady){
                 if(binding.Owner.frameRampOnLoad)IsometricTerrainCamera.FrameNearestRamp(binding.Map,camera);
                 EntityManager.SetComponentEnabled<CameraSnapPending>(entity,false);continue;

@@ -7,11 +7,10 @@ using UnityEngine.Rendering;
 public static class CanonicalIsometricSprites
 {
     struct Face { public Vector3 anchor; public Texture2D texture; public float depth; public Color metadata; public int sequence; public int kind; public float tierRise; public Vector2 cell; }
-    public static GameObject Build(GeneratedTerrain map,TerrainTheme theme,TerrainVisualSurface surface,Vector3 forward,Material material,Dictionary<Texture2D,int> ids,Rect[] atlasRects,List<Mesh> ownedMeshes,IReadOnlyDictionary<int,GridTerrain> known=null){
+    public static GameObject Build(GeneratedTerrain map,TerrainTheme theme,TerrainVisualSurface surface,Vector3 forward,Material material,Dictionary<Texture2D,int> ids,Rect[] atlasRects,List<Mesh> ownedMeshes,IReadOnlyDictionary<int,TerrainCellVisualData> cells){
         if(Mathf.Abs(forward.y+.5f)>.001f)throw new InvalidOperationException("Canonical 2:1 sprites require orthographic pitch30/yaw45");
         var root=new GameObject("Terrain presentation chunks (no colliders)");
         var faces=new List<Face>();float size=map.grid.cellsize,rise=surface.rise;
-        var mountainField=MountainVisualField.BuildNatural(map,theme.mountainVisualTiers,theme.groundVisualSeed);
         float capRise=rise*Mathf.Max(1,(theme.mountainCaps[0].height-96)/32f);
         if(rise<=0)throw new InvalidOperationException("Canonical sprites require positive tier height");
         Vector3 right=Vector3.Cross(Vector3.up,forward).normalized;
@@ -22,39 +21,18 @@ public static class CanonicalIsometricSprites
         }
         for(int z=0;z<map.grid.height;z++)for(int x=0;x<map.grid.width;x++){
             int i=z*map.grid.width+x;
-            if(known!=null&&!known.ContainsKey(i))continue;
-            float[] h={surface.CellHeight(i,0,0),surface.CellHeight(i,1,0),surface.CellHeight(i,1,1),surface.CellHeight(i,0,1)};
-            float bottom=Mathf.Min(Mathf.Min(h[0],h[1]),Mathf.Min(h[2],h[3]));int mask=0;
-            for(int k=0;k<4;k++){float tier=(h[k]-bottom)/rise;if(tier>1.001f)throw new InvalidOperationException("Top cell spans more than one sprite tier");if(tier>.5f)mask|=1<<k;}
-            Add(x,z,bottom,mask==0?theme.GetTopSprite(0):theme.GetTopSprite(mask),new Color(1,1,1,mask==0?1:2),new Vector3(map.grid.origin.x+(x+.5f)*size,(h[0]+h[1]+h[2]+h[3])*.25f,map.grid.origin.z+(z+.5f)*size),map.cells[i].isMountain?5:-1);
-            // Only camera-facing -Z and -X walls. Each segment is exactly one tier.
-            for(int side=0;side<2;side++){
-                int j=side==0?(z>0?i-map.grid.width:-1):(x>0?i-1:-1);
-                float a=h[0],b=h[side==0?1:3],oa=0,ob=0;
-                if(j>=0){oa=surface.CellHeight(j,side==0?0:1,side==0?1:0);ob=surface.CellHeight(j,1,1);}
-                // A higher foreground neighbour hides this edge; its own top covers it.
-                float loA=Mathf.Min(a,oa),loB=Mathf.Min(b,ob),hiA=a,hiB=b;
-                if(hiA<=loA+.001f&&hiB<=loB+.001f)continue;
-                int first=Mathf.FloorToInt(Mathf.Min(loA,loB)/rise+.0001f),last=Mathf.CeilToInt(Mathf.Max(hiA,hiB)/rise-.0001f);
-                for(int tier=first;tier<last;tier++){
-                    float baseH=tier*rise;
-                    float[] e={Mathf.Clamp01((loA-baseH)/rise),Mathf.Clamp01((loB-baseH)/rise),Mathf.Clamp01((hiB-baseH)/rise),Mathf.Clamp01((hiA-baseH)/rise)};
-                    if(e[3]<=e[0]+.001f&&e[2]<=e[1]+.001f)continue;
-                    int edgeMask=0;for(int k=0;k<4;k++){if(e[k]>.5f)edgeMask|=1<<k;}
-                    if(!TerrainTheme.IsVisibleWallMask(edgeMask))continue;
-                    Add(x,z,baseH,theme.GetWallSprite(side,edgeMask),new Color(1,1,1,0),new Vector3(map.grid.origin.x+(x+(side==0?.5f:0))*size,baseH+(e[0]+e[1]+e[2]+e[3])*.25f*rise,map.grid.origin.z+(z+(side==0?0:.5f))*size),map.cells[i].isMountain?6:-1);
-                }
+            if(!cells.TryGetValue(i,out var cell))continue;
+            var h=cell.CornerHeights;
+            int mask=cell.TopMask;
+            Add(x,z,cell.TopHeight,theme.GetTopSprite(mask),new Color(1,1,1,mask==0?1:2),new Vector3(map.grid.origin.x+(x+.5f)*size,(h[0]+h[1]+h[2]+h[3])*.25f,map.grid.origin.z+(z+.5f)*size),cell.IsMountain?5:-1);
+            foreach(var wall in cell.Walls){
+                int side=wall.Side;
+                Add(x,z,wall.Height,theme.GetWallSprite(side,wall.Mask),new Color(1,1,1,0),new Vector3(map.grid.origin.x+(x+(side==0?.5f:0))*size,wall.SortHeight,map.grid.origin.z+(z+(side==0?0:.5f))*size),cell.IsMountain?6:-1);
             }
-            if(map.cells[i].isMountain){
-                {
-                    int stride=map.grid.width+1,a=z*stride+x;
-                    int[] levels={mountainField[a],mountainField[a+1],mountainField[a+stride+1],mountainField[a+stride]};
-                    int low=Math.Min(Math.Min(levels[0],levels[1]),Math.Min(levels[2],levels[3])),rockMask=0;
-                    for(int k=0;k<4;k++){if(levels[k]-low>1)throw new InvalidOperationException("Mountain cap exceeds one tier");if(levels[k]>low)rockMask|=1<<k;}
-                    Add(x,z,bottom+low*capRise,theme.mountainCaps[rockMask],Color.white,null,3,capRise);
-                }
-            }
+            if(cell.IsMountain)
+                Add(x,z,cell.MountainHeight,theme.mountainCaps[cell.MountainMask],Color.white,null,3,capRise);
         }
+
         // Global order survives batch boundaries. No per-chunk local sorting.
         faces.Sort((a,b)=>{int d=b.depth.CompareTo(a.depth);return d!=0?d:a.sequence.CompareTo(b.sequence);});
         const int batchSize=2048;

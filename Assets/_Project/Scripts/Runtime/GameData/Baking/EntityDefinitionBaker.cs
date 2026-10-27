@@ -29,8 +29,7 @@ public abstract class EntityDefinitionBaker<T> : Baker<T> where T : Component
         AddComponent(entity, new EntityHealth
         {
             CurrentHP = initialHealth == -1f ? definition.MaxHP : initialHealth,
-            MaxHP = definition.MaxHP,
-            Changed = true
+            MaxHP = definition.MaxHP
         });
         AddComponent(entity, new EntityWork { Rate = definition.WorkRate, JobCapacity = definition.JobCapacity });
         if (GetComponent<TargetCacheAuthoring>() == null) AddComponent(entity, new TargetCache());

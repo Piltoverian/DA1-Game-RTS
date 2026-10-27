@@ -3,6 +3,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct WorkerGatherSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
@@ -12,6 +14,7 @@ public partial struct WorkerGatherSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         float dt = SystemAPI.Time.DeltaTime;
 
         Entity gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();

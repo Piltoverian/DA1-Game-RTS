@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
 
@@ -11,13 +12,22 @@ public sealed class TerrainVisualSurface
     public readonly GeneratedTerrain map;
     public readonly float rise;
     readonly TerrainSurfaceData data;
-    public TerrainVisualSurface(GeneratedTerrain source,float tierRise) {
-        map=source;rise=Mathf.Max(0,tierRise);data=new TerrainSurfaceData(source,rise);
+    readonly IReadOnlyDictionary<int,TerrainCellVisualData> visualCells;
+    public TerrainVisualSurface(GeneratedTerrain source,float tierRise,IReadOnlyDictionary<int,TerrainCellVisualData> cells=null) {
+        map=source;rise=Mathf.Max(0,tierRise);data=cells==null?new TerrainSurfaceData(source,rise):null;
+        visualCells=cells;
     }
     public void Activate(){Active=this;}
     public void Deactivate(){if(Active==this)Active=null;}
-    public bool IsRamp(int index) => data.IsRamp(index);
+    public bool IsRamp(int index) => visualCells!=null
+        ? visualCells.TryGetValue(index,out var cell)&&math.cmax(cell.CornerHeights)-math.cmin(cell.CornerHeights)>.001f
+        : data.IsRamp(index);
     public float CellHeight(int index,float fx,float fy) {
+        if(visualCells!=null){
+            if(!visualCells.TryGetValue(index,out var cell))return 0;
+            var h=cell.CornerHeights;
+            return fy<=fx ? h.x+(h.y-h.x)*fx+(h.z-h.y)*fy : h.x+(h.z-h.w)*fx+(h.w-h.x)*fy;
+        }
         return data.CellHeight(index,fx,fy);
     }
     public float Sample(float worldX,float worldZ) {

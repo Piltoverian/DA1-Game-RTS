@@ -78,17 +78,24 @@ public static class CommandDataHelper
     }
 }
 
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
 partial struct CommandQueue : ISystem
 {
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
+        if (SystemAPI.HasSingleton<CommandQueueComponent>())
+        {
+            return;
+        }
         var e = state.EntityManager.CreateSingleton<CommandQueueComponent>();
         state.EntityManager.AddBuffer<CommandQueueElement>(e);
     }
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var e = SystemAPI.GetSingletonEntity<CommandQueueComponent>();
         // Placement and production can perform structural changes; do not retain a buffer across them.

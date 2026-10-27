@@ -17,11 +17,13 @@ using Unity.Transforms;
 /// </summary>
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(MovementAgentORCASystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct MovementAgentActuatorSystem : ISystem
 {
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var deltaTime = SystemAPI.Time.DeltaTime;
         bool hasGrid = SystemAPI.TryGetSingleton<GridComponent>(out var grid);
 

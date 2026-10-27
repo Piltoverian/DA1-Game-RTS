@@ -2,7 +2,8 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(WorkerGatherSystem))]
 [BurstCompile]
 public partial struct ResourceNodeDepletedSystem : ISystem

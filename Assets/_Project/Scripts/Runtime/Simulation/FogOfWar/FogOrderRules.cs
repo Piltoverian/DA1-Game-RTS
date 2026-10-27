@@ -182,13 +182,16 @@ public static class FogOrderRules
     }
 }
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(CommandQueue))]
 [UpdateBefore(typeof(BuilderSystem))]
 [UpdateBefore(typeof(WorkerGatherSystem))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct FogTargetTravelSystem : ISystem
 {
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var em = state.EntityManager;
         using var ecb = new EntityCommandBuffer(Allocator.Temp);
         foreach (var (travel, transform, entity) in SystemAPI.Query<RefRW<FogTargetTravel>, RefRO<LocalTransform>>().WithEntityAccess())

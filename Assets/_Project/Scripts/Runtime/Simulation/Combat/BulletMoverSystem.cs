@@ -5,6 +5,9 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[UpdateAfter(typeof(ShootAttackSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct BulletMoverSystem : ISystem
 {
     private ComponentLookup<LocalTransform> transformLookup;
@@ -20,7 +23,7 @@ partial struct BulletMoverSystem : ISystem
     {
         state.RequireForUpdate<GridComponent>();
         state.RequireForUpdate<UnitSpatialBucket>();
-        state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+        state.RequireForUpdate<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
 
         transformLookup = state.GetComponentLookup<LocalTransform>(true);
         healthLookup = state.GetComponentLookup<EntityHealth>(false);
@@ -34,6 +37,7 @@ partial struct BulletMoverSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         transformLookup.Update(ref state);
         healthLookup.Update(ref state);
         shootVictimLookup.Update(ref state);
@@ -42,7 +46,7 @@ partial struct BulletMoverSystem : ISystem
         shootAttackLookup.Update(ref state);
         unitLookup.Update(ref state);
 
-        EntityCommandBuffer ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         GridComponent gridComponent = SystemAPI.GetSingleton<GridComponent>();
         UnitSpatialBucket spatialBucket = SystemAPI.GetSingleton<UnitSpatialBucket>();
@@ -104,7 +108,6 @@ partial struct BulletMoverSystem : ISystem
                 {
                     var health = healthLookup.GetRefRW(targetEntity);
                     health.ValueRW.CurrentHP -= bullet.ValueRO.damage;
-                    health.ValueRW.Changed = true;
                 }
 
                 Entity attacker = bullet.ValueRO.sourceEntity;

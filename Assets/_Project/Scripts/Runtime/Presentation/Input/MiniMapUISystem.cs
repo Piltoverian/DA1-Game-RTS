@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct MiniMapUISystem : ISystem
 {
     [BurstCompile]

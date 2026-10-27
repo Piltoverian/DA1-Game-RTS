@@ -1,10 +1,80 @@
-# Bàn giao ca tiếp theo — 17/10/2026
+# Bàn giao ca tiếp theo — 20/10/2026
 
-## Phạm vi đang tiếp tục: chuẩn bị multiplayer sau FOW local
+## Phạm vi đang tiếp tục: terrain local/server/client
 
-**Bắt đầu từ [FogOfWarHandoff](FogOfWarHandoff.md)**: render local đã nối và chạy trong Main, 33 assertion của lượt render; sửa height sau đó đo 5 unit lệch 0. Các lượt kiểm chứng có source/giới hạn riêng, không phải toàn suite đã chạy lại sau mọi sửa đổi. Snapshot trả full Explored; chỉ building/resource giữ hình cuối; không có WorldId/MapId/MapRevision trong frame. Điều kiện drag cuối là thời gian >0,05 giây AND chiều rộng rect > Screen.width/40; chỉ build pass, người dùng không yêu cầu Play lại trước bàn giao.
+### 1. Mục tiêu và yêu cầu đã chốt
 
-Hướng mới ở [Multiplayer](../Multiplayer/README.md): server ECS authoritative, client Mono qua adapter, Ghost/variants/templates theo package tương thích, RPC bọc payload command/request hiện có. Chưa cài Netcode; client presentation/camera hiện vẫn còn ECS systems, chưa chuyển Mono. Việc đầu tiên: kiểm kê component/system/prefab/caller và ranh giới server/Ghost/Mono/adapter bao phủ các chức năng hiện có. Không dừng bản đầu ở Worker/TownHall; không coi snapshot Entity local là wire protocol.
+Người dùng đang học làm game online lần đầu. AI phụ trách toàn bộ pipeline terrain; người dùng tự làm unit và muốn được hướng dẫn từng bước nhỏ. Không yêu cầu học xử lý model trước. Terrain phải chạy được local trước, rồi host/client dùng cùng compiler và renderer. Mỗi player chỉ nhận dữ liệu terrain theo FOW riêng của mình, không gửi chung toàn map hoặc seed toàn map qua network.
+
+Pipeline và checklist chính tại [ServerMapLoading](../Multiplayer/ServerMapLoading.md). Không tự thêm unit networking, thay luật FOW hoặc tự chuyển MatchState sang Running. Host có hình thông qua ClientWorld; dedicated server chỉ tính và gửi dữ liệu.
+
+### 2. Workspace, thay đổi và quyết định
+
+- Workspace: `D:\Unity\TechTextAndChosingForRTS sample`; branch `Fog-of-wars`; HEAD `352e9ec8069308c77e177999ba23cd21db496e3c`.
+- Toàn bộ thay đổi terrain/match mới còn trong working tree, có file mới chưa được Git theo dõi. Chưa stage/commit/push; chưa tạo patch/snapshot. Session tiếp theo phải mở đúng workspace này. Chỉ checkout HEAD sẽ không lấy lại phần mới; nếu chuyển máy phải mang cả file sửa, file mới và `.meta`.
+- Có nhiều thay đổi ngoài terrain từ trước và các prefab cũ đã bị xóa. Không reset/restore/dọn chúng như artifact của lượt này. Asset runtime trong Tests/Fixtures vẫn đang được dùng.
+- Unity `6000.3.13f1`; package resolve: Entities `1.5.0`, Netcode `1.14.3`, Transport `2.7.4`. Không đọc số manifest cũ rồi kết luận chưa cài Netcode.
+
+Các entry point cần đọc, không phải đọc lại toàn repo:
+
+| Nguồn | Trạng thái và vai trò |
+|---|---|
+| [TerrainVisualSourceSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainVisualSourceSystem.cs) | Mới: cache compiler trên local/server theo revision/hash, không phụ thuộc camera. |
+| [TerrainCellVisualData.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainCellVisualData.cs) | Mới: tính sẵn top/wall/mountain mask và độ cao; object render + buffer ô/vách + AppendToGhostBuffers. |
+| [TerrainChunkGhostAuthoring.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainChunkGhostAuthoring.cs) | Mới: metadata stream và Baker cho prefab Ghost. |
+| [TerrainNetworkServerSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainNetworkServerSystem.cs) | Mới: RPC join/ready, connection→player, sender và cleanup. TerrainPlayerConnection có thể được unit networking dùng lại. |
+| [TerrainNetworkReceiveSystem.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainNetworkReceiveSystem.cs) | Mới: nhận các chunk của owner, kiểm tra range và tải thiếu, dựng dữ liệu ô/mask. |
+| [MapTerrainPresentationSystem.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/MapTerrainPresentationSystem.cs) | Đã sửa: chọn nguồn local/network, gọi renderer chung, gửi ACK sau render. |
+| [TerrainMapRenderer.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainMapRenderer.cs) | Đã sửa: ưu tiên ClientWorld; yêu cầu load SubScene vào các World tạo sau khi Main đã mở. |
+| [TerrainChunkRenderer.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainChunkRenderer.cs), [CanonicalIsometricSprites.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/CanonicalIsometricSprites.cs), [TerrainVisualSurface.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainVisualSurface.cs) | Đã sửa: render/picking dùng dữ liệu ô đã tính; không cần client biết ô hàng xóm. |
+| [GridAuthoring.cs](../../Assets/_Project/Scripts/Runtime/Simulation/Movement/Grid/GridAuthoring.cs) | Đã sửa: bake TerrainSyncSettings từ theme và prefab. |
+| [TerrainChunkGhost.prefab](../../Assets/_Project/Prefabs/TerrainChunkGhost.prefab), [Main/EntitySubscene.unity](../../Assets/_Project/Scenes/Main/EntitySubscene.unity) | Mới/đã gắn: HasOwner, Interpolated, Static, prefabId khớp GUID; grid dùng LunarTheme giống Main. |
+
+Luồng thực tế đã nối: server gen map → compiler tính hình từ map đầy đủ → cấp slot từ PlayerBootstrapSlot cho connection → lọc Explored theo player → các Ghost vùng 8×8 riêng cho connection, cập nhật 10 Hz → client nhận header/buffer → renderer dùng chung → TerrainReadyRequest → server ghi TerrainClientReady.
+
+Header và hai buffer đều SendToOwner; server lấy GhostOwner.NetworkId từ connection thật, không lấy PlayerId do client gửi. Các client khác có thể có entity Ghost rỗng, không có dữ liệu terrain của owner khác. Đây là cấp slot để thử local, chưa phải tài khoản/authentication hoặc khôi phục danh tính qua reconnect.
+
+Terrain chờ PlayerBootstrapState.Ready để có base/nguồn vision, nhưng không chờ MatchPhase.Running. NetworkStreamInGame chỉ bật snapshot. Client không cần CubeSpawner hoặc RPC của scene ví dụ để nhận terrain Main. Giữ bộ ví dụ NetcodeForEntitiesSetup, không xóa nó như artifact.
+
+Ngữ cảnh match đã chốt từ các lượt trước: không dùng custom simulation group. Gameplay dùng FixedStepSimulationSystemGroup, phần Late vẫn Late. [ServerMatch.cs](../../Assets/_Project/Scripts/Runtime/Simulation/Shared/ServerMatch.cs) có SharedStatic cache; 24 system dùng `ServerMatch.isGamePlayCanRun(ref state)`: local được phép, server chỉ Running đúng owner World, client bị chặn. Dùng SetPhase để đổi phase/cache, không sửa singleton bằng đường khác rồi mong cache tự cập nhật. MatchLifecycle mới chuyển Preparing→WaitingForPlayers; ready terrain chưa đủ để bắt đầu toàn trận.
+
+### 3. Bằng chứng đã có và giới hạn của bằng chứng
+
+Các kết quả sau là của lượt triển khai trước khi viết handoff này, không chạy lại trong lượt docs:
+
+- Unity 6000.3.13f1 batch compile thành công và có output Netcode tạo serializer cho header/buffer terrain, RPC join/ready. Compile cuối gồm helper load SubScene cho World tạo sau Main và prefabId đã cố định.
+- Fixture ECS ngoài Play Mode qua **32 assertion**: cache local/revision, cấp player khác nhau và full roster, lọc terrain riêng, parity độ cao/mask, chờ thiếu chunk, bỏ owner khác, mask visible/explored, không rebuild khi chỉ đổi visibility, range vách lỗi, Ready sai/đúng phiên và cleanup disconnect.
+- 32 assertion chạy trước hai sửa cuối về helper load SubScene/prefabId. Hai sửa cuối đã compile, chưa có kiểm tra hành vi riêng. Fixture dùng World/EntityManager trong bộ nhớ, không chạy truyền snapshot qua transport thật và không render hình bằng camera.
+- Lệnh compile đã dùng: `Unity.exe -batchmode -nographics -quit -projectPath "D:/Unity/TechTextAndChosingForRTS sample" -logFile ".../Temp/TerrainPipelineFinalCompile.log"`. Fixture đã dùng `-executeMethod TerrainPipelineVerification.Run`. Source fixture, `.meta` và các log một lần đã xóa theo yêu cầu; không có log/fixture được giữ để session mới chạy lại nguyên lệnh fixture.
+- Đã kiểm tra prefab GUID/tham chiếu Main, `.meta`, link docs và diff whitespace. Review source độc lập không tìm thấy blocker; đây không phải nghiệm thu runtime.
+- Người dùng chưa xác nhận hình terrain hoặc mạng trong Play Mode. Không diễn giải lời “ok/tiếp tục” thành kết quả test.
+
+Lưu ý môi trường kiểm tra: dotnet SDK 10 từng crash CLR; build dotnet ngoài Unity còn có cảnh báo NetCodeSourceGenerator về template filename Windows. Dùng compiler Unity làm bằng chứng source generation. Chạy Unity từ PowerShell có thể trả về ngay trước khi tiến trình thật kết thúc; phải đọc marker compile/fixture trong log, không coi exit code của shell là PASS. Batch cuối đã compile và báo quit thành công rồi kẹt ở Cleanup mono; đã xác minh command line và dừng đúng tiến trình tác vụ để giải phóng log, không dừng Editor của người dùng.
+
+### 4. Việc còn lại
+
+**Debug mới nhất — người dùng đã làm rõ triệu chứng:** terrain trong vùng đã nhìn thấy render đúng; chỉ vùng chưa khám phá lộ skybox thay vì màu đen. Không tiếp tục coi đây là mất toàn bộ terrain hoặc kết luận camera/UI là nguyên nhân. LocalFogPresentationSystem chỉ chạy local và tự đổi nền camera đen; nhánh client thiếu bước này. Đã thêm SolidColor + Color.black sau Configure camera trong UpdateNetworkTerrain của MapTerrainPresentationSystem.cs. Chưa xác nhận Play Mode sau sửa nền. Các sửa frontend/camera trước đó vẫn còn trong working tree: ẩn frontend khi Main load, chọn camera theo scene và gán World mặc định sang ClientWorld; không tự revert nếu chưa có yêu cầu.
+
+- Chưa nghiệm thu Main offline, host + hai client, hình camera, actual baking/streaming prefab khi chạy và transport snapshot thật. Chưa benchmark map lớn/nhiều player.
+- Kiểm tra Main load trước connect: các World mới phải nhận GridComponent, TerrainSyncSettings và prefab. Nếu chờ mãi, lần theo bootstrap/map phase trước rồi mới kết luận Ghost lỗi.
+- Kiểm tra MapPresentationState.Ready ở client và TerrainClientReady trên connection server. Ready terrain chỉ là một phần readiness toàn trận; không auto Running.
+- Kiểm tra hai player khác quyền FOW; nếu cùng team chia sẻ map thì tập ô có thể giống nhau theo luật hiện tại. Giữ vùng đã khám phá tối khi mất vision, unknown không có dữ liệu, núi/vách không đổi theo việc biết thêm hàng xóm.
+- Chunks có thể nhận từ các tick visibility khác nhau; không cam kết snapshot vision toàn map nguyên tử. Khi thêm ô, hiện rebuild tập terrain đã biết, chưa cập nhật mesh tăng dần.
+- Reconnect được cấp slot trống, không có tài khoản/resume identity. Nếu nhận lại cùng player slot, lịch sử Explored trên server vẫn thuộc slot đó. Kiểm tra không giữ hình/cache sai connection/session.
+- Kiểm tra style hiện so thông số hình học/visual seed, chưa hash toàn texture/catalog. Chưa chuyển toàn presentation sang Mono; các ECS presentation system hiện vẫn điều phối renderer Mono.
+- Không khôi phục các test Editor đã xóa hoặc giữ script/log tạm như kết quả bàn giao. Không tự commit/push. Quy tắc brainstorm trước sửa vẫn áp dụng cho phạm vi mới; pipeline terrain nêu trên đã được người dùng duyệt triển khai.
+
+### 5. Một hành động đầu tiên cho session mới
+
+**Kiểm tra vùng unknown của Host sau bản sửa nền camera.** Người dùng dừng Play, chờ Unity compile rồi chạy Host lại. Kết quả mong đợi: terrain đã khám phá giữ hình hiện có, vùng chưa khám phá là đen; vùng đã khám phá nhưng khuất vẫn tối theo FOW. Người dùng đã xác nhận terrain vùng được nhìn thấy render đúng, không hỏi lại như thể toàn bộ terrain đang mất. Sau đó kiểm tra offline/hai client theo tài liệu chính.
+
+## FOW local và bộ lệnh — lịch sử 17/10
+
+**Bắt đầu từ [FogOfWarHandoff](FogOfWarHandoff.md)** để đọc bằng chứng FOW cũ. Bộ lệnh local đã nối: Attack mới chỉ target địch đang thấy, Build preview ba trạng thái và đi thử Unknown, FIFO rồi tìm nhà dở theo Gather, Repair không queue, Gather theo snapshot. GhostUnknown.mat riêng đã gán Main, bỏ fallback lúc chạy. Luật chính ở [kiến trúc FOW](../Architecture/FogOfWarRendering.md).
+
+Regression 20/20 ECS/picking pass; smoke Main có FOW và Move pass, trước các sửa cuối picking/selection; material riêng chỉ build/kiểm tra liên kết asset, chưa xem lại Play. Build runtime/Editor 0 lỗi, 5 warning cũ ở lượt đầy đủ. Không gộp thành nghiệm thu mọi thao tác chuột. HEAD hiện tại `352e9ec`, branch `Fog-of-wars`; source đã trong commit, lượt docs này chưa commit. Các mốc/workspace bên dưới là lịch sử.
+
+**Kiểm tra FOW còn giữ:** kiểm tra bằng chuột trong Main preview Unknown với material riêng → phát kế hoạch → tới thử → thành công hoặc tiếp tục FIFO khi bị block. Multiplayer đã tiếp tục ở phần terrain phía trên. Hướng server ECS/client Mono/Ghost/RPC ở [Multiplayer](../Multiplayer/README.md); client full Mono chưa refactor.
 
 ## Phạm vi độc lập còn giữ: snapper và selection (bàn giao lịch sử)
 

@@ -5,11 +5,13 @@ using Unity.Transforms;
 
 [UpdateAfter(typeof(CommandQueue))]
 [UpdateBefore(typeof(ConstructionSystem))]
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct BuilderSystem : ISystem
 {
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         using var ecb = new EntityCommandBuffer(Allocator.Temp);
         foreach (var (builderData, localTransform, entity) in SystemAPI.Query<RefRW<BuilderComponent>, RefRO<LocalTransform>>().WithNone<FogTargetTravel>().WithEntityAccess())
         {
@@ -152,7 +154,6 @@ public partial struct BuilderSystem : ISystem
                         repairPaid.Dispose();
 
                         health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + restoredHp);
-                        health.Changed = true;
                         em.SetComponentData(constructionSite, health);
                         if (health.CurrentHP >= health.MaxHP)
                             StopBuilder(em, builderData, entity);
@@ -163,7 +164,6 @@ public partial struct BuilderSystem : ISystem
                         work = math.min(work, math.max(0f, building.WorkLoad - construction.CompletedWork));
                         construction.CompletedWork = math.min(building.WorkLoad, construction.CompletedWork + work);
                         health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + work * hpPerWork);
-                        health.Changed = true;
                         em.SetComponentData(constructionSite, construction);
                         em.SetComponentData(constructionSite, health);
                         if (construction.CompletedWork >= building.WorkLoad)

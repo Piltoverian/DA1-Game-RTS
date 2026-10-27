@@ -6,6 +6,7 @@ using Unity.Transforms;
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateBefore(typeof(IntegrationFieldSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct MovementAgentPathRequestSystem : ISystem
 {
     [BurstCompile]
@@ -18,6 +19,7 @@ public partial struct MovementAgentPathRequestSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var grid = SystemAPI.GetSingleton<GridComponent>();
         var ecb = new EntityCommandBuffer(Allocator.TempJob);
 

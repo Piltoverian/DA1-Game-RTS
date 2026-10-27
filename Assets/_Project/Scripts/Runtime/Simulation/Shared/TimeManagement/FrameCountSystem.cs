@@ -1,7 +1,7 @@
 using Unity.Burst;
 using Unity.Entities;
 
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct FrameCountSystem : ISystem
 {
     [BurstCompile]
@@ -26,7 +26,7 @@ partial struct FrameCountSystem : ISystem
     }
 }
 
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct FixedFrameCountSystem : ISystem
 {

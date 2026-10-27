@@ -45,7 +45,6 @@ public class UnitController : MonoBehaviour
 
         if (TryCommandBuild(entityManager))
         {
-            Debug.Log("Command Build issued.");
             return;
         }
 
@@ -352,7 +351,6 @@ public class UnitController : MonoBehaviour
                 BuildingHelper.IsUnderConstruction(entityManager, targetBuilding) ? CommandType.Build : CommandType.TargetTo,
                 targetEntity: targetBuilding
             );
-            Debug.Log($"Command Build issued for worker {worker.Index} on building {targetBuilding.Index}.");
             queuedCount++;
         }
 

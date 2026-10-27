@@ -7,6 +7,7 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(GridInitSystem))]
 [UpdateBefore(typeof(IntegrationFieldSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct GridIslandSystem : ISystem
 {
     [BurstCompile]

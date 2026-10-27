@@ -4,6 +4,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+
+
 public struct FogOfWarSpatialSystemData : IComponentData
 {
     public NativeParallelMultiHashMap<int, int> Visible;
@@ -52,6 +54,7 @@ public struct FogOfWarSpatialSystemData : IComponentData
 
 }
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(UnitSpatialSystem))]
 partial struct FogOfWarSpatialSystem : ISystem

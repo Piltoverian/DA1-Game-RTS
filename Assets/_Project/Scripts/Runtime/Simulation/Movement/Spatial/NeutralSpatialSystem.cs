@@ -8,6 +8,8 @@ public struct NeutralSpatialBucket : IComponentData
     public NativeParallelMultiHashMap<int, Entity> Bucket;
 }
 
+
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(UnitSpatialSystem))]
 [UpdateBefore(typeof(FogOfWarSpatialSystem))]

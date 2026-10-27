@@ -7,6 +7,7 @@ using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 [UpdateAfter(typeof(MapTerrainGenerationSystem))]
 public partial class GridSnapperSystem : SystemBase

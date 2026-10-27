@@ -13,7 +13,6 @@ public struct EntityHealth : IComponentData
 {
     public float CurrentHP;
     public float MaxHP;
-    public bool Changed;
 }
 // Effective gameplay stats initialized from the definition (runtime upgrades may modify them).
 public struct EntityWork : IComponentData { public float Rate; public int JobCapacity; }

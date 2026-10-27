@@ -6,6 +6,7 @@ using Unity.Mathematics;
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(IntegrationFieldSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct FlowDirectionSystem : ISystem
 {
 
@@ -24,6 +25,7 @@ partial struct FlowDirectionSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (!SystemAPI.HasSingleton<GridComponent>())
             return;
 

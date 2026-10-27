@@ -372,6 +372,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 113fc79062260694d82ae1ce52e39293, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridAuthoring
+  TerrainTheme: {fileID: 11400000, guid: abf7ff7b1945a7a4bbbcbfb9f158a1fc, type: 2}
+  TerrainGhostPrefab: {fileID: 100000, guid: a5b980708b5f4287a63c2cde20dc3d12, type: 3}
   Config: {fileID: 11400000, guid: 7b4420283f214f3b830ce5911ab600a3, type: 2}
   MincellSize: 1
   mapType: 512

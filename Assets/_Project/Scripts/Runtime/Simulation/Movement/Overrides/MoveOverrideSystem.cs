@@ -4,7 +4,10 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [UpdateBefore(typeof(ShootAttackSystem))]
+[UpdateAfter(typeof(CommandQueue))]
 [BurstCompile]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct MoveOverrideSystem : ISystem
 {
     [BurstCompile]
@@ -16,6 +19,7 @@ public partial struct MoveOverrideSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         GridComponent grid = SystemAPI.GetSingleton<GridComponent>();
 
         var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);

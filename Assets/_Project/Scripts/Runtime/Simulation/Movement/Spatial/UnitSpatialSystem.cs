@@ -9,6 +9,8 @@ public struct UnitSpatialBucket : IComponentData
     public NativeParallelMultiHashMap<int, Entity> Bucket;
 }
 
+
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation|WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(SelectableSpatialSystem))]
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]

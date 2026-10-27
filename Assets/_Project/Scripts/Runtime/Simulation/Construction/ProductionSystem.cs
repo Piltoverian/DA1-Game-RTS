@@ -3,13 +3,20 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using System.Collections.Generic;
+using Unity.Burst;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(PopulationSystem))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
+[UpdateAfter(typeof(ConstructionSystem))]
 public partial struct ProductionSystem : ISystem
 {
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<PlayerBootstrapState>();
+    }
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -88,9 +95,7 @@ public partial struct ProductionSystem : ISystem
             }
             catch (System.Exception exception)
             {
-                // The queue item is consumed: do not automatically repeat effects that already ran.
-                UnityEngine.Debug.LogError($"Tech '{completion.TechID}' failed while conducting effects. Earlier effects are not rolled back.");
-                UnityEngine.Debug.LogException(exception);
+
             }
         }
     }

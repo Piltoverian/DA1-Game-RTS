@@ -1,14 +1,22 @@
-# Trạng thái hiện tại — 17/10/2026
+# Trạng thái hiện tại — 20/10/2026
 
 **Bắt đầu từ [lộ trình](Roadmap.md) nếu muốn biết việc tiếp theo. Đọc trang này khoảng 3 phút.**
 
-## Fog of War local và bước multiplayer
+## Terrain multiplayer
 
-Render FOW local đã nối vào Main, được người dùng chốt để chuyển bước. Native graphics hiện khi visible; unit/đạn khuất thì ẩn, building/resource giữ mesh/material/matrix cuối thấy và xóa ký ức khi nhìn lại footprint trống. Terrain dựng từ full tập Explored nhận mỗi Collect, mask 1 / 80/255 / 0. Frame bỏ WorldId/MapId/MapRevision; TerrainBaseLevel giữ mốc height chung để unknown không làm terrain cao lệch unit.
+Theo yêu cầu mới nhất, AI triển khai toàn bộ pipeline terrain, người dùng phụ trách unit. Main đã gắn prefab Ghost và cấu hình theme; server cấp slot theo connection, lọc Explored, gửi các chunk riêng cho owner; client dùng renderer chung với local và báo TerrainReady. Chi tiết/cách test tại [ServerMapLoading](../Multiplayer/ServerMapLoading.md).
 
-Lượt render: 33 assertion và Main Play graphics pass, Unity exit 0, trước sửa datum height. Lượt height sau đó: 5 unit từ lệch 1,59472 về 0, đã xem ảnh camera; không phải chạy lại toàn suite. Điều kiện drag cuối: >0,05 giây AND rộng >Screen.width/40, build 0 lỗi/5 warning cũ, chưa Play lại. Người dùng chọn không kiểm tra thêm local trước handoff.
+Unity 6000.3.13f1 compile/source generation thành công; fixture ECS ngoài Play Mode 32 assertion pass. Chưa kiểm tra host + hai client qua transport thật hoặc hình ảnh Play Mode. Không tự đổi MatchState sang Running; thay đổi còn trong working tree, chưa commit.
 
-Xem [kiến trúc render](../Architecture/FogOfWarRendering.md) và [handoff FOW](FogOfWarHandoff.md) cho source và giới hạn. [Multiplayer](../Multiplayer/README.md) là quyết định tiếp theo: client Mono qua adapter, server ECS/Netcode, RPC giữ payload command, Ghost/serializer theo package đã kiểm tra compatibility. Chưa cài Netcode, chưa chuyển presentation systems sang Mono, chưa có server+2client hoặc nghiệm thu UI/picking theo FOW.
+## Fog of War local và bộ lệnh
+
+Render Main giữ ký ức building/resource, unit/đạn chỉ hiện khi Visible. Một ô footprint Visible cập nhật toàn entity, không mở các ô khác. Terrain full Explored, mask 1 / 80/255 / 0; frame bỏ WorldId/MapId/MapRevision, giữ TerrainBaseLevel để height thống nhất.
+
+Bộ lệnh đã triển khai: Attack mới chỉ target địch đang thấy; Build preview xanh/đỏ khi đủ visibility, terrain đã biết có thể reject sớm, còn lại Unknown vẫn đi thử. Build tiếp tục FIFO rồi tìm nhà dở cùng cửa sổ ±5 ô/island như Gather. Repair không queue; Gather dùng snapshot để đi kiểm tra, giữ carry/depot/search. GhostUnknown.mat riêng đã gán Main, bỏ material fallback. [Luật/source](../Architecture/FogOfWarRendering.md) · [Handoff và giới hạn](FogOfWarHandoff.md).
+
+20/20 regression ECS/picking pass; smoke Main FOW/Move pass trước các sửa cuối picking/selection. Material riêng được build/kiểm tra reference, chưa xem lại Play. Các lượt render 33 assertion và height 5 unit lệch 0 là bằng chứng lịch sử riêng; không phải toàn suite chạy lại trên source cuối. Drag >0,05 giây AND chiều rộng >Screen.width/40 giữ nguyên, chưa nghiệm thu toàn bộ chuột.
+
+Multiplayer đang tạm gác theo người dùng. Chưa cài Netcode, chưa chuyển full Mono; panel UI/selection nói chung chưa nghiệm thu FOW đầy đủ. Attack đang chạy rồi mất vision còn cần chốt. [Hướng multiplayer đã lưu](../Multiplayer/README.md).
 
 ## Lối chơi và dữ liệu
 
@@ -19,9 +27,9 @@ Cập nhật 15/10: snapper fit bounds mesh bằng scale đều, thay chuẩn co
 | quyền sở hữu | Chỉ chủ sở hữu điều khiển thực thể; cùng đội không cấp quyền điều khiển chéo. CommandAuthority kiểm tra người phát lệnh, thực thể sống, mẫu đối tượng và chủ sở hữu. |
 | Progression/registry | Registry dogfood đã thành Resources/GameReg.asset dùng chung Main/fixture; registry cũ đã xóa. Worker/TownHall/TrainWorker/Build dùng bộ mới trong TwoCivDogfood, không đăng ký bộ cũ MapGeneration. Spawn ưu tiên prefab civ, thiếu từng loại mới dùng DefaultWorker/DefaultTownHall của registry; map không có trường Worker/Hall. Main giữ 8 player/spawn slot, Civ A/B xen kẽ. [Cấu hình registry](../Guides/GameData/RegistryPresentation.md). Queue dùng GameBlobReference (CatalogKey + ID); registry sắp xếp lúc baking, tra cứu nhị phân khi chạy. |
 | tài nguyên | Cost tĩnh được chuẩn hóa trước chuyển dữ liệu sang ECS; thanh toán nguyên tử, khả năng chi trả và hoàn tiền khi chạy dùng chung. |
-| Placement/blockage | xem trước và mô phỏng dùng cùng bộ kiểm tra hợp lệ; chỉ nền phẳng cùng cao độ, reject ramp/cliff/mountain/occupancy. Cho phép xây chặn đường; vùng liên thông refresh theo kết nối lưới, dọn dẹp giữ vật chặn chồng lấn còn sống. |
+| Placement/blockage | Mô phỏng kiểm tra nền phẳng cùng cao độ, reject ramp/cliff/mountain/occupancy; preview FOW chỉ dùng thông tin đã biết và có trạng thái Unknown. Cho phép xây chặn đường; vùng liên thông refresh theo kết nối lưới, dọn dẹp giữ vật chặn chồng lấn còn sống. |
 | Combat/team | TeamID trong PlayerContext/cache; FindTarget/ShootAttack/bullet/AOE bỏ đồng minh. Bullet dùng bước đi xác định tới đích, kiểm tra lại target lúc trúng; artillery bỏ distress call. Unit tests pass; AOE/team Play Mode chưa nghiệm thu. |
-| PlanBuild / Build | Hai command riêng. PlanBuild snapshot selection → placement tạo một công trình → Build cho tất cả worker hợp lệ. Build giao xây/sửa công trình đã tồn tại. [Pipeline và validation](../Architecture/BuildingPipeline.md). |
+| PlanBuild / Build | Hai command riêng. PlanBuild snapshot selection → placement tạo một công trình → Build cho tất cả worker hợp lệ. Build giao công trình dở/có FIFO; Repair qua TargetTo không nối queue. Unknown PlanBuild trì hoãn placement tới khi kiểm tra. [Pipeline và validation](../Architecture/BuildingPipeline.md). |
 | Builder/preview | Tiếp cận bằng clamp tới footprint cộng clearance của unit; không dò ô/bucket. Preview áp scale đã snap trước show. Navigation footprint dùng anchor logic. Unit tests pass; work tăng end-to-end trong Play Mode bản clamp cuối chưa xác nhận. |
 | thợ từ ca trước | Chủ dự án đã xác nhận các lỗi thợ trước đó được sửa. Không mở lại cảnh báo cũ; builder/work0 phát hiện trong ca này được theo dõi riêng ở Handoff. |
 

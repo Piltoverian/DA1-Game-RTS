@@ -4,7 +4,7 @@ using Unity.Entities;
 
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct FlowFieldCleanupSystem : ISystem
 {
     [BurstCompile]

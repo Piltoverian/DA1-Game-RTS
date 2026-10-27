@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using static UnityEngine.Rendering.ProbeAdjustmentVolume;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct GridInitSystem : ISystem
 {
     [BurstCompile]
