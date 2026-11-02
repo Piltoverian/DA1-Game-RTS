@@ -25,7 +25,7 @@ public partial struct BuilderSystem : ISystem
                         && math.distancesq(localTransform.ValueRO.Position.xz, math.clamp(localTransform.ValueRO.Position.xz, known.Min, known.Max))
                             > builderData.ValueRO.BuildRange * builderData.ValueRO.BuildRange)
                     { StopBuilder(state.EntityManager, builderData, entity); continue; }
-                    if (!FogOrderRules.Approach(state.EntityManager, entity, localTransform.ValueRO.Position, known.Min, known.Max, builderData.ValueRO.BuildRange))
+                    if (!KnownTargetOrders.Approach(state.EntityManager, entity, localTransform.ValueRO.Position, known.Min, known.Max, builderData.ValueRO.BuildRange))
                     { builderData.ValueRW.FogApproachRequested = true; continue; }
                 }
             }
@@ -221,7 +221,7 @@ public partial struct BuilderSystem : ISystem
                 && math.distancesq(position.xz, math.clamp(position.xz, root.xz + rect.MinPoint, root.xz + rect.MaxPoint))
                     > builder.ValueRO.BuildRange * builder.ValueRO.BuildRange)
             { builder.ValueRW.PlannedPrefab = Entity.Null; StopBuilder(em, builder, worker); return; }
-            if (!FogOrderRules.Approach(em, worker, position, root.xz + rect.MinPoint, root.xz + rect.MaxPoint, builder.ValueRO.BuildRange))
+            if (!KnownTargetOrders.Approach(em, worker, position, root.xz + rect.MinPoint, root.xz + rect.MaxPoint, builder.ValueRO.BuildRange))
             { builder.ValueRW.FogApproachRequested = true; return; }
         }
         Entity request = ecb.CreateEntity();
@@ -253,7 +253,7 @@ public partial struct BuilderSystem : ISystem
             if ((construction.Phase != ConstructionPhase.Planned && construction.Phase != ConstructionPhase.UnderConstruction)
                 || construction.CompletedWork >= definition.WorkLoad || em.GetComponentData<EntityHealth>(site).CurrentHP <= 0
                 || !EntityCapabilities.CanBuild(em, worker, site) || !FogOrderRules.IsVisible(em, player, site)
-                || !FogOrderRules.IsNearbyReachable(em, worker, site, center, grid, gridEntity)) continue;
+                || !KnownTargetOrders.IsNearbyReachable(em, worker, site, center, grid, gridEntity)) continue;
             var pos = em.GetComponentData<LocalTransform>(site).Position;
             if (em.HasComponent<BlockageData>(site)) pos = em.GetComponentData<BlockageData>(site).GetWorldCenter(pos);
             float d = math.distancesq(pos.xz, center.xz);
@@ -335,7 +335,7 @@ public partial struct BuilderSystem : ISystem
     private static void StopBuilder(EntityManager em, RefRW<BuilderComponent> builder, Entity entity)
     {
         RestoreStoppingDistance(em, builder, entity);
-        FogOrderRules.StopMove(em, entity);
+        KnownTargetOrders.StopMove(em, entity);
         builder.ValueRW.FogApproachRequested = false;
         if (TryStartNextBuilding(em, builder, entity))
             return;

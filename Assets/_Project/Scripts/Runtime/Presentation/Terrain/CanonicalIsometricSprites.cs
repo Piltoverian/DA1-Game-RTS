@@ -7,27 +7,27 @@ using UnityEngine.Rendering;
 public static class CanonicalIsometricSprites
 {
     struct Face { public Vector3 anchor; public Texture2D texture; public float depth; public Color metadata; public int sequence; public int kind; public float tierRise; public Vector2 cell; }
-    public static GameObject Build(GeneratedTerrain map,TerrainTheme theme,TerrainVisualSurface surface,Vector3 forward,Material material,Dictionary<Texture2D,int> ids,Rect[] atlasRects,List<Mesh> ownedMeshes,IReadOnlyDictionary<int,TerrainCellVisualData> cells){
+    public static GameObject Build(GridComponent grid,TerrainTheme theme,TerrainVisualSurface surface,Vector3 forward,Material material,Dictionary<Texture2D,int> ids,Rect[] atlasRects,List<Mesh> ownedMeshes,IReadOnlyDictionary<int,TerrainCellVisualData> cells){
         if(Mathf.Abs(forward.y+.5f)>.001f)throw new InvalidOperationException("Canonical 2:1 sprites require orthographic pitch30/yaw45");
         var root=new GameObject("Terrain presentation chunks (no colliders)");
-        var faces=new List<Face>();float size=map.grid.cellsize,rise=surface.rise;
+        var faces=new List<Face>();float size=grid.cellsize,rise=surface.rise;
         float capRise=rise*Mathf.Max(1,(theme.mountainCaps[0].height-96)/32f);
         if(rise<=0)throw new InvalidOperationException("Canonical sprites require positive tier height");
         Vector3 right=Vector3.Cross(Vector3.up,forward).normalized;
         Vector3 screenUp=new Vector3(forward.x,0,forward.z).normalized/Mathf.Abs(forward.y);
         void Add(int x,int z,float height,Texture2D texture,Color metadata,Vector3? sortPosition=null,int kind=-1,float? tierRise=null){
-            var anchor=new Vector3(map.grid.origin.x+(x+.5f)*size,height,map.grid.origin.z+(z+.5f)*size);
+            var anchor=new Vector3(grid.origin.x+(x+.5f)*size,height,grid.origin.z+(z+.5f)*size);
             faces.Add(new Face{anchor=anchor,texture=texture,depth=Vector3.Dot(sortPosition??anchor,forward),metadata=metadata,sequence=faces.Count,kind=kind<0?(int)metadata.a:kind,tierRise=tierRise??rise,cell=new Vector2(x+.5f,z+.5f)});
         }
-        for(int z=0;z<map.grid.height;z++)for(int x=0;x<map.grid.width;x++){
-            int i=z*map.grid.width+x;
+        for(int z=0;z<grid.height;z++)for(int x=0;x<grid.width;x++){
+            int i=z*grid.width+x;
             if(!cells.TryGetValue(i,out var cell))continue;
             var h=cell.CornerHeights;
             int mask=cell.TopMask;
-            Add(x,z,cell.TopHeight,theme.GetTopSprite(mask),new Color(1,1,1,mask==0?1:2),new Vector3(map.grid.origin.x+(x+.5f)*size,(h[0]+h[1]+h[2]+h[3])*.25f,map.grid.origin.z+(z+.5f)*size),cell.IsMountain?5:-1);
+            Add(x,z,cell.TopHeight,theme.GetTopSprite(mask),new Color(1,1,1,mask==0?1:2),new Vector3(grid.origin.x+(x+.5f)*size,(h[0]+h[1]+h[2]+h[3])*.25f,grid.origin.z+(z+.5f)*size),cell.IsMountain?5:-1);
             foreach(var wall in cell.Walls){
                 int side=wall.Side;
-                Add(x,z,wall.Height,theme.GetWallSprite(side,wall.Mask),new Color(1,1,1,0),new Vector3(map.grid.origin.x+(x+(side==0?.5f:0))*size,wall.SortHeight,map.grid.origin.z+(z+(side==0?0:.5f))*size),cell.IsMountain?6:-1);
+                Add(x,z,wall.Height,theme.GetWallSprite(side,wall.Mask),new Color(1,1,1,0),new Vector3(grid.origin.x+(x+(side==0?.5f:0))*size,wall.SortHeight,grid.origin.z+(z+(side==0?0:.5f))*size),cell.IsMountain?6:-1);
             }
             if(cell.IsMountain)
                 Add(x,z,cell.MountainHeight,theme.mountainCaps[cell.MountainMask],Color.white,null,3,capRise);

@@ -25,7 +25,7 @@ public class TerrainChunkRenderer : MonoBehaviour
     readonly List<Mesh> meshes = new List<Mesh>();
     public GameObject PresentationRoot => root;
 
-    public void Build(GeneratedTerrain map, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld=null, IReadOnlyDictionary<int,TerrainCellVisualData> visualCells=null)
+    public void Build(GridComponent grid, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld, IReadOnlyDictionary<int, TerrainCellVisualData> visualCells)
     {
         var profile=MeasureBuild?new BuildProfile():null;
         long start=profile==null?0:System.Diagnostics.Stopwatch.GetTimestamp(),stamp=start;
@@ -38,7 +38,7 @@ public class TerrainChunkRenderer : MonoBehaviour
                 throw new InvalidOperationException("Assign a terrain theme and orthographic isometric camera");
             if (Mathf.Abs(camera.transform.right.y) > .001f)
                 throw new InvalidOperationException("Canonical camera requires zero roll");
-            float rise = theme.ResolveTierRise(map.grid.cellsize, camera.transform.forward);
+            float rise = theme.ResolveTierRise(grid.cellsize, camera.transform.forward);
             if(!theme.IsRenderReady(out string reason))throw new InvalidOperationException(reason);
 
             var textures = new List<Texture2D>();
@@ -86,23 +86,15 @@ public class TerrainChunkRenderer : MonoBehaviour
                     var rect=rects[ids[texture]];geometryAtlas.SetPixels(Mathf.RoundToInt(rect.x*atlas.width),Mathf.RoundToInt(rect.y*atlas.height),texture.width,texture.height,depth.GetPixels());
                 }
                 geometryAtlas.Apply();groundMaterial.SetTexture("_GeometryMap",geometryAtlas);groundMaterial.SetTexture("_SourceAtlas",theme.sourceMaterialAtlas);
-                groundMaterial.SetVector("_Grid",new Vector4(map.grid.origin.x,map.grid.origin.z,map.grid.cellsize,theme.groundRegionCells));
+                groundMaterial.SetVector("_Grid",new Vector4(grid.origin.x,grid.origin.z,grid.cellsize,theme.groundRegionCells));
                 groundMaterial.SetVector("_ViewForward",camera.transform.forward);groundMaterial.SetFloat("_VisualSeed",theme.groundVisualSeed);
                 groundMaterial.SetFloat("_FadeOpacity",theme.mountainFadeOpacity);groundMaterial.renderQueue=(int)RenderQueue.AlphaTest;
             }
             if(profile!=null)Mark(ref profile.materialMs);
 
-            // Editor previews have a complete map. Runtime supplies already filtered payloads.
-            if(visualCells==null){
-                float capRise=rise*Mathf.Max(1,(theme.mountainCaps[0].height-96)/32f);
-                var compiled=TerrainCellVisualCompiler.Compile(map,rise,capRise,theme.mountainVisualTiers,theme.groundVisualSeed);
-                var all=new Dictionary<int,TerrainCellVisualData>(compiled.Length);
-                for(int i=0;i<compiled.Length;i++)all.Add(i,compiled[i]);
-                visualCells=all;
-            }
-            surface = new TerrainVisualSurface(map, rise, visualCells);
+            surface = new TerrainVisualSurface(grid, rise, visualCells);
             if(profile!=null)Mark(ref profile.surfaceMs);
-            root = CanonicalIsometricSprites.Build(map, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes,visualCells);
+            root = CanonicalIsometricSprites.Build(grid, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes,visualCells);
             root.AddComponent<TerrainMountainFade>().Initialize(groundMaterial,camera,surface,theme.mountainFadeRadiusCells,presentationWorld);
             if(profile!=null)Mark(ref profile.meshMs);
             foreach (var filter in root.GetComponentsInChildren<MeshFilter>())

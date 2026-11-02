@@ -63,28 +63,24 @@ public sealed class FogOfWarFrame : IDisposable
 {
     public NativeList<int> VisibleCells;
     public NativeList<FogEntityRenderData> Entities;
-    public NativeList<FogTerrainCellData> TerrainCells;
+    public NativeList<int> ExploredCells;
     public bool IsValid;
     public int PlayerId;
     public int Width, Height;
     public float CellSize;
     public float3 Origin;
-    // Immutable map geometry datum, shared with TerrainSurfaceData's full-map
-    // normalization. Unknown cells must not introduce a different height origin.
-    public int TerrainBaseLevel;
-
     public FogOfWarFrame(Allocator allocator = Allocator.Persistent)
     {
         VisibleCells = new NativeList<int>(allocator);
         Entities = new NativeList<FogEntityRenderData>(allocator);
-        TerrainCells = new NativeList<FogTerrainCellData>(allocator);
+        ExploredCells = new NativeList<int>(allocator);
     }
 
     public void Dispose()
     {
         if (VisibleCells.IsCreated) VisibleCells.Dispose();
         if (Entities.IsCreated) Entities.Dispose();
-        if (TerrainCells.IsCreated) TerrainCells.Dispose();
+        if (ExploredCells.IsCreated) ExploredCells.Dispose();
         IsValid = false;
     }
 }

@@ -6,13 +6,11 @@ using Unity.Transforms;
 // Call on the simulation thread after the fixed tick, then hand the frame to presentation.
 public static class FogOfWarSnapshot
 {
-    // The optional cache parameter is retained for existing local callers. Terrain
-    // is always full Explored now, regardless of receiver cache contents.
-    public static bool Collect(EntityManager em, int playerId, FogOfWarFrame frame, FogTerrainMemory knownTerrain = null)
+    public static bool Collect(EntityManager em, int playerId, FogOfWarFrame frame)
     {
         frame.Entities.Clear();
         frame.VisibleCells.Clear();
-        frame.TerrainCells.Clear();
+        frame.ExploredCells.Clear();
         frame.IsValid = false;
         frame.PlayerId = playerId;
         em.CompleteAllTrackedJobs();
@@ -39,24 +37,13 @@ public static class FogOfWarSnapshot
 
         frame.Width = grid.width; frame.Height = grid.height;
         frame.CellSize = grid.cellsize; frame.Origin = grid.origin;
-        frame.TerrainBaseLevel = 0;
-        // Explored includes history imported from teammates. It authorizes terrain, not current entities.
-        if (fog.Explored.IsCreated && em.HasBuffer<GridTerrain>(gridEntity))
+        // Static geometry is compiled separately. FOW publishes only authorized cell membership.
+        if (fog.Explored.IsCreated)
         {
-            var terrain = em.GetBuffer<GridTerrain>(gridEntity, true);
-            if (terrain.Length == (long)grid.width * grid.height)
-            {
-                int minimum = int.MaxValue;
-                for (int i = 0; i < terrain.Length; i++) minimum = math.min(minimum, terrain[i].heightLevel);
-                frame.TerrainBaseLevel = minimum;
-                using var emitted = new NativeHashSet<int>(128, Allocator.Temp);
-                foreach (var pair in fog.Explored)
-                {
-                    int cell = pair.Key;
-                    if (pair.Value != playerId || cell < 0 || cell >= terrain.Length || !emitted.Add(cell)) continue;
-                    frame.TerrainCells.Add(new FogTerrainCellData { CellIndex = cell, Terrain = terrain[cell] });
-                }
-            }
+            using var emitted = new NativeHashSet<int>(128, Allocator.Temp);
+            foreach (var pair in fog.Explored)
+                if (pair.Value == playerId && pair.Key >= 0 && pair.Key < (long)grid.width * grid.height && emitted.Add(pair.Key))
+                    frame.ExploredCells.Add(pair.Key);
         }
         using var visibleCells = new NativeHashSet<int>(128, Allocator.Temp);
         using var candidates = new NativeHashSet<Entity>(128, Allocator.Temp);
@@ -235,8 +222,8 @@ public static class FogOfWarSnapshot
             if (queue.Length > 0 && queue[0].PlayerID == data.OwnerId)
             {
                 var current = queue[0];
-                data.ActiveJob = new FogActiveJobSnapshot { Id = current.Offer.JobID,
-                    Kind = current.Offer.Kind, RemainingWork = current.RemainingWork };
+                data.ActiveJob = new FogActiveJobSnapshot { Id = current.JobID,
+                    Kind = current.Kind, RemainingWork = current.RemainingWork };
             }
         }
         return true;

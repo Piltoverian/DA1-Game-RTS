@@ -1,21 +1,25 @@
 using Unity.Entities;
 using Unity.Mathematics;
-
+using Unity.NetCode;
 public enum BuilderState
 {
     Idle,
     GoingToSite,
     Building
 }
-
+[GhostComponent(OwnerSendType = SendToOwnerType.All)]
+[GhostEnabledBit]
 public struct BuilderComponent : IComponentData,IEnableableComponent
 {
+    [GhostField]
     public BuilderState State;
+    [GhostField]
     public Entity TargetConstructionSite;
     public float BuildWorkLoadPerSecond;
     public float BuildRange;
     public float PreviousStoppingDistance;
     public bool HasApproachStoppingDistance;
+    [GhostField]
     public bool RepairOnly;
     public Entity PlannedPrefab;
     public float3 PlannedPosition;

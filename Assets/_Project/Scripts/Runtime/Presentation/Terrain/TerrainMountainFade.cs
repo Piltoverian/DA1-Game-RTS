@@ -25,7 +25,7 @@ public sealed class TerrainMountainFade : MonoBehaviour
     int count;
     public void Initialize(Material value,Camera camera,TerrainVisualSurface data,float cells,World world=null)
     {
-        material=value;cameraView=camera;surface=data;contextWorld=world;radius=Mathf.Max(.1f,cells)*data.map.grid.cellsize;
+        material=value;cameraView=camera;surface=data;contextWorld=world;radius=Mathf.Max(.1f,cells)*data.Grid.cellsize;
         material.SetVectorArray("_FadeAnchors",anchors);
     }
     void Update()
@@ -49,8 +49,8 @@ public sealed class TerrainMountainFade : MonoBehaviour
                 System.Array.Clear(used,0,used.Length);
                 foreach(var transform in positions)
                 {
-                    Vector3 p=transform.Position;int x=Mathf.Clamp((int)((p.x-surface.map.grid.origin.x)/surface.map.grid.cellsize*4/surface.map.grid.width),0,3);
-                    int z=Mathf.Clamp((int)((p.z-surface.map.grid.origin.z)/surface.map.grid.cellsize*2/surface.map.grid.height),0,1),index=z*4+x;
+                    Vector3 p=transform.Position;int x=Mathf.Clamp((int)((p.x-surface.Grid.origin.x)/surface.Grid.cellsize*4/surface.Grid.width),0,3);
+                    int z=Mathf.Clamp((int)((p.z-surface.Grid.origin.z)/surface.Grid.cellsize*2/surface.Grid.height),0,1),index=z*4+x;
                     if(!used[index]){minimum[index]=maximum[index]=p;used[index]=true;}else{minimum[index]=Vector3.Min(minimum[index],p);maximum[index]=Vector3.Max(maximum[index],p);}
                 }
                 for(int i=0;i<8;i++)if(used[i]){var center=(minimum[i]+maximum[i])*.5f;targets[++count]=new Vector4(center.x,center.y,center.z,radius+Vector3.Distance(minimum[i],maximum[i])*.5f);}

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
 
 public struct PlayerContextCachePendingTag : IComponentData
@@ -14,12 +15,12 @@ public enum FogMode : byte
     Team
 }
 
+
 public struct PlayerContextCache : IComponentData
 {
     public int PlayerId;
     public int TeamID;
     public FogMode FogMode;
-    public int civilizationId;
     public FixedString64Bytes CivID;
     public Age age;
     public int currentPopulation;
@@ -30,7 +31,6 @@ public struct PlayerContextCache : IComponentData
         PlayerId = context.PlayerId;
         TeamID = context.TeamID;
         FogMode = context.FogMode;
-        civilizationId = context.civilizationId;
         CivID = context.CivID;
         this.age = context.age;
         currentPopulation = context.currentPopulation;
@@ -42,7 +42,6 @@ public struct PlayerContextCache : IComponentData
         PlayerId = context.PlayerId;
         TeamID = context.TeamID;
         FogMode = context.FogMode;
-        civilizationId = context.civilizationId;
         CivID = context.CivID;
         age = context.age;
         currentPopulation = context.currentPopulation;
@@ -57,10 +56,13 @@ public enum Age
     Future
 }
 
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 [System.Serializable]
 public struct ResourcePair : IBufferElementData
 {
+    [GhostField]
     public ResourceType Type;
+    [GhostField]
     public float Amount;
 
     public ResourcePair(ResourceType type, float amount)
@@ -82,16 +84,23 @@ public struct ResourcePairCache : IBufferElementData
     }
 }
 
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 [System.Serializable]
 public struct PlayerContext : IComponentData
 {
+    [GhostField]
     public int PlayerId;
+    [GhostField]
     public int TeamID;
+    [GhostField]
     public FogMode FogMode;
-    public int civilizationId;
+    [GhostField]
     public FixedString64Bytes CivID;
+    [GhostField]
     public Age age;
+    [GhostField]
     public int currentPopulation;
+    [GhostField]    
     public int maxPopulation;
 
     public PlayerContext(int playerId, int civilizationId, Age age, FixedString64Bytes civId = default, int teamId = -1)
@@ -99,7 +108,6 @@ public struct PlayerContext : IComponentData
         PlayerId = playerId;
         TeamID = teamId;
         FogMode = global::FogMode.Player;
-        this.civilizationId = civilizationId;
         CivID = civId;
         this.age = age;
         currentPopulation = 0;

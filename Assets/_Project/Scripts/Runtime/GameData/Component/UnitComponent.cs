@@ -1,6 +1,6 @@
 using Unity.Collections;
 using Unity.Entities;
-
+using Unity.NetCode;
 public struct UnitComponent : IComponentData
 {
     public FixedString64Bytes DefinitionID;

@@ -169,9 +169,7 @@ public partial struct MovementAgentTargetSystem : ISystem
             // --- 2. ARRIVAL CHECK ---
             if (distToFinal < steering.stoppingDistance)
             {
-                move.hastarget = false;
-                move.stopReason = MovementStopReason.Arrived;
-                steering.isSettled = true;
+                MovementAgentAPI.StopAgent(ref move, ref steering, MovementStopReason.Arrived);
                 return;
             }
 

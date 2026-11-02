@@ -76,11 +76,7 @@ public partial struct FlowFieldAssignmentSystem : ISystem
                 move.ValueRW.targetResolutionGeneration = grid.generation;
                 move.ValueRW.targetResolutionKind = TargetResolutionKind.None;
                 move.ValueRW.realTarget = rawWorldTarget;
-                move.ValueRW.velocity = float3.zero;
-                move.ValueRW.preferredVelocity = float3.zero;
-                steering.ValueRW.isSettled = true;
-                steering.ValueRW.stuckTime = 0;
-                steering.ValueRW.minDistanceToTarget = float.MaxValue;
+                MovementAgentAPI.StopAgent(ref move.ValueRW, ref steering.ValueRW, MovementStopReason.InvalidTarget);
                 steering.ValueRW.lastPosition = SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position;
                 continue;
             }

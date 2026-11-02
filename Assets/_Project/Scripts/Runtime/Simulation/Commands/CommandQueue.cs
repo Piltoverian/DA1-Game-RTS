@@ -82,6 +82,8 @@ public static class CommandDataHelper
 [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
 partial struct CommandQueue : ISystem
 {
+    private enum TargetAction { Gather, Attack, Build }
+
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -116,9 +118,13 @@ partial struct CommandQueue : ISystem
             HandlePlanBuild(ref state, command);
             return;
         }
-        if (!CommandAuthority.CanControl(state.EntityManager, command.PlayerId, command.sourceEntity)
-            || !IsValidSourceEntity(state.EntityManager, command))
+        if (!CommandAuthority.CanControl(state.EntityManager, command.PlayerId, command.sourceEntity))
             return;
+
+        TargetAction targetAction = default;
+        if (command.Type == CommandType.TargetTo
+            ? !TryResolveTargetAction(state.EntityManager, command, out targetAction)
+            : !IsValidSourceEntity(state.EntityManager, command)) return;
 
         if (command.Type == CommandType.Build)
         {
@@ -140,7 +146,12 @@ partial struct CommandQueue : ISystem
                 HandleMove(ref state, command);
                 break;
             case CommandType.TargetTo:
-                HandleTargetTo(ref state, command);
+                switch (targetAction)
+                {
+                    case TargetAction.Gather: HandleGather(ref state, command); break;
+                    case TargetAction.Attack: HandleAttack(ref state, command); break;
+                    case TargetAction.Build: HandleBuild(ref state, command); break;
+                }
                 break;
         }
     }
@@ -216,41 +227,53 @@ partial struct CommandQueue : ISystem
                        entityManager.HasComponent<WorkerTag>(command.sourceEntity) ||
                        entityManager.HasComponent<ProductionData>(command.sourceEntity);
 
-            case CommandType.TargetTo:
-                return CanHandleTargetTo(entityManager, command);
-
             default:
                 return false;
         }
     }
 
-    private static bool CanHandleTargetTo(EntityManager entityManager, CommandQueueElement command)
+    private static bool TryResolveTargetAction(EntityManager entityManager, CommandQueueElement command, out TargetAction action)
     {
-        if (command.KnownTarget.HasValue &&
-            ((command.KnownTarget.Kind == FogRenderKind.Resource && entityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
-            || (command.KnownTarget.Kind == FogRenderKind.Building && entityManager.HasComponent<BuilderComponent>(command.sourceEntity))))
+        action = default;
+        if (command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Resource
+            && entityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
+        {
+            action = TargetAction.Gather;
             return true;
+        }
+        if (command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Building
+            && entityManager.HasComponent<BuilderComponent>(command.sourceEntity))
+        {
+            action = TargetAction.Build;
+            return true;
+        }
         if (command.targetEntity == Entity.Null || !entityManager.Exists(command.targetEntity))
         {
             return false;
         }
 
         bool canGather =
-            entityManager.HasComponent<MoveOverride>(command.sourceEntity) &&
             entityManager.HasComponent<WorkerGatherData>(command.sourceEntity) &&
             entityManager.HasComponent<ResourceNodeTag>(command.targetEntity);
 
         bool canAttack =
-            entityManager.HasComponent<MoveOverride>(command.sourceEntity) &&
             entityManager.HasComponent<ShootAttack>(command.sourceEntity) &&
-            entityManager.HasComponent<Target>(command.sourceEntity) &&
             entityManager.HasComponent<EntityHealth>(command.targetEntity);
 
         bool canBuild =
             entityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
             BuildingHelper.CanBuildOrRepair(entityManager, command.targetEntity);
 
-        return canGather || canAttack || canBuild;
+        bool hasMovement = entityManager.HasComponent<MoveOverride>(command.sourceEntity);
+        if (!canBuild && !(hasMovement && (canGather
+            || (canAttack && entityManager.HasComponent<Target>(command.sourceEntity))))) return false;
+
+        if (canBuild && EntityCapabilities.CanBuild(entityManager, command.sourceEntity, command.targetEntity))
+            action = TargetAction.Build;
+        else if (canGather) action = TargetAction.Gather;
+        else if (canAttack) action = TargetAction.Attack;
+        else action = TargetAction.Build;
+        return true;
     }
 
     private static void HandleMove(ref SystemState state, CommandQueueElement command)
@@ -286,34 +309,6 @@ partial struct CommandQueue : ISystem
             command.Progression,
             command.PlayerId
         );
-    }
-
-    private static void HandleTargetTo(ref SystemState state, CommandQueueElement command)
-    {
-        if (command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Resource
-            && state.EntityManager.HasComponent<WorkerGatherData>(command.sourceEntity))
-        { HandleGather(ref state, command); return; }
-        if (command.KnownTarget.HasValue && command.KnownTarget.Kind == FogRenderKind.Building
-            && state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity))
-        { HandleBuild(ref state, command); return; }
-        if (state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity)
-            && EntityCapabilities.CanBuild(state.EntityManager, command.sourceEntity, command.targetEntity)
-            && BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
-        { HandleBuild(ref state, command); return; }
-        if (state.EntityManager.HasComponent<WorkerGatherData>(command.sourceEntity) &&
-            state.EntityManager.HasComponent<ResourceNodeTag>(command.targetEntity))
-        {
-            HandleGather(ref state, command);
-        }
-        else if (state.EntityManager.HasComponent<ShootAttack>(command.sourceEntity) && state.EntityManager.HasComponent<EntityHealth>(command.targetEntity))
-        {
-            HandleAttack(ref state, command);
-        }
-        else if (state.EntityManager.HasComponent<BuilderComponent>(command.sourceEntity) &&
-                 BuildingHelper.CanBuildOrRepair(state.EntityManager, command.targetEntity))
-        {
-            HandleBuild(ref state, command);
-        }
     }
 
     private static void HandleBuild(ref SystemState state, CommandQueueElement command)
@@ -440,7 +435,7 @@ partial struct CommandQueue : ISystem
         gatherData.State = WorkerGatherState.GoingToNode;
         state.EntityManager.SetComponentData(command.sourceEntity, gatherData);
         state.EntityManager.SetComponentEnabled<WorkerGatherData>(command.sourceEntity, true);
-        if (remembered) FogOrderRules.BeginTravel(state.EntityManager, command.sourceEntity, command.PlayerId, command.KnownTarget);
+        if (remembered) KnownTargetOrders.BeginTravel(state.EntityManager, command.sourceEntity, command.PlayerId, command.KnownTarget);
 
         if (state.EntityManager.HasComponent<TargetCache>(command.sourceEntity))
         {

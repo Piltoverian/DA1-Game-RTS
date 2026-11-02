@@ -77,7 +77,7 @@ public class TerrainMapRenderer : MonoBehaviour
     {
         if(registeredWorld!=null&&registeredWorld.IsCreated&&registeredWorld.EntityManager.Exists(bindingEntity)){
             var binding=registeredWorld.EntityManager.GetComponentObject<MapPresentationBinding>(bindingEntity);
-            binding.Release();registeredWorld.EntityManager.DestroyEntity(bindingEntity);
+            binding.Dispose();registeredWorld.EntityManager.DestroyEntity(bindingEntity);
         }
         registeredWorld=null;bindingEntity=Entity.Null;
     }

@@ -93,7 +93,7 @@ public class FlowFieldDebugDrawer : MonoBehaviour
             for(int z=min.y;z<=max.y;z++)for(int x=min.x;x<=max.x;x++)if(Open(x,z))openResourceCells++;
         }
         var surface=TerrainVisualSurface.Active;
-        if(surface!=null&&surface.map.grid.width==grid.width&&surface.map.grid.height==grid.height&&surface.map.cells.Length==costs.Length){
+        if(surface!=null&&surface.Grid.width==grid.width&&surface.Grid.height==grid.height&&surface.Grid.width*surface.Grid.height==costs.Length){
             for(int i=0;i<costs.Length;i++){
                 int x=i%grid.width,z=i/grid.width;if(!Open(x,z))continue;
                 for(int d=0;d<2;d++){
@@ -170,7 +170,7 @@ public class FlowFieldDebugDrawer : MonoBehaviour
         var terrain=hasTerrain?em.GetBuffer<GridTerrain>(entity,true):default;
         hasTerrain=hasTerrain&&terrain.Length==grid.width*grid.height;
         var surface=alignToVisibleTerrain?TerrainVisualSurface.Active:null;
-        if(surface!=null&&(surface.map.grid.width!=grid.width||surface.map.grid.height!=grid.height||surface.map.grid.cellsize!=grid.cellsize||!surface.map.grid.origin.Equals(grid.origin)))surface=null;
+        if(surface!=null&&(surface.Grid.width!=grid.width||surface.Grid.height!=grid.height||surface.Grid.cellsize!=grid.cellsize||!surface.Grid.origin.Equals(grid.origin)))surface=null;
         Camera camera=Camera.current?Camera.current:Camera.main;
         var focus=GridHelper.GridToWorld(new int2(grid.width/2,grid.height/2),grid);
         if(camera){var ray=camera.ViewportPointToRay(new Vector3(.5f,.5f));if(surface!=null&&surface.Raycast(ray,out var logical,out _))focus=logical;else if(new Plane(Vector3.up,Vector3.zero).Raycast(ray,out float distance))focus=ray.GetPoint(distance);}

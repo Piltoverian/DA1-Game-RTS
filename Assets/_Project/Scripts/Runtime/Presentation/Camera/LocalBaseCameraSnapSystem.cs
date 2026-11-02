@@ -19,7 +19,7 @@ public partial class LocalBaseCameraSnapSystem : SystemBase
             var binding=EntityManager.GetComponentObject<MapPresentationBinding>(entity);
             var camera=binding.Owner?binding.Owner.ResolveCamera():null;if(!camera||!binding.Snapper||!binding.Snapper.isActiveAndEnabled)continue;
             if(!binding.Snapper.snapOnReady){
-                if(binding.Owner.frameRampOnLoad)IsometricTerrainCamera.FrameNearestRamp(binding.Map,camera);
+                if(binding.Owner.frameRampOnLoad)IsometricTerrainCamera.FrameNearestRamp(binding.View,camera);
                 EntityManager.SetComponentEnabled<CameraSnapPending>(entity,false);continue;
             }
             using var bootstrap=EntityManager.CreateEntityQuery(typeof(PlayerBootstrapState));

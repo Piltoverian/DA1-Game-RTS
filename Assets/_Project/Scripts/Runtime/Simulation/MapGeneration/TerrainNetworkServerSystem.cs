@@ -5,71 +5,16 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 
-public struct TerrainJoinRequest : IRpcCommand { }
-public struct TerrainJoinSent : IComponentData { }
 public struct TerrainReadyRequest : IRpcCommand { public uint Session, Epoch; }
 public struct TerrainClientReady : IComponentData { public uint Session, Epoch; }
-
-// Public connection -> player mapping; unit networking can reuse it later.
-public struct TerrainPlayerConnection : IComponentData
-{
-    public int PlayerId;
-    public uint Session;
-}
-
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-[UpdateInGroup(typeof(SimulationSystemGroup))]
-public partial struct TerrainJoinClientSystem : ISystem
-{
-    public void OnCreate(ref SystemState state) { state.RequireForUpdate<TerrainSyncSettings>(); }
-    public void OnUpdate(ref SystemState state)
-    {
-        var ecb=new EntityCommandBuffer(Allocator.Temp);
-        foreach(var (_,connection) in SystemAPI.Query<RefRO<NetworkId>>().WithNone<TerrainJoinSent>().WithEntityAccess()){
-            ecb.AddComponent<TerrainJoinSent>(connection);
-            if(!state.EntityManager.HasComponent<NetworkStreamInGame>(connection))ecb.AddComponent<NetworkStreamInGame>(connection);
-            var request=ecb.CreateEntity();
-            ecb.AddComponent<TerrainJoinRequest>(request);
-            ecb.AddComponent(request,new SendRpcCommandRequest{TargetConnection=connection});
-        }
-        ecb.Playback(state.EntityManager);ecb.Dispose();
-    }
-}
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [UpdateAfter(typeof(TerrainVisualSourceSystem))]
-[UpdateBefore(typeof(TerrainNetworkServerSystem))]
-public partial class TerrainJoinServerSystem : SystemBase
+public partial class TerrainReadyServerSystem : SystemBase
 {
-    uint nextSession;
-    protected override void OnCreate(){RequireForUpdate<TerrainSyncSettings>();RequireForUpdate<PlayerBootstrapSlot>();}
     protected override void OnUpdate()
     {
-        using var slotsQuery=EntityManager.CreateEntityQuery(typeof(PlayerBootstrapSlot));
-        if(slotsQuery.CalculateEntityCount()!=1)return;
-        using var slots=EntityManager.GetBuffer<PlayerBootstrapSlot>(slotsQuery.GetSingletonEntity(),true).ToNativeArray(Allocator.Temp);
-        using var assigned=EntityManager.CreateEntityQuery(typeof(NetworkId),typeof(TerrainPlayerConnection));
-        using var players=assigned.ToComponentDataArray<TerrainPlayerConnection>(Allocator.Temp);
-        var used=new HashSet<int>();foreach(var player in players)used.Add(player.PlayerId);
-        using var requests=EntityManager.CreateEntityQuery(typeof(TerrainJoinRequest),typeof(ReceiveRpcCommandRequest));
-        using var entities=requests.ToEntityArray(Allocator.Temp);
-        foreach(var request in entities){
-            var connection=EntityManager.GetComponentData<ReceiveRpcCommandRequest>(request).SourceConnection;
-            if(EntityManager.Exists(connection)&&EntityManager.HasComponent<NetworkId>(connection)
-                &&!EntityManager.HasComponent<NetworkStreamRequestDisconnect>(connection)
-                &&!EntityManager.HasComponent<TerrainPlayerConnection>(connection)){
-                int selected=-1;
-                foreach(var slot in slots)if(!used.Contains(slot.PlayerId)&&(selected<0||slot.PlayerId<selected))selected=slot.PlayerId;
-                if(selected<0)EntityManager.AddComponent<NetworkStreamRequestDisconnect>(connection);
-                else{
-                    used.Add(selected);
-                    EntityManager.AddComponentData(connection,new TerrainPlayerConnection{PlayerId=selected,Session=++nextSession});
-                    if(!EntityManager.HasComponent<NetworkStreamInGame>(connection))EntityManager.AddComponent<NetworkStreamInGame>(connection);
-                }
-            }
-            EntityManager.DestroyEntity(request);
-        }
         using var sources=EntityManager.CreateEntityQuery(typeof(TerrainVisualSource));
         if(sources.CalculateEntityCount()!=1)return;
         var source=EntityManager.GetComponentObject<TerrainVisualSource>(sources.GetSingletonEntity());
@@ -79,8 +24,8 @@ public partial class TerrainJoinServerSystem : SystemBase
             var ready=EntityManager.GetComponentData<TerrainReadyRequest>(e);
             var connection=EntityManager.GetComponentData<ReceiveRpcCommandRequest>(e).SourceConnection;
             if(EntityManager.Exists(connection)&&EntityManager.HasComponent<NetworkId>(connection)
-                &&!EntityManager.HasComponent<NetworkStreamRequestDisconnect>(connection)&&EntityManager.HasComponent<TerrainPlayerConnection>(connection)
-                &&ready.Session==EntityManager.GetComponentData<TerrainPlayerConnection>(connection).Session&&ready.Epoch==source.Epoch){
+                &&!EntityManager.HasComponent<NetworkStreamRequestDisconnect>(connection)&&EntityManager.HasComponent<PlayerConnection>(connection)
+                &&ready.Session==EntityManager.GetComponentData<PlayerConnection>(connection).Session&&ready.Epoch==source.Epoch){
                 var value=new TerrainClientReady{Session=ready.Session,Epoch=ready.Epoch};
                 if(EntityManager.HasComponent<TerrainClientReady>(connection))EntityManager.SetComponentData(connection,value);
                 else EntityManager.AddComponentData(connection,value);
@@ -126,11 +71,11 @@ public partial class TerrainNetworkServerSystem : SystemBase
             DestroyChunks(pair.Value);removed.Add(pair.Key);
         }
         foreach(var e in removed)streams.Remove(e);
-        using var query=EntityManager.CreateEntityQuery(typeof(NetworkId),typeof(NetworkStreamInGame),typeof(TerrainPlayerConnection));
+        using var query=EntityManager.CreateEntityQuery(typeof(NetworkId),typeof(NetworkStreamInGame),typeof(PlayerConnection));
         using var connections=query.ToEntityArray(Allocator.Temp);
         foreach(var connection in connections){
             if(EntityManager.HasComponent<NetworkStreamRequestDisconnect>(connection))continue;
-            var owner=EntityManager.GetComponentData<TerrainPlayerConnection>(connection);
+            var owner=EntityManager.GetComponentData<PlayerConnection>(connection);
             int networkId=EntityManager.GetComponentData<NetworkId>(connection).Value;
             if(!streams.TryGetValue(connection,out var stream))streams.Add(connection,stream=new PlayerStream());
             if(stream.Epoch!=source.Epoch){

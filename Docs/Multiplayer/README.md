@@ -1,69 +1,111 @@
-# Multiplayer — terrain trước, unit tiếp theo
+# Multiplayer: terrain hiện tại và ranh giới gameplay
 
-Multiplayer đã tiếp tục theo yêu cầu ngày 20/10/2026. AI triển khai luồng terrain local/server/client; người dùng phụ trách unit. [Terrain và cách test Main](ServerMapLoading.md) là nguồn hiện trạng cho phần terrain. [Handoff FOW](../Maintenance/FogOfWarHandoff.md) giữ bằng chứng lịch sử; [render local](../Architecture/FogOfWarRendering.md) mô tả FOW/entity local.
+## Phạm vi đã có
 
-## Hiện trạng và mục tiêu
+Netcode terrain đã nối source/prefab vào Main; unit networking chưa hoàn tất và người dùng phụ trách phần đó. Server authoritative; client nhận dữ liệu rồi render. Presentation hiện vẫn có ECS adapters; chưa chuyển toàn bộ input/UI/camera/render sang MonoBehaviour như mục tiêu.
 
-Bài học và khảo sát source ngày 19/10: [Bảng source và trách nhiệm multiplayer](SourceResponsibilityMap.md). Trang này lần theo Move và phân chia các nhóm gameplay hiện có; chưa triển khai mạng hoặc thay trạng thái nghiệm thu bên dưới.
+Chế độ local và client đi chung TerrainView/renderer, xem [Terrain](../Architecture/Terrain.md). Không chạy lại generator ở client hoặc gửi seed/full map bí mật để tiện dựng hình.
 
-Project dùng Unity 6000.3.13f1; đã cài Netcode for Entities 1.14.3, Transport 2.7.4, Entities được resolve lên 1.5.0. Terrain Ghost/RPC đã nối source và prefab vào Main, chưa nghiệm thu server+2client qua mạng thật. Server authoritative; mục tiêu cũ simulation 20Hz, 2.000 unit, map 512×512, 2–10 player vẫn là mục tiêu, chưa có đo tải chứng minh. [Lý do kiến trúc](ArchitectureChoice_2026-10-12.md).
+## Connection và player
 
-Bản đầu chuyển đổi phải bao phủ chức năng hiện có: movement, combat/đạn, build/repair/cancel, gather/resource, production/train/research, health/owner/team, UI, FOW và terrain. Có thể kiểm chứng từng đối tượng bên trong, nhưng không dừng bàn giao ở Worker/TownHall. Không tự sửa luật gameplay để thuận tiện cho network.
+[PlayerConnectionSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/Players/PlayerConnectionSystem.cs) cấp PlayerConnection từ roster PlayerBootstrapSlot, lấy NetworkId/SourceConnection do Netcode quản lý. PlayerId không do client tự khai. Đây là cấp slot cho phiên thử, chưa phải account authentication hoặc phục hồi identity khi reconnect.
 
-## Server ECS và client Mono
+Tên RPC TerrainJoinRequest/TerrainJoinSent còn giữ để tương thích wire; việc cấp player/session đã tách khỏi module terrain. Client vẫn chờ TerrainSyncSettings của Main/SubScene trước NetworkStreamInGame và join: prefab Ghost phải sẵn sàng trước nhận snapshot. Đây là gate scene-ready hiện có, chưa có framework readiness chung cho mọi stream.
 
-Người dùng muốn client code bằng MonoBehaviour để dễ quản lý. Camera, input, render, animation, UI và ký ức FOW thuộc Mono; một adapter đưa dữ liệu giữa ECS/Netcode và Mono. Client Netcode World vẫn cần để nhận Ghost/RPC, không có nghĩa loại bỏ ECS nội bộ Netcode. Hiện presentation local vẫn có ECS systems; yêu cầu chuyển Mono chưa được code.
+NetworkStreamInGame chỉ bật snapshot, không tự đổi MatchPhase.Running. MatchLifecycle hiện chuyển Preparing → WaitingForPlayers sau bootstrap; code mở trận phải dùng ServerMatch.SetPhase. Ready terrain chưa bằng Ready unit/toàn trận.
+
+## Luồng terrain
 
 ```text
-Client Mono input → RPC adapter → server validate → backend command/request hiện có
-Server ECS simulation → Ghost serializers + relevancy → client Ghost data
-    → adapter → Mono render/UI/camera + ký ức building/resource
-Terrain Explored đầy đủ → đường truyền phù hợp → client terrain/mask
+TerrainVisualSource + FOW Explored của PlayerConnection
+    → TerrainNetworkServerSystem: nhóm chunk 8×8, GhostOwner của connection
+    → header + cell buffer + wall buffer SendToOwner, cập nhật 10 Hz
+    → TerrainNetworkReceiveSystem: owner/session/epoch/size/range/đủ chunk
+    → TerrainView → renderer chung
+    → TerrainReadyRequest sau dựng hình thành công
+    → TerrainReadyServerSystem xác minh và ghi TerrainClientReady
 ```
 
-Ghost authoring có phiên bản prefab Server / InterpolatedClient / PredictedClient; PrefabType quyết định component có mặt ở đâu, GhostField quyết định field đồng bộ. System gameplay cũng phải giới hạn World phù hợp, không chỉ strip component. Phần hình Mono được bind từ prefab/asset phía client, không clone gameplay server để dựng hình.
+Nguồn: [TerrainNetworkServerSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainNetworkServerSystem.cs), [TerrainNetworkReceiveSystem.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainNetworkReceiveSystem.cs), [TerrainChunkGhostAuthoring.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainChunkGhostAuthoring.cs), [TerrainCellVisualData.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainCellVisualData.cs).
 
-## Định nghĩa, data runtime và template
+[TerrainChunkGhost prefab](../../Assets/_Project/Prefabs/TerrainChunkGhost.prefab) đã được Main/EntitySubscene tham chiếu. Server chờ PlayerBootstrapState.Ready để có player/vision/spawn camera, không chờ Running để gửi terrain.
 
-- Định nghĩa bất biến đã có trong registry hai phía: dùng GameBlobReference theo CatalogKey + ID string hiện có, resolve blob local và cast đúng loại. Không thêm ID int thay BasedSO.ID string ở lượt này.
-- Trạng thái runtime: chỉ phần đang hoạt động/cần hiển thị. Ability hiện tại, job hiện tại; không gửi danh sách khả năng hay toàn queue chỉ để render. Resource chỉ Amount vì type được định lúc gen; phía client phải được khởi tạo đúng type nếu cần UI.
-- Schema local nullable FogEntityRenderData chưa phải Ghost schema. Kiểm kê field hiện có trước khi quyết định dùng GhostField, component variation hay template, tránh tạo thêm struct trùng ý nghĩa.
-- Template là quy tắc sinh serializer lúc compile. Đường nhận chung có thể dispatch theo khóa loại như GameReg, nhưng mỗi loại vẫn có layout và encoder/decoder hai phía thống nhất. Không tự cast byte thành blob mà không có schema.
-- BlobAssetReference, unsafe pointer và Entity.Index/Version là tham chiếu local. Muốn gửi nội dung blob phải serialize nội dung và tái dựng; definition có sẵn nên gửi reference thay vì toàn blob lặp lại.
-- Chọn Interpolated/Predicted ở Ghost authoring. Field smoothing/quantization theo serializer/variant/template; không thêm một hệ nội suy Mono trùng Netcode. Mono trình bày giá trị đã được adapter lấy đúng timeline. Chưa chốt mode cuối cho từng ghost.
+## Invariant nhận/gửi
 
-Tài liệu Unity đã đọc trong ca: [Ghost prefab/component variants](https://docs.unity.cn/Packages/com.unity.netcode@1.5/manual/ghost-snapshots.html), [serializer templates 1.14](https://docs.unity3d.com/Packages/com.unity.netcode@1.14/manual/ghost-types-templates.html), [blob assets](https://docs.unity.cn/Packages/com.unity.entities@1.0/manual/blob-assets-concept.html). Các phiên bản tài liệu này là tham khảo đã đọc, **không phải package version đã chọn tương thích**. Khi chọn package phải kiểm tra API/codegen/template đúng phiên bản, kể cả enum, nullable và kiểu payload được hỗ trợ; không copy nguyên pseudocode trong chat thành API đã xác minh.
+- GhostOwner/SendToOwner xác định người nhận; **server vẫn phải lọc Explored**. Không gửi occupancy, GridNodeCost hoặc resource/unit state qua luồng terrain. Client khác có thể thấy Ghost entity rỗng nhưng không có owner payload.
+- Unknown không có visual record, mask bằng 0. Explored khuất giữ geometry tối; entity mới trong ô Explored không tự được biết.
+- Cell có CornerHeights/TopHeight/mountain/walls đã compile; không cần client biết hàng xóm để dựng mặt. WallStart/WallCount phải nằm trong buffer cùng Ghost, cell phải thuộc chunk và không trùng.
+- Publish view khi đủ bộ chunk hợp lệ; khi cùng session/epoch đang nhận thêm chunk thì giữ view hoàn chỉnh trước. Session/epoch mới hoặc disconnect phải bỏ view cũ.
+- Session thuộc connection assignment; epoch thuộc source visual compile; MapBuildState.Revision/hash thuộc map; GeometryVersion thuộc mesh input của player. Không gộp counter hoặc thêm WorldId/MapId vào frame FOW.
+- Ready ACK phải khớp SourceConnection, session và epoch hiện tại. Payload shape và owner filtering không thay bằng client-side hiding.
+- Chunk có thể mang visibility từ các tick khác nhau; chưa có cam kết snapshot vision nguyên tử toàn map. Theme settings phải khớp; chưa hash toàn texture/catalog.
 
-## Command qua RPC
+## Unit và command networking chưa hoàn tất
 
-Người dùng chốt RPC bọc đúng payload command/request hiện có, không thiết kế thêm schema gameplay song song. Nhận RPC → lấy PlayerID từ connection → kiểm tra quyền/reference → chuyển vào backend tương ứng.
+Giữ payload backend hiện có: CommandType, GameBlobReference, position/target và request riêng như CancelBuildingRequest. RPC adapter lấy issuer từ connection, resolve Ghost identity sang Entity của server rồi validate trước dispatch. Không serialize Entity handle local hoặc raw blob pointer. SourcesEntity của PlanBuild là entity payload local; mạng cần truyền/khôi phục danh sách worker, không chỉ gửi handle đó.
 
-- Giữ CommandType/GameBlobReference/vị trí/target và ý nghĩa hiện tại; ánh xạ entity qua identity của Ghost thay vì truyền handle local nguyên trạng.
-- Entity SourcesEntity đang giữ buffer local không thay thế nội dung danh sách trên mạng; adapter truyền/khôi phục danh sách khi payload cần.
-- CancelBuildingRequest vẫn đi riêng; FIFO chỉ của build. Không ép mọi request vào CommandQueue.
-- Lệnh một lần không prediction phù hợp IRpcCommand; input theo tick/prediction có thể cần ICommandData, chưa tự chuyển toàn bộ lệnh RTS sang command stream.
-- RPC delivery reliable không tự xác định tick áp dụng, tính hợp lệ gameplay hoặc phục hồi trạng thái khi reconnect. Chỉ thêm sequence/ack ứng dụng nếu có yêu cầu xác định và ca kiểm chứng; không tự dựng lại phần Netcode đã xử lý.
+Netcode xử lý replication/interpolation/reliability của transport. Chỉ thêm sequence/ACK ứng dụng nếu có yêu cầu gameplay được xác định và ca kiểm chứng; không dựng cơ chế trùng vì một kế hoạch cũ từng đề cập.
 
-[Unity RPC](https://docs.unity3d.com/Packages/com.unity.netcode@1.14/manual/rpcs.html) và [command stream](https://docs.unity.cn/Packages/com.unity.netcode@1.0/manual/command-stream.html).
+Unit/projectile khuất không có hình nhớ; building/resource cần last-seen memory độc lập Ghost. Client despawn do relevancy không đồng nghĩa chết và không tự chạy death animation. Identity ổn định và chính sách reconnect/late join cho entity memory còn phải triển khai. [FOW](../Architecture/FogOfWarRendering.md) giữ luật thông tin.
 
-## FOW và lifecycle
+## Dự kiến: matchmaking, lobby và vòng đời match
 
-Server quyết định visibility theo connection/player và luật team. Relevancy có thể ngừng replicate/despawn Ghost ở một client dù entity server còn sống. Client giữ ký ức building/resource độc lập Ghost; unit/đạn khuất thì bỏ hình. Cần thiết kế identity ổn định trong vòng đời đối tượng và đường xóa ký ức khi nhìn lại footprint trống. Không coi despawn là tín hiệu chết để chạy death animation. [Unity relevancy](https://docs.unity.cn/Packages/com.unity.netcode@1.0/manual/optimizations.html#relevancy).
+Ghi nhận trao đổi ngày 30/10/2026 để triển khai dần; đây là thiết kế dự kiến, chưa nghiệm thu runtime. Sketch hiện có ở [MatchBootstrap.cs](../../Assets/_Project/Scripts/Runtime/Simulation/Shared/MatchState/MatchBootstrap.cs): `MatchRequestData` và `PlayerMatchDataAfterBanPick`. Chưa coi constructor cấp array là pipeline tạo trận đã hoàn tất.
 
-Không đồng bộ thay đổi mới của building/resource đang khuất. Entity mới xây trong ô đã Explored không tự được biết. Reconnect/late join cần chính sách phục hồi Explored và ký ức; chưa có implementation. Picking/targeting bộ lệnh local đã nối theo [luật FOW hiện hành](../Architecture/FogOfWarRendering.md); panel UI/selection nói chung chưa nghiệm thu đầy đủ. Chuyển mạng phải giữ các luật này, không chỉ ẩn mesh.
+### Flow và trách nhiệm
 
-## Terrain và session
+```text
+Matchmaking ghép đủ người và xác nhận match
+    → server tạo dữ liệu match/roster nội bộ
+    → chuẩn bị World và kết nối của nhóm người chơi
+    → load map → chọn spawn → ban/pick
+    → server chốt cấu hình → kiểm tra readiness → bắt đầu gameplay
+    → lưu kết quả → dọn dữ liệu/World của trận → trở về lobby
+```
 
-Một map gen một lần, bất biến trong trận; client nhận kết quả, không chạy lại generator. Theo quyết định hiện tại, payload terrain là **full tập Explored**, không lọc theo cache; không phải toàn bộ map chưa khám phá. Truyền metadata hình học width/height/cellSize/origin/TerrainBaseLevel cùng dữ liệu cần thiết; unknown giữ đen. Không gửi trước resource/spawn/terrain bí mật chỉ để dựng map.
+Server quyết định danh tính theo connection đã xác thực, kiểm tra spawn/civ và lượt ban/pick; client gửi yêu cầu lựa chọn. Load map và có connection chưa đồng nghĩa trận đã chạy. Tách phase chọn spawn, draft, chờ ready và playing; ánh xạ vào MatchLifecycle hiện có khi triển khai, không tự coi các phase dự kiến là enum đã tồn tại. Chưa chạy di chuyển/chiến đấu/tài nguyên trong bước chuẩn bị.
 
-Không thêm WorldId/MapId/MapRevision vào mỗi frame FOW. Session/connection và vòng đời trận chịu trách nhiệm routing/reset; tick/identity/header nội bộ Netcode vẫn do Netcode quản lý. Revision/hash của MapTerrainSnapshot nội bộ hiện có không bị xóa bởi quyết định này. Cách đóng gói/chia khối/Ready sẽ chốt khi chọn transport, không dồn map vào một RPC lớn. [Tải trận và bản đồ](ServerMapLoading.md).
+Mỗi trận có Server World riêng; mỗi người có Client World tương ứng trên process của họ. Có thể tạo Match World trước chọn spawn/ban-pick để dùng map và kết nối suốt quá trình. Khi hết trận, dispose World sau khi lưu kết quả và hoàn tất chuyển connection hoặc disconnect. Process server có thể tiếp tục sống để nhận trận khác.
 
-## Thứ tự triển khai
+### Hướng khảo sát: Lobby World → Match World giữ connection
 
-1. Kiểm kê component/system/prefab/caller của Main thành server simulation / dữ liệu Ghost / client Mono / adapter, bao phủ chức năng hiện có. Đây là việc đầu tiên, chưa cài package khi bảng còn mơ hồ.
-2. Kiểm tra và chốt phiên bản Unity–Entities–Netcode–Transport, trình pipeline cụ thể; sau đó cấu hình World, Ghost authoring/variants và serializer/template.
-3. Chuyển client presentation qua Mono, giữ local chạy qua cùng adapter; nối RPC command payload và backend hiện tại, không thay luật.
-4. Nối FOW relevancy, static memory, terrain datum/Explored, UI/picking và session lifecycle.
-5. Nghiệm thu dedicated server + 2 client: quyền điều khiển, mọi chức năng hiện có, khuất/thấy lại/destroy, đổi trận, disconnect/reconnect, mất gói và tài nguyên. Sau correctness mới đo tải mục tiêu.
+Người dùng đề xuất Lobby World nhẹ chỉ quản lý player/ready, Match World quản lý map và gameplay. Khảo sát `DriverMigrationSystem` để chuyển connection khi cả phòng chuyển sang trận và chuyển về lobby sau trận. Nếu chọn hướng này, migrate sang Match World trước chọn spawn/ban-pick; không tạo lại World giữa các phase đó.
 
-Không có server/transport/config deployment đã được tạo. Không tự stage/commit/push/PR/merge. Lượt docs hiện tại chỉ cập nhật tài liệu, không chạy lại runtime tests hoặc cài dependency.
+Source package cài hiện tại (`com.unity.netcode` 1.14.3 trong `Packages/manifest.json`) có `DriverMigrationSystem` với `StoreWorld`/`LoadWorld`. Đây mới là xác nhận API từ source, chưa chứng minh pipeline hoạt động. Khi triển khai cần:
+
+- Giữ system điều phối migration ngoài World sắp dispose; store driver/connection trước dispose, load vào World đích trước khởi tạo các system của World đó.
+- Chuyển tương ứng phía server/client và có bước đồng bộ chuyển phase, scene-ready, timeout; giữ connection không bảo đảm chuyển World kéo dài tùy ý mà không timeout.
+- Dựng lại dữ liệu player/map/gameplay và kiểm tra reference Entity khi đổi World. Migration chỉ chuyển các entity có `NetworkStreamConnection`, không tự chuyển toàn bộ dữ liệu trận.
+- Không coi migration là chia một phần connection của Lobby World chung sang nhiều trận, hoặc chuyển sang process/máy server khác. Nếu cần lobby chung và nhiều match đồng thời, phải chốt kiến trúc routing/kết nối trước.
+
+### Dữ liệu match trên server
+
+`MatchRequestData` dự kiến là dữ liệu nội bộ cùng process, được tạo sau matchmaking rồi hoàn thiện dần:
+
+| Thời điểm | Dữ liệu |
+|---|---|
+| Sau matchmaking | `matchId`, `mapID`, `seed`, `typeOfMatch`, roster `PlayerId` |
+| Sau chọn spawn | Chốt `spawnPointId` hợp lệ cho từng người |
+| Sau ban/pick | Chốt `civId`; cấu hình hoàn chỉnh dùng để khởi tạo gameplay |
+
+Nếu dùng player struct xuyên suốt quá trình, cân nhắc đổi tên `PlayerMatchDataAfterBanPick` thành `PlayerMatchData` và thêm trạng thái đã chọn/đã khóa; không dùng giá trị mặc định để ngầm hiểu lựa chọn hợp lệ. Chưa đổi code ở lượt ghi chú này.
+
+- `PlayerId` cần ánh xạ với identity server quản lý; mapping slot thử hiện tại chưa phải account identity/reconnect hoàn chỉnh.
+- `matchId` ở mỗi player có thể bỏ nếu luôn nằm trong request của một match. `playerCount` nên suy ra từ array length, hoặc ghi rõ đó là số slot dự kiến và validate hai giá trị.
+- `int` cho map/mode/seed và `FixedString64Bytes` cho civ đủ dùng ở sketch; validate catalog, dung lượng ID và quy tắc seed theo RNG được chọn. Không gửi seed/full map bí mật xuống client trái với luật terrain/FOW hiện tại; phần map cho chọn spawn cần chốt dữ liệu công khai được phép xem.
+- `NativeArray` dùng `Allocator.Persistent` phải có một chủ sở hữu, dispose đúng một lần khi đã copy vào entity hoặc khi hết trận nếu vẫn còn dùng. Copy struct chỉ alias allocation; không phải copy sâu. Xử lý cả hủy matchmaking/draft, lỗi tạo trận và disconnect, không chỉ happy path.
+- Không dùng request chứa `NativeArray` trực tiếp như payload gửi sang process khác; nếu sau này tách server thì định nghĩa serialization riêng.
+
+### Các bước triển khai tiếp theo
+
+1. Chốt lobby là một phòng chuyển cả nhóm hay lobby chung chia nhiều trận; chọn migration hay kết nối riêng theo ranh giới process.
+2. Hoàn thiện ownership/lifetime của request và trạng thái lựa chọn; validate roster, civ, spawn, số người và ánh xạ connection.
+3. Nối dữ liệu đã chốt vào bootstrap player/map hiện tại; thêm gate phase và readiness trước gameplay.
+4. Nếu dùng migration, làm thử lobby → match → lobby với server và hai client trước khi tích hợp toàn bộ draft.
+5. Kiểm tra nhiều trận liên tiếp/đồng thời theo mô hình đã chọn, giữ identity qua migration, connection timeout/disconnect, hủy draft và dọn allocation/World. Chưa có kết quả kiểm thử cho các bước này.
+
+## Chạy và kiểm tra
+
+Mở [ConnectionUI](../../Assets/NetcodeForEntitiesSetup/Scenes/ConnectionUI.unity) rồi Main theo bootstrap hiện có. Frontend và Main có thể cùng camera; TerrainMapRenderer phải chọn camera trong scene Main, không chọn nhầm frontend. Nó đăng ký SubScene cho Network Worlds tạo sau khi Main đã mở và đổi binding khi World đổi. Host render qua ClientWorld; dedicated server không tạo mesh/camera.
+
+Kiểm tra server + hai client: mapping player khác nhau; thiếu slot; prefab/scene load trước go-in-game; chỉ owner nhận terrain; exploration/vision đổi; chunk thiếu/sai range; Ready sai/đúng session; disconnect/reconnect và đổi map; camera snap chỉ khi sẵn sàng. Sau đó mới nghiệm thu mọi gameplay command, relevancy/static memory/UI và tải lớn. [CurrentState](../Maintenance/CurrentState.md) ghi phần nào đã thực sự chạy.

@@ -166,9 +166,6 @@ public partial class PlayerBootstrapSystem : SystemBase
                 continue;
             }
             commands.SetComponent(entity, new EntityOwner { PlayerID = placement.Owner });
-            var selection = em.GetComponentData<Selectable>(placement.Prefab);
-            selection.playerID = placement.Owner;
-            commands.SetComponent(entity, selection);
             var health = em.GetComponentData<EntityHealth>(placement.Prefab);
             health.CurrentHP = health.MaxHP;
             commands.SetComponent(entity, health);
@@ -183,9 +180,7 @@ public partial class PlayerBootstrapSystem : SystemBase
             {
                 if (!em.HasComponent<SetupUnitMoverDefaultPosition>(placement.Prefab)) commands.AddComponent<SetupUnitMoverDefaultPosition>(entity);
                 var agent = em.GetComponentData<MovementAgentComponent>(placement.Prefab);
-                agent.hastarget = false;
-                agent.velocity = float3.zero;
-                agent.preferredVelocity = float3.zero;
+                MovementAgentAPI.StopAgent(ref agent, MovementStopReason.Paused);
                 commands.SetComponent(entity, agent);
                 if (em.HasComponent<MoveOverride>(placement.Prefab)) commands.SetComponentEnabled<MoveOverride>(entity, false);
             }

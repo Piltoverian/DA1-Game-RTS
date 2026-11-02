@@ -70,11 +70,12 @@ partial struct SelectSystem : ISystem
         var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
         var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
+        var ownerLookup = state.GetComponentLookup<EntityOwner>(true);
         var selectedLookup = state.GetComponentLookup<Selected>(true);
 
-        foreach (var (selectable,tags, selected, entity) in SystemAPI.Query<Selectable,SingleSelectableEntity, Selected>().WithEntityAccess())
+        foreach (var (owner,tags, selected, entity) in SystemAPI.Query<EntityOwner,SingleSelectableEntity, Selected>().WithAll<Selectable>().WithEntityAccess())
         {
-            if (selectable.playerID != request.playerId)
+            if (owner.PlayerID != request.playerId)
                 continue;
             ecb.SetComponentEnabled<Selected>(entity, false);
         }
@@ -129,6 +130,8 @@ partial struct SelectSystem : ISystem
 
                         if (!selectableLookup.HasComponent(unit))
                             continue;
+                        if (!ownerLookup.HasComponent(unit))
+                            continue;
 
                         float3 pos = transformLookup[unit].Position;
 
@@ -143,8 +146,7 @@ partial struct SelectSystem : ISystem
 
                         if (pos.x >= minX && pos.x <= maxX)
                         {
-                            var selectable = selectableLookup[unit];
-                            if (selectable.playerID != request.playerId)
+                            if (ownerLookup[unit].PlayerID != request.playerId)
                                 continue;
 
                             if (selectedLookup.HasComponent(unit))
@@ -178,10 +180,12 @@ partial struct SelectSystem : ISystem
         physicsWorld.CastRay(rayInput, out raycastResults);
         if (raycastResults.Entity != Entity.Null)
         {
-            if (state.EntityManager.HasComponent<Selectable>(raycastResults.Entity))
+            if (state.EntityManager.HasComponent<Selectable>(raycastResults.Entity)
+                && state.EntityManager.HasComponent<EntityOwner>(raycastResults.Entity)
+                && state.EntityManager.HasComponent<Selected>(raycastResults.Entity))
             {
-                var selectable = state.EntityManager.GetComponentData<Selectable>(raycastResults.Entity);
-                if (selectable.playerID == request.playerId)
+                var owner = state.EntityManager.GetComponentData<EntityOwner>(raycastResults.Entity);
+                if (owner.PlayerID == request.playerId)
                 {
                     ecb.SetComponentEnabled<Selected>(raycastResults.Entity, true);
                 }

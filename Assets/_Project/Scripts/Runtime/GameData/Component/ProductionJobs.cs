@@ -75,7 +75,8 @@ public static class ProductionJobs
             payments.Add(new ProductionPayment { ItemID = itemID, Type = cost.Type, Amount = cost.Amount });
         }
         paid.Dispose();
-        queue.Add(new ProductionQueueElement { ItemID = itemID, PlayerID = owner, Offer = offer, TechID = techID, RemainingWork = work });
+        queue.Add(new ProductionQueueElement { ItemID = itemID, PlayerID = owner,
+            JobID = offer.JobID, Kind = offer.Kind, TechID = techID, RemainingWork = work });
         if (offer.Kind == ProductionKind.Research)
             em.GetBuffer<PlayerPendingTech>(player).Add(new PlayerPendingTech { TechID = techID, Producer = producer });
         em.SetComponentData(producer, data);
@@ -87,7 +88,7 @@ public static class ProductionJobs
         var queue = em.GetBuffer<ProductionQueueElement>(producer);
         if (index < 0 || index >= queue.Length) return;
         var item = queue[index];
-        bool isResearch = item.Offer.Kind == ProductionKind.Research;
+        bool isResearch = item.Kind == ProductionKind.Research;
         if (em.HasBuffer<ProductionPayment>(producer))
         {
             var payments = em.GetBuffer<ProductionPayment>(producer);

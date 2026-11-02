@@ -40,6 +40,7 @@ public partial struct SelectableSpatialSystem : ISystem
 
         foreach (var (transform, selectable, entity)
             in SystemAPI.Query<RefRO<LocalTransform>, RefRW<Selectable>>()
+            .WithAll<EntityOwner>()
             .WithEntityAccess())
         {
             float3 pos = transform.ValueRO.Position;

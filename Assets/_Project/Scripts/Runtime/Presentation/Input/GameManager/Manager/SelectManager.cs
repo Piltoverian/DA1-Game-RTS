@@ -211,7 +211,9 @@ public static class SelectHelper
         {
             for (int i = 0; i < query.Length; i++)
             {
-                if (entityManager.HasComponent<Selectable>(query[i]) && entityManager.GetComponentData<Selectable>(query[i]).playerID == playerId)
+                if (entityManager.HasComponent<Selectable>(query[i])
+                    && entityManager.HasComponent<EntityOwner>(query[i])
+                    && entityManager.GetComponentData<EntityOwner>(query[i]).PlayerID == playerId)
                 {
                     return query[i];
                 }
@@ -232,7 +234,9 @@ public static class SelectHelper
         {
             for (int i = 0; i < query.Length; i++)
             {
-                if (entityManager.HasComponent<Selectable>(query[i]) && entityManager.GetComponentData<Selectable>(query[i]).playerID == playerId)
+                if (entityManager.HasComponent<Selectable>(query[i])
+                    && entityManager.HasComponent<EntityOwner>(query[i])
+                    && entityManager.GetComponentData<EntityOwner>(query[i]).PlayerID == playerId)
                 {
                     selectedEntities.Add(query[i]);
                 }

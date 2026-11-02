@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -39,7 +40,11 @@ public static class TerrainAtlasPreview
             camera.transform.position = new Vector3(32, 0, 32) - camera.transform.forward * 100;
             camera.GetUniversalAdditionalCameraData().renderPostProcessing = false;
             renderer = owner.AddComponent<TerrainChunkRenderer>();
-            renderer.Build(map, theme, camera);
+            float rise = theme.ResolveTierRise(grid.cellsize, camera.transform.forward);
+            var compiled = TerrainCellVisualCompiler.Compile(map, rise, rise * Mathf.Max(1, (theme.mountainCaps[0].height - 96) / 32f), theme.mountainVisualTiers, theme.groundVisualSeed);
+            var visual = new Dictionary<int, TerrainCellVisualData>(compiled.Length);
+            for (int i = 0; i < compiled.Length; i++) visual.Add(i, compiled[i]);
+            renderer.Build(grid, theme, camera, null, visual);
             foreach (var filter in renderer.PresentationRoot.GetComponentsInChildren<MeshFilter>()) filter.gameObject.layer = 31;
             target = new RenderTexture(512, 512, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
             target.Create();

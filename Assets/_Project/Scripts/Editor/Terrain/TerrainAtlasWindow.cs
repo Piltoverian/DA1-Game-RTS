@@ -57,7 +57,7 @@ public sealed class TerrainAtlasWindow : EditorWindow
             }
         }
         if(preview){EditorGUILayout.LabelField("Preview terrain",EditorStyles.boldLabel);float width=Mathf.Min(position.width-30,720);var area=GUILayoutUtility.GetRect(width,width*preview.height/preview.width,GUILayout.ExpandWidth(false));GUI.DrawTexture(area,preview,ScaleMode.ScaleToFit);}
-        EditorGUILayout.HelpBox("Phong cách: JadeSlate painterly. Ground yên, ramp ấm, slate xanh xám. Nguồn phẳng không có bóng đổ. Prompt/layout: Docs/TerrainVisualizer/11.",MessageType.None);
+        EditorGUILayout.HelpBox("Phong cách: JadeSlate painterly. Ground yên, ramp ấm, slate xanh xám. Nguồn phẳng không có bóng đổ. Layout/import: Docs/Architecture/Terrain.md.",MessageType.None);
         EditorGUILayout.EndScrollView();
     }
 }

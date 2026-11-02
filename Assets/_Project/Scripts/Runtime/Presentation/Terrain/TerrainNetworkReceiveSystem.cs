@@ -6,27 +6,13 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
 
-// Receiver-owned state. No authoritative terrain or neighbours are needed here.
-public sealed class TerrainReceivedView : IDisposable
-{
-    public bool Ready;
-    public string Error;
-    public TerrainChunkGhost Header;
-    public uint GeometryVersion;
-    public Dictionary<int,TerrainCellVisualData> Cells=new();
-    public Texture2D Mask;
-    public void Dispose(){
-        Ready=false;Cells.Clear();Error=null;GeometryVersion++;
-        if(Mask){if(Application.isPlaying)UnityEngine.Object.Destroy(Mask);else UnityEngine.Object.DestroyImmediate(Mask);}Mask=null;
-    }
-}
-
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(PresentationSystemGroup),OrderFirst=true)]
 [UpdateBefore(typeof(MapTerrainPresentationSystem))]
 public partial class TerrainNetworkReceiveSystem : SystemBase
 {
-    public TerrainReceivedView View { get; }=new();
+    public TerrainView View { get; } = new();
+    public TerrainChunkGhost Header { get; private set; }
     Entity connection;
     ulong geometryHash,visibilityHash;
     double nextRead;
@@ -51,7 +37,7 @@ public partial class TerrainNetworkReceiveSystem : SystemBase
         }
         if(latest.Session==0||latest.Width<=0||latest.Height<=0||latest.Width>4096||latest.Height>4096
             ||!(latest.CellSize>0)||!math.isfinite(latest.CellSize)||!math.all(math.isfinite(latest.Origin)))return;
-        if(View.Ready&&(View.Header.Session!=latest.Session||View.Header.Epoch!=latest.Epoch)){
+        if(View.Ready&&(Header.Session!=latest.Session||Header.Epoch!=latest.Epoch)){
             View.Dispose();geometryHash=visibilityHash=0;
         }
         int expected=0;
@@ -60,7 +46,7 @@ public partial class TerrainNetworkReceiveSystem : SystemBase
             var h=EntityManager.GetComponentData<TerrainChunkGhost>(e);
             if(h.Session!=latest.Session||h.Epoch!=latest.Epoch)continue;
             if(h.Width!=latest.Width||h.Height!=latest.Height||h.CellSize!=latest.CellSize||math.any(h.Origin!=latest.Origin)
-                ||h.PlayerId!=latest.PlayerId||h.VisualSeed!=latest.VisualSeed||h.MountainTiers!=latest.MountainTiers||h.CapPixels!=latest.CapPixels)continue;
+                ||h.PlayerId!=latest.PlayerId||h.VisualSeed!=latest.VisualSeed||h.MountainTiers!=latest.MountainTiers||h.CapPixels!=latest.CapPixels||h.GroundRegionCells!=latest.GroundRegionCells)continue;
             expected=math.max(expected,h.ExpectedChunks);
             if(chunks.ContainsKey(h.ChunkIndex))return;
             chunks.Add(h.ChunkIndex,e);
@@ -105,23 +91,16 @@ public partial class TerrainNetworkReceiveSystem : SystemBase
                         IsMountain=cell.IsMountain,MountainHeight=cell.MountainHeight,MountainMask=cell.MountainMask,Walls=segments});
                 }
             }
-            View.Cells=decoded;View.GeometryVersion++;
+            View.SetGeometry(new GridComponent { width = latest.Width, height = latest.Height, cellsize = latest.CellSize, origin = latest.Origin },
+                new TerrainSyncSettings { VisualSeed = latest.VisualSeed, MountainTiers = latest.MountainTiers, CapPixels = latest.CapPixels, GroundRegionCells = latest.GroundRegionCells }, decoded);
         }
-        if(!View.Ready||visibilityHash!=vh||geometryHash!=gh){
-            if(!View.Mask||View.Mask.width!=latest.Width||View.Mask.height!=latest.Height){
-                if(View.Mask){if(Application.isPlaying)UnityEngine.Object.Destroy(View.Mask);else UnityEngine.Object.DestroyImmediate(View.Mask);}
-                View.Mask=new Texture2D(latest.Width,latest.Height,TextureFormat.RGBA32,false,true){name="Received player terrain FOW",filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
-            }
-            var pixels=new Color32[latest.Width*latest.Height];
-            foreach(int i in seen)pixels[i]=visible.Contains(i)?new Color32(255,255,255,255):new Color32(80,80,80,255);
-            View.Mask.SetPixels32(pixels);View.Mask.Apply(false);
-        }
-        geometryHash=gh;visibilityHash=vh;View.Header=latest;View.Ready=true;
+        if (!View.Ready || visibilityHash != vh || geometryHash != gh) View.UpdateVisibility(visible);
+        geometryHash=gh;visibilityHash=vh;Header=latest;View.Ready=true;
     }
     static bool Valid(TerrainCellGhostElement c,int walls,int size)=>c.CellIndex>=0&&c.CellIndex<size
         &&c.TopMask<=15&&c.MountainMask<=15&&math.all(math.isfinite(c.CornerHeights))&&math.isfinite(c.TopHeight)&&math.isfinite(c.MountainHeight)
         &&c.WallStart>=0&&c.WallCount>=0&&c.WallStart<=walls&&c.WallCount<=walls-c.WallStart;
     static void Mix(ref ulong hash,uint v){unchecked{hash=(hash^v)*1099511628211UL;}}
-    void Reset(){if(connection!=Entity.Null||View.Ready){View.Dispose();geometryHash=visibilityHash=0;}connection=Entity.Null;}
+    void Reset(){if(connection!=Entity.Null||View.Ready){View.Dispose();geometryHash=visibilityHash=0;Header=default;}connection=Entity.Null;}
     protected override void OnDestroy(){View.Dispose();}
 }

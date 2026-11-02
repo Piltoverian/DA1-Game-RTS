@@ -3,7 +3,6 @@ using Unity.Entities;
 
 public struct Selectable :IComponentData
 {
-    public int playerID;
     public int GridIndex;
 }
 

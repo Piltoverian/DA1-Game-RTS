@@ -1,20 +1,24 @@
-# Tài liệu dự án RTS
+# Tài liệu hỗ trợ code
 
-Đây là bộ docs chính duy nhất. Mỗi chủ đề có một nguồn; không còn bộ GianLuoc song song.
+Đọc trang theo phần đang sửa. Mỗi chủ đề chỉ có một nguồn dưới đây; code hiện tại là căn cứ khi mô tả và implementation khác nhau.
 
-| Cần làm | Tài liệu |
+| Việc cần làm | Nguồn chính |
 |---|---|
-| Tiếp tục công việc | [Trạng thái](Maintenance/CurrentState.md) · [Handoff](Maintenance/Handoff.md) · [Roadmap](Maintenance/Roadmap.md) |
-| Tìm code | [Cấu trúc](ProjectStructure.md) |
-| Thiết kế dữ liệu game | [GameData](Guides/GameData/README.md) · [Thanh toán](Guides/GameData/ResourcePayment.md) · [Quyền điều khiển](Guides/GameData/CommandAuthority.md) |
-| Import/design atlas | [Atlas](TerrainVisualizer/14_SuDung_Atlas_Implementation.md) · [Nguồn art](Guides/ArtAssets.md) |
-| Bản đồ | [MapGeneration](MapGeneration/MapGen_INDEX.md) |
-| Xây dựng | [BuildingPipeline](Architecture/BuildingPipeline.md) |
-| Chuyển động | [Tổng quan](Architecture/Movement/MovementAgent/Architecture_Overview.md) |
-| Fog of War local | [Render và bộ lệnh](Architecture/FogOfWarRendering.md) · [Handoff local](Maintenance/FogOfWarHandoff.md) |
-| Multiplayer | [Kiến trúc và lộ trình](Multiplayer/README.md) · [Bài 1: bảng source và trách nhiệm](Multiplayer/SourceResponsibilityMap.md) |
-| Tra bằng chứng cũ | [Lịch sử hợp nhất](Maintenance/VerificationHistory.md) |
+| Mở project, tìm code, hiểu World và quy tắc sửa | [Cấu trúc và cách làm việc](ProjectStructure.md) |
+| Command, build/repair, gather, production, combat và UI | [Gameplay](Architecture/Gameplay.md) |
+| Flow field, target, avoidance, cost và field lifetime | [Movement](Architecture/Movement.md) |
+| Sinh map, bootstrap/resource, height, renderer và atlas tool | [Terrain](Architecture/Terrain.md) |
+| Visibility, ký ức entity, preview và thông tin được phép biết | [Fog of War](Architecture/FogOfWarRendering.md) |
+| SO, registry, blob, authoring và thêm kiểu dữ liệu | [GameData](Guides/GameData.md) |
+| Connection/player, terrain Ghost, ACK và phần mạng chưa hoàn tất | [Multiplayer](Multiplayer/README.md) |
+| Kết quả đã kiểm chứng, giới hạn và việc đầu tiên cần test | [Trạng thái hiện tại](Maintenance/CurrentState.md) |
 
-Tool import/design và validator dữ liệu còn giữ; các test Editor FOW, terrain và cache server đã xóa theo yêu cầu ngày 20/10. [Thư mục Fixtures](../Assets/_Project/Tests/README.md) giữ asset gameplay đang dùng. Preview atlas chạy trong bộ nhớ, không phụ thuộc fixture/report test. Nguồn tham chiếu thiết kế atlas duy nhất là JadeSlate; Main hiện dùng asset runtime MoonTerrain được giữ nguyên.
+## Cách cập nhật
 
-Mã hiện tại và xác nhận của chủ dự án quyết định trạng thái. Báo cáo lịch sử không nghiệm thu source mới. Quy trình cập nhật theo hướng dẫn AGENTS.md do người dùng cung cấp trong phiên.
+- Sửa trang sở hữu chủ đề ngay khi đổi API/luồng/invariant; trang khác chỉ dẫn link.
+- Ghi entry point, input → validation → thay đổi state → output, lifetime và cách kiểm tra. Không chép lại từng dòng implementation.
+- Phân biệt source đã có, kiểm tra thực sự đã chạy và việc còn dự kiến. Kết quả trước khi sửa code không nghiệm thu code mới.
+- Giữ một CurrentState cho việc chưa hoàn tất; không tạo thêm handoff, roadmap, bản tóm tắt song song hoặc nhật ký từng phiên.
+- Script, runner, log và receipt dùng một lần phải được dọn sau khi dùng. Không tạo tool chỉ để ghi nhận việc dọn; giữ kết quả cần thiết trong trang chủ đề/CurrentState.
+
+README cạnh asset chỉ giải thích asset/import/GUID tại chỗ; không tạo thêm bộ kiến trúc. Asset runtime, nguồn art và license không phải artifact tạm.

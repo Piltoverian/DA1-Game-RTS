@@ -217,7 +217,7 @@ public class BuildingPlacer : MonoBehaviour
         if(TerrainVisualSurface.Active!=null)visiblePosition.y+=TerrainVisualSurface.Active.Sample(visiblePosition.x,visiblePosition.z);
         currentGhost.transform.position=visiblePosition;
 
-        var preview = FogOrderRules.Preview(entityManager, localPlayerId, currentSnappedPosition, currentLocalRect);
+        var preview = BuildingPlacementPreview.Evaluate(entityManager, localPlayerId, currentSnappedPosition, currentLocalRect);
         bool affordable = CanAffordBuilding(selectedBuildingPrefab);
         if (preview == BuildingPreviewState.Valid && !affordable) preview = BuildingPreviewState.Invalid;
         currentCanPlace = preview != BuildingPreviewState.Invalid && affordable;

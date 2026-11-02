@@ -521,22 +521,16 @@ public partial struct WorkerGatherSystem : ISystem
     {
         ecb.SetComponentEnabled<MoveOverride>(entity, false);
 
-        if (agentLookup.HasComponent(entity))
-        {
-            var agent = agentLookup[entity];
-            agent.hastarget = false;
-            agent.velocity = float3.zero;
-            ecb.SetComponent(entity, agent);
-        }
-
+        if (!agentLookup.HasComponent(entity)) return;
+        var agent = agentLookup[entity];
         if (steeringLookup.HasComponent(entity))
         {
             var steering = steeringLookup[entity];
-            steering.isSettled = true;
-            steering.stuckTime = 0;
-            steering.minDistanceToTarget = float.MaxValue;
+            MovementAgentAPI.StopAgent(ref agent, ref steering, MovementStopReason.Paused);
             ecb.SetComponent(entity, steering);
         }
+        else MovementAgentAPI.StopAgent(ref agent, MovementStopReason.Paused);
+        ecb.SetComponent(entity, agent);
     }
 
     private static Entity FindNearestDepot(
@@ -576,7 +570,7 @@ public partial struct WorkerGatherSystem : ISystem
         in GridComponent grid,
         ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache, EntityManager em, int viewer)
     {
-        const int cellRadius = FogOrderRules.NearbyCellRadius;
+        const int cellRadius = KnownTargetOrders.NearbyCellRadius;
         int2 centerCell = GridHelper.WorldToGrid(centerPos, grid);
 
         Entity bestNode = Entity.Null;

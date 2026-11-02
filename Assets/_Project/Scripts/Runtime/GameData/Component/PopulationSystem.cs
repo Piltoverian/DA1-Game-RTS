@@ -23,12 +23,6 @@ public partial struct PopulationSystem : ISystem
             bool alive = em.HasComponent<EntityOwner>(entity) && em.HasComponent<EntityHealth>(entity)
                 && em.GetComponentData<EntityHealth>(entity).CurrentHP > 0f;
             int owner = alive ? em.GetComponentData<EntityOwner>(entity).PlayerID : -1;
-            if (em.HasComponent<Selectable>(entity) && em.HasComponent<EntityOwner>(entity))
-            {
-                var selection = em.GetComponentData<Selectable>(entity);
-                selection.playerID = em.GetComponentData<EntityOwner>(entity).PlayerID;
-                em.SetComponentData(entity, selection);
-            }
             int used = alive && em.HasComponent<UnitComponent>(entity) ? em.GetComponentData<UnitComponent>(entity).PopulationCost : 0;
             int capacity = alive && em.HasComponent<BuildingComponent>(entity) && em.HasComponent<BuildingConstruction>(entity)
                 && em.GetComponentData<BuildingConstruction>(entity).Phase == ConstructionPhase.Completed

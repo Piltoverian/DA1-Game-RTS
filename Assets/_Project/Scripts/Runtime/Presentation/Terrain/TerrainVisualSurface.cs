@@ -9,36 +9,32 @@ public sealed class TerrainVisualSurface
     public static TerrainVisualSurface Active { get; private set; }
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetSession(){Active=null;}
-    public readonly GeneratedTerrain map;
+    public readonly GridComponent Grid;
     public readonly float rise;
-    readonly TerrainSurfaceData data;
     readonly IReadOnlyDictionary<int,TerrainCellVisualData> visualCells;
-    public TerrainVisualSurface(GeneratedTerrain source,float tierRise,IReadOnlyDictionary<int,TerrainCellVisualData> cells=null) {
-        map=source;rise=Mathf.Max(0,tierRise);data=cells==null?new TerrainSurfaceData(source,rise):null;
-        visualCells=cells;
+    public TerrainVisualSurface(GridComponent grid, float tierRise, IReadOnlyDictionary<int, TerrainCellVisualData> cells)
+    {
+        Grid = grid; rise = Mathf.Max(0, tierRise); visualCells = cells;
     }
     public void Activate(){Active=this;}
     public void Deactivate(){if(Active==this)Active=null;}
-    public bool IsRamp(int index) => visualCells!=null
-        ? visualCells.TryGetValue(index,out var cell)&&math.cmax(cell.CornerHeights)-math.cmin(cell.CornerHeights)>.001f
-        : data.IsRamp(index);
-    public float CellHeight(int index,float fx,float fy) {
-        if(visualCells!=null){
-            if(!visualCells.TryGetValue(index,out var cell))return 0;
-            var h=cell.CornerHeights;
-            return fy<=fx ? h.x+(h.y-h.x)*fx+(h.z-h.y)*fy : h.x+(h.z-h.w)*fx+(h.w-h.x)*fy;
-        }
-        return data.CellHeight(index,fx,fy);
+    public bool IsRamp(int index) => visualCells.TryGetValue(index, out var cell)
+        && math.cmax(cell.CornerHeights) - math.cmin(cell.CornerHeights) > .001f;
+    public float CellHeight(int index, float fx, float fy)
+    {
+        if (!visualCells.TryGetValue(index, out var cell)) return 0;
+        var h = cell.CornerHeights;
+        return fy <= fx ? h.x + (h.y - h.x) * fx + (h.z - h.y) * fy : h.x + (h.z - h.w) * fx + (h.w - h.x) * fy;
     }
     public float Sample(float worldX,float worldZ) {
-        float x=(worldX-map.grid.origin.x)/map.grid.cellsize,z=(worldZ-map.grid.origin.z)/map.grid.cellsize;
+        float x=(worldX-Grid.origin.x)/Grid.cellsize,z=(worldZ-Grid.origin.z)/Grid.cellsize;
         int ix=Mathf.FloorToInt(x),iy=Mathf.FloorToInt(z);
-        if(ix<0||iy<0||ix>=map.grid.width||iy>=map.grid.height)return 0;
-        return CellHeight(iy*map.grid.width+ix,x-ix,z-iy);
+        if(ix<0||iy<0||ix>=Grid.width||iy>=Grid.height)return 0;
+        return CellHeight(iy*Grid.width+ix,x-ix,z-iy);
     }
     // Ray traverses only touched cells, testing exact two top triangles. No collider added.
     public bool Raycast(Ray ray,out Vector3 logical,out Vector3 visible,float maxDistance=1000) {
-        logical=visible=default;var g=map.grid;
+        logical=visible=default;var g=Grid;
         float enter=0,exit=maxDistance;
         bool Slab(float origin,float direction,float min,float max) {
             if(Mathf.Abs(direction)<1e-7f)return origin>=min&&origin<=max;

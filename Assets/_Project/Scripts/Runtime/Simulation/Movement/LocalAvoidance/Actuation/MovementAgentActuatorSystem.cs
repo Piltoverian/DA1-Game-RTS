@@ -87,13 +87,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 {
                     // Settle bình thường — khi settled, prefVel = 0
                     // → separation trở thành lực duy nhất → overlap tự giải
-                    move.hastarget = false;
-                    move.stopReason = MovementStopReason.CrowdedDestination;
-                    move.velocity = float3.zero;
-                    move.preferredVelocity = float3.zero;
-                    steering.isSettled = true;
-                    steering.stuckTime = 0;
-                    steering.minDistanceToTarget = float.MaxValue;
+                    MovementAgentAPI.StopAgent(ref move, ref steering, MovementStopReason.CrowdedDestination);
                     return;
                 }
             }

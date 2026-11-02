@@ -17,16 +17,15 @@ public partial class LocalFogPresentationSystem : SystemBase
     public FogOfWarFrame Frame { get; private set; }
     public FogOfWarRenderView View { get; } = new();
     public int ScopeVersion { get; private set; }
-    public Texture2D Mask { get; private set; }
     public readonly Dictionary<Entity, ResourceType> ResourceTypes = new();
     readonly Dictionary<Entity, Entity> owners = new();
     readonly HashSet<Entity> hidden = new();
     readonly Dictionary<Entity, bool> hiddenSprites = new();
     readonly Dictionary<Entity, MemoryVisual> memories = new();
     readonly List<Entity> removed = new();
-    Color32[] maskPixels;
     int viewer = -1;
     Entity gridEntity;
+    uint mapRevision;
     Camera fogCamera;
     CameraClearFlags cameraFlags;
     Color cameraBackground;
@@ -64,8 +63,10 @@ public partial class LocalFogPresentationSystem : SystemBase
         if (player < 0 && GameManager.Instance != null) SelectHelper.TryGetLocalPlayerId(out player);
         using var grids = EntityManager.CreateEntityQuery(typeof(GridComponent));
         var currentGrid = grids.CalculateEntityCount() == 1 ? grids.GetSingletonEntity() : Entity.Null;
-        if (viewer != player || gridEntity != currentGrid)
-        { ResetMemory(); viewer = player; gridEntity = currentGrid; ScopeVersion++; }
+        uint currentRevision = currentGrid != Entity.Null && EntityManager.HasComponent<MapBuildState>(currentGrid)
+            ? EntityManager.GetComponentData<MapBuildState>(currentGrid).Revision : 0;
+        if (viewer != player || gridEntity != currentGrid || mapRevision != currentRevision)
+        { ResetMemory(); viewer = player; gridEntity = currentGrid; mapRevision = currentRevision; ScopeVersion++; }
         FogOfWarSnapshot.Collect(EntityManager, player, Frame);
         View.Apply(Frame);
         foreach (var data in Frame.Entities)
@@ -74,7 +75,7 @@ public partial class LocalFogPresentationSystem : SystemBase
         removed.Clear();
         foreach (var pair in ResourceTypes) if (!View.Entities.ContainsKey(pair.Key)) removed.Add(pair.Key);
         foreach (var entity in removed) ResourceTypes.Remove(entity);
-        UpdateMask();
+        UpdateBackdrop();
         owners.Clear();
         using var roots = EntityManager.CreateEntityQuery(new EntityQueryDesc { Any = new[] {
             ComponentType.ReadOnly<EntityOwner>(), ComponentType.ReadOnly<ResourceNodeData>(),
@@ -188,15 +189,9 @@ public partial class LocalFogPresentationSystem : SystemBase
         if (graphics != null && info.Material >= 0 && info.Mesh >= 0)
             memory.Capture(graphics.GetMesh(info.MeshID), graphics.GetMaterial(info.MaterialID), matrix, info.SubMesh, reveal);
     }
-    void UpdateMask()
+    void UpdateBackdrop()
     {
-        if (!Frame.IsValid) { if (maskPixels != null) { System.Array.Clear(maskPixels, 0, maskPixels.Length); Mask.SetPixels32(maskPixels); Mask.Apply(false); } return; }
-        if (!Mask || Mask.width != Frame.Width || Mask.height != Frame.Height)
-        { Release(Mask); Mask = new Texture2D(Frame.Width, Frame.Height, TextureFormat.RGBA32, false, true) { name = "Local FOW", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp }; maskPixels = new Color32[Frame.Width * Frame.Height]; }
-        System.Array.Clear(maskPixels, 0, maskPixels.Length);
-        foreach (var cell in View.Terrain.Cells.Keys) maskPixels[cell] = new Color32(80, 80, 80, 255);
-        foreach (var cell in Frame.VisibleCells) maskPixels[cell] = new Color32(255, 255, 255, 255);
-        Mask.SetPixels32(maskPixels); Mask.Apply(false);
+        if (!Frame.IsValid) return;
         var camera = Camera.main;
         if (fogCamera != camera)
         {
@@ -214,6 +209,6 @@ public partial class LocalFogPresentationSystem : SystemBase
     {
         foreach (var entity in hidden) if (EntityManager.Exists(entity) && EntityManager.HasComponent<DisableRendering>(entity)) EntityManager.RemoveComponent<DisableRendering>(entity);
         foreach (var pair in hiddenSprites) if (EntityManager.Exists(pair.Key) && EntityManager.HasComponent<SpriteRenderer>(pair.Key)) EntityManager.GetComponentObject<SpriteRenderer>(pair.Key).enabled = pair.Value;
-        ResetMemory(); Frame?.Dispose(); Release(Mask); RestoreCamera();
+        ResetMemory(); Frame?.Dispose(); RestoreCamera();
     }
 }

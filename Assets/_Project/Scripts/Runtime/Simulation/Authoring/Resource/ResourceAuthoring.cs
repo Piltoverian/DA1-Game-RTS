@@ -1,5 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
+using Unity.NetCode;
 
 public class ResourceAuthoring : MonoBehaviour
 {
@@ -23,10 +24,11 @@ public class ResourceAuthoring : MonoBehaviour
     }
 }
 
+[GhostComponent(OwnerSendType = SendToOwnerType.All)]
 public struct ResourceNodeData : IComponentData
 {
     public ResourceType Type;
-    public int Amount;
+    [GhostField] public int Amount;
 }
 
 public struct ResourceNodeTag : IComponentData

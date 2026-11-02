@@ -13,13 +13,11 @@ public struct TerrainSyncSettings : IComponentData
 // One compiled authoritative map per World. Player views select records from this cache.
 public sealed class TerrainVisualSource : IComponentData
 {
-    public Entity GridEntity;
     public GridComponent Grid;
     public uint Revision, Epoch;
     public ulong Hash;
     public TerrainSyncSettings Settings;
     public TerrainCellVisualData[] Cells;
-    public float Rise, MountainRise;
 }
 
 [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
@@ -50,8 +48,8 @@ public partial class TerrainVisualSourceSystem : SystemBase
         TerrainRampCompiler.Compile(map);
         float rise=TerrainSurfaceData.CanonicalRise(grid.cellsize);
         float mountainRise=rise*math.max(1,(settings.CapPixels-96)/32f);
-        var source=new TerrainVisualSource{GridEntity=e,Grid=grid,Revision=status.Revision,Hash=status.TerrainHash,
-            Epoch=++epoch,Settings=settings,Rise=rise,MountainRise=mountainRise,
+        var source=new TerrainVisualSource{Grid=grid,Revision=status.Revision,Hash=status.TerrainHash,
+            Epoch=++epoch,Settings=settings,
             Cells=TerrainCellVisualCompiler.Compile(map,rise,mountainRise,settings.MountainTiers,settings.VisualSeed)};
         if(EntityManager.HasComponent<TerrainVisualSource>(e))EntityManager.SetComponentData(e,source);
         else EntityManager.AddComponentObject(e,source);
