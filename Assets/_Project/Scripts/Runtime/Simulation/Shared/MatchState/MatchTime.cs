@@ -11,7 +11,8 @@ public partial struct MatchTime : ISystem
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        if (!SystemAPI.HasSingleton<MatchTimeComponent>())
+        if ((state.WorldUnmanaged.Flags & WorldFlags.GameServer) != WorldFlags.GameServer
+            && !SystemAPI.HasSingleton<MatchTimeComponent>())
         {
             state.EntityManager.CreateSingleton(new MatchTimeComponent { Value = 0 });
         }

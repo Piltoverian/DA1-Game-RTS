@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct EntityDeathSystem : ISystem
 {
     public void OnCreate(ref SystemState state)

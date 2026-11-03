@@ -17,14 +17,17 @@ public sealed class LocalTerrainView : IDisposable
     public bool Update(EntityManager em, LocalFogPresentationSystem fog)
     {
         using var grids = em.CreateEntityQuery(typeof(GridComponent), typeof(MapBuildState), typeof(TerrainSyncSettings), typeof(TerrainVisualSource));
-        if (grids.CalculateEntityCount() != 1 || (fog != null && !fog.Frame.IsValid)) { Reset(); return false; }
+        // Temporary missing observations preserve the last authorized geometry and its mask.
+        // A confirmed viewer/map change still establishes a new presentation scope.
+        if (fog != null && scope >= 0 && fog.ScopeVersion != scope) Reset();
+        if (grids.CalculateEntityCount() != 1 || (fog != null && !fog.Frame.IsValid)) return View.Ready;
         var entity = grids.GetSingletonEntity();
         var grid = em.GetComponentData<GridComponent>(entity);
         var state = em.GetComponentData<MapBuildState>(entity);
-        if (state.Phase == MapBuildPhase.Requested || state.Phase == MapBuildPhase.Failed) { Reset(); return false; }
+        if (state.Phase == MapBuildPhase.Requested || state.Phase == MapBuildPhase.Failed) return View.Ready;
         var source = em.GetComponentObject<TerrainVisualSource>(entity);
         if (source.Revision != state.Revision || source.Cells == null || source.Cells.Length != checked(grid.width * grid.height))
-        { Reset(); return false; }
+        { return View.Ready; }
         bool sourceChanged = sourceGrid != entity || revision != state.Revision
             || previousGrid.width != grid.width || previousGrid.height != grid.height || previousGrid.cellsize != grid.cellsize || math.any(previousGrid.origin != grid.origin)
             || !settings.Equals(source.Settings) || !ReferenceEquals(compiled, source.Cells);

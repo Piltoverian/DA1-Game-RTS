@@ -5,6 +5,7 @@ using Unity.Transforms;
 
 [DisableAutoCreation]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [BurstCompile]
 public partial struct ResetTargetSystem : ISystem
 {

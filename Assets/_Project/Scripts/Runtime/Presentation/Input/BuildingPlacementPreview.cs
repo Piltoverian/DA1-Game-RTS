@@ -2,6 +2,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.NetCode;
 
 public enum BuildingPreviewState { Unknown, Valid, Invalid }
 
@@ -9,6 +10,11 @@ public static class BuildingPlacementPreview
 {
     public static BuildingPreviewState Evaluate(EntityManager em, int player, float3 position, StartEndRect rect)
     {
+        // The client does not have authoritative terrain costs or hidden occupancy.
+        if (em.World.IsClient())
+            return FogOrderRules.TryGrid(em, out _, out var clientGrid)
+                && PlayerSpawnPlacement.TryFootprint(clientGrid, position, rect, out _, out _)
+                ? BuildingPreviewState.Unknown : BuildingPreviewState.Invalid;
         if (!FogOrderRules.TryGrid(em, out var gridEntity, out var grid)
             || !PlayerSpawnPlacement.TryFootprint(grid, position, rect, out var min, out var max)
             || !em.HasBuffer<GridTerrain>(gridEntity)) return BuildingPreviewState.Invalid;

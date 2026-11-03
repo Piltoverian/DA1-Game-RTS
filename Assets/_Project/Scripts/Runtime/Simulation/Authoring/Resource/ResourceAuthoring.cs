@@ -11,6 +11,7 @@ public class ResourceAuthoring : MonoBehaviour
         public override void Bake(ResourceAuthoring src)
         {
             Entity e = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent<CustomGhostRelevancy>(e);
 
             AddComponent(e, new ResourceNodeData
             {

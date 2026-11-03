@@ -1,52 +1,70 @@
-# Multiplayer: terrain hiện tại và ranh giới gameplay
+# Multiplayer: identity, handshake và gameplay
 
-## Phạm vi đã có
+Server xử lý gameplay; client nhận Ghost và dùng presentation hiện có. Civ, unit/prefab/definition và building hiện vẫn **load all**. Chưa áp dụng sketch bootstrap lọc theo CivID.
 
-Netcode terrain đã nối source/prefab vào Main; unit networking chưa hoàn tất và người dùng phụ trách phần đó. Server authoritative; client nhận dữ liệu rồi render. Presentation hiện vẫn có ECS adapters; chưa chuyển toàn bộ input/UI/camera/render sang MonoBehaviour như mục tiêu.
+Flow và vị trí code chi tiết nằm ở [GameplayNetworking](GameplayNetworking.md). Luồng terrain/renderer dùng chung với local nằm ở [Terrain](../Architecture/Terrain.md).
 
-Chế độ local và client đi chung TerrainView/renderer, xem [Terrain](../Architecture/Terrain.md). Không chạy lại generator ở client hoặc gửi seed/full map bí mật để tiện dựng hình.
+## Identity và ownership
 
-## Connection và player
+`PlayerJoinRequest` được xử lý bởi `PlayerJoinServerSystem` trong [PlayerConnectionSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/Players/PlayerConnectionSystem.cs). Server lấy `SourceConnection`, cấp slot chưa dùng, rồi trả `PlayerJoinAcceptedRpc`.
 
-[PlayerConnectionSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/Players/PlayerConnectionSystem.cs) cấp PlayerConnection từ roster PlayerBootstrapSlot, lấy NetworkId/SourceConnection do Netcode quản lý. PlayerId không do client tự khai. Đây là cấp slot cho phiên thử, chưa phải account authentication hoặc phục hồi identity khi reconnect.
+- `MatchSessionId`: ID chung của trận, nằm trên Match Ghost.
+- `JoinGeneration`: ID lượt join, không phải ID trận.
+- `PlayerId`: slot gameplay do server cấp.
+- `NetworkId`: ID connection do NetCode cấp, dùng trong `GhostOwner.NetworkId`.
+- `Epoch`: phiên terrain hiện tại.
 
-Tên RPC TerrainJoinRequest/TerrainJoinSent còn giữ để tương thích wire; việc cấp player/session đã tách khỏi module terrain. Client vẫn chờ TerrainSyncSettings của Main/SubScene trước NetworkStreamInGame và join: prefab Ghost phải sẵn sàng trước nhận snapshot. Đây là gate scene-ready hiện có, chưa có framework readiness chung cho mọi stream.
+Player context được bake thành seed. `NetworkGameplayBootstrapSystem` tạo context Ghost trên server, hoặc entity thường ở local. Client không materialize seed thành context trùng. `PlayerGhostOwnershipSystem` dùng mapping connection/player để gán owner cho context và entity có `EntityOwner`, kể cả spawn sau. Context, resource balance, technology và production queue vẫn gửi Owner. Team/civ roster công khai nằm trên Match Ghost.
 
-NetworkStreamInGame chỉ bật snapshot, không tự đổi MatchPhase.Running. MatchLifecycle hiện chuyển Preparing → WaitingForPlayers sau bootstrap; code mở trận phải dùng ServerMatch.SetPhase. Ready terrain chưa bằng Ready unit/toàn trận.
+Slot đã có chủ được giữ qua disconnect. Rejoin dùng vé riêng lưu local, không dùng session/PlayerId làm authentication. Chưa tích hợp account/lobby identity; xem GameplayNetworking để biết giới hạn transport và cách chọn Local profile.
 
-## Luồng terrain
+## Handshake chung
 
 ```text
-TerrainVisualSource + FOW Explored của PlayerConnection
-    → TerrainNetworkServerSystem: nhóm chunk 8×8, GhostOwner của connection
-    → header + cell buffer + wall buffer SendToOwner, cập nhật 10 Hz
-    → TerrainNetworkReceiveSystem: owner/session/epoch/size/range/đủ chunk
-    → TerrainView → renderer chung
-    → TerrainReadyRequest sau dựng hình thành công
-    → TerrainReadyServerSystem xác minh và ghi TerrainClientReady
+Join → identity server cấp
+→ server gửi danh sách Ghost ID/spawn tick bắt buộc ban đầu
+→ client nhận đủ Ghost + registry + terrain
+→ MapTerrainPresentationSystem dựng renderer/fog/camera binding
+→ PlayerHandshakeClientSystem gửi PlayerReadyRequest
+→ PlayerHandshakeServerSystem validate connection/session/join/epoch
+→ PlayerReadyAcceptedRpc
+→ đủ PlayerBootstrapSlot bắt buộc: MatchLifecycleSystem chuyển Running
+→ client nhận MatchState Running rồi mở selection/input
 ```
 
-Nguồn: [TerrainNetworkServerSystem.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainNetworkServerSystem.cs), [TerrainNetworkReceiveSystem.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainNetworkReceiveSystem.cs), [TerrainChunkGhostAuthoring.cs](../../Assets/_Project/Scripts/Runtime/Simulation/MapGeneration/TerrainChunkGhostAuthoring.cs), [TerrainCellVisualData.cs](../../Assets/_Project/Scripts/Runtime/Presentation/Terrain/TerrainCellVisualData.cs).
+Không còn RPC join/ready riêng cho terrain. `NetworkStreamInGame` bật snapshot trước khi ready; không đồng nghĩa trận đã Running. Server bootstrap/FOW và gửi dữ liệu khởi tạo không chờ client ACK.
 
-[TerrainChunkGhost prefab](../../Assets/_Project/Prefabs/TerrainChunkGhost.prefab) đã được Main/EntitySubscene tham chiếu. Server chờ PlayerBootstrapState.Ready để có player/vision/spawn camera, không chờ Running để gửi terrain.
+Manifest là danh sách Ghost ID + spawn tick cụ thể, không phải số hall/worker suy đoán. Nó chỉ chứa gameplay Ghost relevant ban đầu, context của player và Match Ghost. Mỗi client chỉ có một context thực; context session và GhostOwner phải khớp identity trước ACK. Manifest tới trước identity mới được giữ lại, ACK phiên cũ bị loại.
 
-## Invariant nhận/gửi
+Roster trong Main hiện có tám slot. Đủ ready thì bắt đầu ngay; nếu còn thiếu thì chờ timeout cấu hình (mặc định30giây), giữ slot thiếu ở trạng thái Disconnected rồi bắt đầu. Smoke hai client cũ chỉ rút roster trong RAM, không sửa scene nguồn.
 
-- GhostOwner/SendToOwner xác định người nhận; **server vẫn phải lọc Explored**. Không gửi occupancy, GridNodeCost hoặc resource/unit state qua luồng terrain. Client khác có thể thấy Ghost entity rỗng nhưng không có owner payload.
-- Unknown không có visual record, mask bằng 0. Explored khuất giữ geometry tối; entity mới trong ô Explored không tự được biết.
-- Cell có CornerHeights/TopHeight/mountain/walls đã compile; không cần client biết hàng xóm để dựng mặt. WallStart/WallCount phải nằm trong buffer cùng Ghost, cell phải thuộc chunk và không trùng.
-- Publish view khi đủ bộ chunk hợp lệ; khi cùng session/epoch đang nhận thêm chunk thì giữ view hoàn chỉnh trước. Session/epoch mới hoặc disconnect phải bỏ view cũ.
-- Session thuộc connection assignment; epoch thuộc source visual compile; MapBuildState.Revision/hash thuộc map; GeometryVersion thuộc mesh input của player. Không gộp counter hoặc thêm WorldId/MapId vào frame FOW.
-- Ready ACK phải khớp SourceConnection, session và epoch hiện tại. Payload shape và owner filtering không thay bằng client-side hiding.
-- Chunk có thể mang visibility từ các tick khác nhau; chưa có cam kết snapshot vision nguyên tử toàn map. Theme settings phải khớp; chưa hash toàn texture/catalog.
+## Terrain và FOW relevancy
 
-## Unit và command networking chưa hoàn tất
+```text
+TerrainVisualSource + FOW Explored của player
+→ TerrainNetworkServerSystem: chunk 8×8, GhostOwner theo connection
+→ header + cell/wall buffer Owner, cập nhật 10 Hz
+→ TerrainNetworkReceiveSystem validate và publish TerrainView
+→ renderer báo trạng thái; handshake chung gửi ACK
+```
 
-Giữ payload backend hiện có: CommandType, GameBlobReference, position/target và request riêng như CancelBuildingRequest. RPC adapter lấy issuer từ connection, resolve Ghost identity sang Entity của server rồi validate trước dispatch. Không serialize Entity handle local hoặc raw blob pointer. SourcesEntity của PlanBuild là entity payload local; mạng cần truyền/khôi phục danh sách worker, không chỉ gửi handle đó.
+- Không gửi occupancy/GridNodeCost hoặc resource/unit live state qua terrain.
+- Unknown không có visual record; explored khuất giữ terrain tối. Một ô explored không cho phép biết entity mới hoặc resource amount hiện tại.
+- Cell mang geometry đã compile; wall ranges thuộc buffer cùng Ghost. Receiver kiểm tra size/range/chunk, duplicate và đủ chunk trước publish.
+- Khi thêm chunk cùng phiên, giữ view hoàn chỉnh trước. Đổi session/join/epoch hoặc disconnect thì bỏ view cũ.
+- `GameplayGhostRelevancySystem` chạy sau fixed FOW và ECB, trước `GhostSendSystem`. Chỉ Ghost có `CustomGhostRelevancy` tham gia luật custom; Ghost thường giữ delivery mặc định qua `DefaultRelevancyQuery`.
+- Cơ chế dùng `SetIsRelevant` cho nhóm custom để Ghost mới chưa có ID không bị lộ snapshot đầu. Owned unit/building luôn được owner nhận; entity khác theo Visible/footprint; terrain và context chỉ đúng người nhận.
+- FOW phải sẵn sàng và đúng grid/revision. Explored không dùng để tiếp tục gửi live entity state trong fog.
+- GeometryVersion là phiên input renderer của player, không phải match session/map epoch. Chunk visibility chưa được bảo đảm nguyên tử trên toàn map.
+- Last-seen building/resource ở multiplayer chưa được nối với despawn relevancy; adapter ký ức hiện tại vẫn chỉ chạy local. Xem [FOW local](../Architecture/FogOfWarRendering.md).
 
-Netcode xử lý replication/interpolation/reliability của transport. Chỉ thêm sequence/ACK ứng dụng nếu có yêu cầu gameplay được xác định và ca kiểm chứng; không dựng cơ chế trùng vì một kế hoạch cũ từng đề cập.
+## RPC gameplay
 
-Unit/projectile khuất không có hình nhớ; building/resource cần last-seen memory độc lập Ghost. Client despawn do relevancy không đồng nghĩa chết và không tự chạy death animation. Identity ổn định và chính sách reconnect/late join cho entity memory còn phải triển khai. [FOW](../Architecture/FogOfWarRendering.md) giữ luật thông tin.
+`CommandDataHelper` giữ đường queue cũ cho server/local; ở client gửi `GameplayCommandRpc`. Adapter server lấy issuer từ connection, resolve Ghost ID/spawn tick rồi đưa vào queue/request hiện có.
+
+Đã nối Move, TargetTo, Build, Progression (train/research), PlanBuild và cancel building. Registry objects truyền bằng stable ID/kind; không gửi Entity index, prefab handle hoặc blob pointer. Placement enqueue từ member hợp lệ đầu tiên; member muộn tham gia cùng BuildOrder/site. Quota và rate limit riêng từng connection, không chờ đủ worker.
+
+`GameplayCommandResultRpc.Queued` chỉ xác nhận đã qua gate mạng và vào queue/request; không khẳng định gameplay đã hoàn tất hoặc đã thanh toán thành công. Gameplay cũ vẫn validate tài nguyên, khả năng, target và trạng thái khi xử lý.
 
 ## Dự kiến: matchmaking, lobby và vòng đời match
 
@@ -106,6 +124,10 @@ Nếu dùng player struct xuyên suốt quá trình, cân nhắc đổi tên `Pl
 
 ## Chạy và kiểm tra
 
-Mở [ConnectionUI](../../Assets/NetcodeForEntitiesSetup/Scenes/ConnectionUI.unity) rồi Main theo bootstrap hiện có. Frontend và Main có thể cùng camera; TerrainMapRenderer phải chọn camera trong scene Main, không chọn nhầm frontend. Nó đăng ký SubScene cho Network Worlds tạo sau khi Main đã mở và đổi binding khi World đổi. Host render qua ClientWorld; dedicated server không tạo mesh/camera.
+Mở [ConnectionUI](../../Assets/NetcodeForEntitiesSetup/Scenes/ConnectionUI.unity), nhập Local profile riêng từng người (ví dụ Host/Alice/Bob), rồi Host hoặc Client. Mở lại client dùng cùng profile để Rejoin; khi trùng profile chọn thêm Player ID. Host render từ ClientWorld; dedicated server không tạo camera/mesh. Mỗi client chỉ mở input sau identity, ACK và MatchState Running.
 
-Kiểm tra server + hai client: mapping player khác nhau; thiếu slot; prefab/scene load trước go-in-game; chỉ owner nhận terrain; exploration/vision đổi; chunk thiếu/sai range; Ready sai/đúng session; disconnect/reconnect và đổi map; camera snap chỉ khi sẵn sàng. Sau đó mới nghiệm thu mọi gameplay command, relevancy/static memory/UI và tải lớn. [CurrentState](../Maintenance/CurrentState.md) ghi phần nào đã thực sự chạy.
+Kiểm tra hồi quy tái sử dụng: menu `Tools/RTS/Check Multiplayer Networking`. Kết quả kiểm chứng và giới hạn hiện hành nằm trong [GameplayNetworking](GameplayNetworking.md#kiểm-chứng).
+
+Giữ các asset runtime trong Tests/Fixtures: chúng được scene/registry tham chiếu qua GUID, không phải artifact tạm.
+
+Cập nhật 03/11/2026: seed sinh riêng server một lần/trận; giữ slot khi disconnect, chờ roster30giây và deadline tải riêng60giây/connection; vé rejoin lưu theo profile/player. BuildOrder nhận member đầu ngay, member muộn nhập cùng site. Neutral giữ quan sát cuối riêng player, gửi lại khi rejoin; registry resolve theo client world và terrain dựng qua nhiều frame. Chạy `Tools/RTS/Check Networking Protocol`; kết quả và giới hạn ở [GameplayNetworking](GameplayNetworking.md).

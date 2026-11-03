@@ -36,12 +36,17 @@ public partial struct NeutralSpatialSystem : ISystem
         var footprints = SystemAPI.GetComponentLookup<BlockageData>(true);
         var health = SystemAPI.GetComponentLookup<EntityHealth>(true);
         var resources = SystemAPI.GetComponentLookup<ResourceNodeData>(true);
+        var owners = SystemAPI.GetComponentLookup<EntityOwner>(true);
+        var units = SystemAPI.GetComponentLookup<UnitComponent>(true);
+        var buildings = SystemAPI.GetComponentLookup<BuildingComponent>(true);
         foreach (var (transform, entity) in SystemAPI.Query<RefRO<LocalTransform>>()
-            .WithAny<BlockageData, ResourceNodeData>()
-            .WithNone<EntityOwner, ResourceNodePendingConfig>()
+            .WithNone<ResourceNodePendingConfig>()
             .WithNone<Bullet, ArtilleryBullet>()
             .WithEntityAccess())
         {
+            if (!footprints.HasComponent(entity) && !resources.HasComponent(entity)
+                && !units.HasComponent(entity) && !buildings.HasComponent(entity)) continue;
+            if (owners.HasComponent(entity) && owners[entity].PlayerID >= 0) continue;
             if (health.HasComponent(entity) && health[entity].CurrentHP <= 0) continue;
             if (resources.HasComponent(entity) && resources[entity].Amount <= 0) continue;
             SpatialCellCoverage.Add(ref bucket, entity, transform.ValueRO.Position, grid, footprints);

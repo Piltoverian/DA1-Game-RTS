@@ -17,17 +17,12 @@ public class RegistryAuthoring : MonoBehaviour
     [SerializeField] private GameDataRegistry gameDataRegistry;
     [SerializeField] private BakeMode bakeMode;
 
-    private static GameDataRegistry __instance;
-
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetInstance() => __instance = null;
-
     public static GameDataRegistry Instance
     {
         get
         {
-            return __instance;
+            return ClientPresentationCatalog.TryGetCurrent(out _, out var em)
+                && ClientPresentationCatalog.TryGet(em, out _, out var catalog) ? catalog : null;
         }
     }
 
@@ -47,7 +42,6 @@ public class RegistryAuthoring : MonoBehaviour
             {
                 Debug.LogError($"There should be exactly one RegistryAuthoring in the scene, but found {regs.Count()}.");
             }
-            __instance = authoring.gameDataRegistry;
             prefabs.Clear();
             trees.Clear();
             blobEntries.Clear();
@@ -57,6 +51,7 @@ public class RegistryAuthoring : MonoBehaviour
                 DependsOn(authoring.gameDataRegistry);
                 Entity et = GetEntity(TransformUsageFlags.None);
                 AddComponent<GameDataRegistryComponent>(et);
+                AddComponent(et, new PresentationCatalogReference { Catalog = authoring.gameDataRegistry });
                 AddBuffer<RegistryBlobElement>(et);
                 AddBuffer<RegistryPrefabElement>(et);
                 AddBuffer<RegistryTechEffectElement>(et);

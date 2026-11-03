@@ -24,8 +24,11 @@ partial struct MatchStateInitSystem : ISystem
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        ServerMatch.Initialize(ref state);
-        state.Enabled = false;
+    }
+
+    public void OnUpdate(ref SystemState state)
+    {
+        if (ServerMatch.Initialize(ref state)) state.Enabled = false;
     }
 
     [BurstCompile]

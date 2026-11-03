@@ -9,33 +9,25 @@ public class CommandMenu : MonoBehaviour
     [SerializeField] private GameObject ButtonPrefab;
 
     private Entity lastSelected;
+    private ulong lastWorldSequence;
 
     private void Update()
     {
-        bool hasPlayer = SelectHelper.TryGetLocalPlayerId(out int playerId);
-        Entity selectedEntity = hasPlayer
-            ? SelectHelper.GetFirstSelectedEntityByplayerID(playerId)
-            : Entity.Null;
+        bool hasSelection = ClientPresentationSelection.TryGet(out var world, out var entityManager,
+            out var selectedEntity, out int playerId);
+        if (!hasSelection) selectedEntity = Entity.Null;
+        ulong worldSequence = world != null && world.IsCreated ? world.SequenceNumber : 0;
 
-        if (selectedEntity == lastSelected)
+        if (selectedEntity == lastSelected && worldSequence == lastWorldSequence)
             return;
 
         lastSelected = selectedEntity;
+        lastWorldSequence = worldSequence;
 
         ClearButtons();
 
         if (selectedEntity == Entity.Null)
             return;
-
-        var world = World.DefaultGameObjectInjectionWorld;
-
-        if (world == null || !world.IsCreated)
-        {
-            Debug.LogError("DefaultGameObjectInjectionWorld is null.");
-            return;
-        }
-
-        EntityManager entityManager = world.EntityManager;
 
         if (!entityManager.Exists(selectedEntity))
             return;
@@ -56,7 +48,7 @@ public class CommandMenu : MonoBehaviour
                 GameObject buttonObject = Instantiate(ButtonPrefab, transform);
                 Image image = GetButtonImageComponent(buttonObject);
 
-                Sprite icon = EntityPresentation.BuildingIcon(offer.DefinitionID);
+                Sprite icon = EntityPresentation.BuildingIcon(entityManager, offer.DefinitionID);
                 if (icon != null && image != null)
                 {
                     image.sprite = icon;
@@ -86,7 +78,7 @@ public class CommandMenu : MonoBehaviour
                 GameObject buttonObject = Instantiate(ButtonPrefab, transform);
                 Image image = GetButtonImageComponent(buttonObject);
                 if (image != null)
-                    image.sprite = EntityPresentation.JobIcon(offer);
+                    image.sprite = EntityPresentation.JobIcon(entityManager, offer);
 
                 CommandButton commandButton = buttonObject.GetComponent<CommandButton>();
                 if (commandButton == null)

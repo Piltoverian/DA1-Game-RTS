@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 
-public enum MapPresentationPhase : byte { WaitingTerrain, Ready, Failed }
+public enum MapPresentationPhase : byte { WaitingTerrain, Ready, Failed, Building }
 public struct MapPresentationState : IComponentData
 {
     public MapPresentationPhase Phase;
@@ -19,6 +19,20 @@ public sealed class MapPresentationBinding : IComponentData
     public TerrainChunkRenderer Renderer;
     public readonly LocalTerrainView Local = new();
     public TerrainView View;
+    public TerrainChunkRenderer Candidate;
+    public System.Collections.IEnumerator BuildSteps;
+    public uint CandidateVersion;
+    public double RetryAfter;
+    public void CancelBuild()
+    {
+        (BuildSteps as IDisposable)?.Dispose(); BuildSteps=null;
+        if (Candidate)
+        {
+            Candidate.Clear();
+            if(Application.isPlaying) UnityEngine.Object.Destroy(Candidate); else UnityEngine.Object.DestroyImmediate(Candidate);
+        }
+        Candidate=null;
+    }
     public void Release()
     {
         if (Renderer)
@@ -28,12 +42,11 @@ public sealed class MapPresentationBinding : IComponentData
         }
         Renderer = null;
     }
-    public void Dispose() { Release(); Local.Dispose(); View = null; }
+    public void Dispose() { CancelBuild(); Release(); Local.Dispose(); View = null; }
 }
 
 [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true)]
-[UpdateAfter(typeof(LocalFogPresentationSystem))]
 [UpdateAfter(typeof(TerrainNetworkReceiveSystem))]
 public partial class MapTerrainPresentationSystem : SystemBase
 {
@@ -55,62 +68,63 @@ public partial class MapTerrainPresentationSystem : SystemBase
             var status = EntityManager.GetComponentData<MapPresentationState>(entity);
             if (view == null || !view.Ready)
             {
-                binding.Release();
-                EntityManager.SetComponentData(entity, new MapPresentationState { Phase = MapPresentationPhase.WaitingTerrain });
+                binding.CancelBuild();
+                // No fresh observation is not a request to destroy the last authorized image.
+                if(!binding.Renderer) EntityManager.SetComponentData(entity, new MapPresentationState { Phase = MapPresentationPhase.WaitingTerrain });
                 continue;
             }
             if (binding.Renderer) binding.Renderer.SetFog(view.Mask);
-            if (status.Revision == view.GeometryVersion && (binding.Renderer || status.Phase == MapPresentationPhase.Failed)) continue;
+            if (binding.BuildSteps == null && status.Revision == view.GeometryVersion && binding.Renderer) continue;
+            if (UnityEngine.Time.realtimeSinceStartupAsDouble < binding.RetryAfter) continue;
             var camera = binding.Owner.ResolveCamera();
             if (!camera) continue;
-            bool firstBuild = status.Phase != MapPresentationPhase.Ready;
+            bool firstBuild = !binding.Renderer;
             try
             {
-                using var probe = RuntimePerformanceProbe.Measure("terrainCompileAndBuild");
                 var theme = binding.Owner.theme;
-                if (!theme || !theme.IsRenderReady(out _)) throw new InvalidOperationException("Terrain theme is missing or not render ready.");
+                if (!theme || !theme.IsRenderReady(out _))
+                {
+                    // Dependencies may become available in a later loading frame.
+                    if(!binding.Renderer) status.Phase=MapPresentationPhase.WaitingTerrain;
+                    EntityManager.SetComponentData(entity,status); continue;
+                }
                 ValidateTheme(theme, view.Settings);
                 IsometricTerrainCamera.Configure(camera);
-                if (view.Mask) { camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black; }
-                binding.Release();
-                binding.Renderer = binding.Owner.gameObject.AddComponent<TerrainChunkRenderer>();
-                binding.Renderer.Build(view.Grid, theme, camera, World, view.Cells);
-                binding.Renderer.SetFog(view.Mask);
-                status = new MapPresentationState { Phase = MapPresentationPhase.Ready, Revision = view.GeometryVersion };
-                if (network)
+                if(view.Mask){camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.black;}
+                if(binding.BuildSteps==null)
                 {
-                    if (firstBuild && binding.Snapper && binding.Snapper.snapOnReady) binding.Snapper.Snap(camera, receiver.Header.SpawnPosition);
-                    EntityManager.SetComponentEnabled<CameraSnapPending>(entity, false);
-                    ReportTerrainReady(receiver.Header);
+                    binding.CandidateVersion=view.GeometryVersion;
+                    binding.Candidate=binding.Owner.gameObject.AddComponent<TerrainChunkRenderer>();
+                    binding.BuildSteps=binding.Candidate.BuildInSteps(view.Grid,theme,camera,World,view.Cells,binding.Renderer);
+                    if(!binding.Renderer) status.Phase=MapPresentationPhase.Building;
                 }
-                else if (firstBuild) EntityManager.SetComponentEnabled<CameraSnapPending>(entity, true);
+                bool more;
+                using(RuntimePerformanceProbe.Measure("terrainBuildStep")) more=binding.BuildSteps.MoveNext();
+                if(more){EntityManager.SetComponentData(entity,status);continue;}
+                (binding.BuildSteps as IDisposable)?.Dispose(); binding.BuildSteps=null;
+                var completed=binding.Candidate; binding.Candidate=null;
+                completed.SetFog(view.Mask); completed.Publish();
+                binding.Release(); binding.Renderer=completed;
+                status=new MapPresentationState { Phase=MapPresentationPhase.Ready, Revision=binding.CandidateVersion };
+                binding.RetryAfter=0;
+                if(network)
+                {
+                    if(firstBuild && binding.Snapper && binding.Snapper.snapOnReady) binding.Snapper.Snap(camera,receiver.Header.SpawnPosition);
+                    EntityManager.SetComponentEnabled<CameraSnapPending>(entity,false);
+                }
+                else if(firstBuild) EntityManager.SetComponentEnabled<CameraSnapPending>(entity,true);
             }
-            catch (Exception error)
+            catch(Exception error)
             {
-                binding.Release();
-                status = new MapPresentationState { Phase = MapPresentationPhase.Failed, Revision = view.GeometryVersion,
-                    Error = new FixedString512Bytes(error.Message.Length > 400 ? error.Message.Substring(0, 400) : error.Message) };
-                Debug.LogException(error);
+                binding.CancelBuild();
+                var message=new FixedString512Bytes(error.Message.Length>400?error.Message.Substring(0,400):error.Message);
+                if(!status.Error.Equals(message)) Debug.LogException(error);
+                status.Error=message;
+                status.Phase=binding.Renderer?MapPresentationPhase.Ready:MapPresentationPhase.Failed;
+                binding.RetryAfter=UnityEngine.Time.realtimeSinceStartupAsDouble+1;
             }
             EntityManager.SetComponentData(entity, status);
         }
-    }
-    void ReportTerrainReady(TerrainChunkGhost header)
-    {
-        using var query = EntityManager.CreateEntityQuery(typeof(NetworkId), typeof(NetworkStreamInGame));
-        if (query.CalculateEntityCount() != 1) return;
-        var connection = query.GetSingletonEntity();
-        if (EntityManager.HasComponent<TerrainClientReady>(connection))
-        {
-            var previous = EntityManager.GetComponentData<TerrainClientReady>(connection);
-            if (previous.Session == header.Session && previous.Epoch == header.Epoch) return;
-        }
-        var value = new TerrainClientReady { Session = header.Session, Epoch = header.Epoch };
-        if (EntityManager.HasComponent<TerrainClientReady>(connection)) EntityManager.SetComponentData(connection, value);
-        else EntityManager.AddComponentData(connection, value);
-        var request = EntityManager.CreateEntity(typeof(TerrainReadyRequest), typeof(SendRpcCommandRequest));
-        EntityManager.SetComponentData(request, new TerrainReadyRequest { Session = header.Session, Epoch = header.Epoch });
-        EntityManager.SetComponentData(request, new SendRpcCommandRequest { TargetConnection = connection });
     }
     static void ValidateTheme(TerrainTheme theme, TerrainSyncSettings settings)
     {

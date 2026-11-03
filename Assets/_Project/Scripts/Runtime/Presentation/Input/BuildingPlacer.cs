@@ -37,6 +37,8 @@ public class BuildingPlacer : MonoBehaviour
     [SerializeField] private LayerMask groundMask;
 
     private EntityManager entityManager;
+    private World presentationWorld;
+    private ulong presentationWorldSequence;
     private bool isPlacing;
     private FixedString64Bytes currentBuildingId;
     private Entity selectedBuildingPrefab;
@@ -45,6 +47,7 @@ public class BuildingPlacer : MonoBehaviour
 
     private GameObject currentGhost;
     private Renderer[] currentGhostRenderers;
+    private Material fallbackGhostMaterial;
     private Vector3 currentSnappedPosition;
     private StartEndRect currentLocalRect;
     private bool currentCanPlace;
@@ -59,9 +62,7 @@ public class BuildingPlacer : MonoBehaviour
 
     private void Start()
     {
-        var world = World.DefaultGameObjectInjectionWorld;
-        if (world != null)
-            entityManager = world.EntityManager;
+        RefreshWorld();
 
         if (groundMask.value == 0)
             groundMask = LayerMask.GetMask("Ground");
@@ -69,8 +70,12 @@ public class BuildingPlacer : MonoBehaviour
 
     private void Update()
     {
+        if (!RefreshWorld()) { CancelPlacement(); return; }
         if (!isPlacing || currentGhost == null)
             return;
+        if (!TryGetReadyPlayer(localPlayerId) || !entityManager.Exists(sourceWorkerEntity)
+            || !CommandAuthority.CanControl(entityManager, localPlayerId, sourceWorkerEntity))
+        { CancelPlacement(); return; }
 
         if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
         {
@@ -93,10 +98,11 @@ public class BuildingPlacer : MonoBehaviour
 
     public void StartPlacementFromOfferIndex(int index, Entity sourceEntity, int playerID)
     {
-        if (sourceEntity == Entity.Null)
+        if (!RefreshWorld() || !TryGetReadyPlayer(playerID) || sourceEntity == Entity.Null
+            || !entityManager.Exists(sourceEntity) || !CommandAuthority.CanControl(entityManager, playerID, sourceEntity))
             return;
 
-        if (entityManager != default && entityManager.HasBuffer<BuildOffer>(sourceEntity))
+        if (entityManager.HasBuffer<BuildOffer>(sourceEntity))
         {
             var offers = entityManager.GetBuffer<BuildOffer>(sourceEntity);
             if (index >= 0 && index < offers.Length)
@@ -112,6 +118,13 @@ public class BuildingPlacer : MonoBehaviour
     public void StartPlacement(FixedString64Bytes buildingId, Entity sourceWorker, int playerId)
     {
         CancelPlacement();
+        if (!RefreshWorld() || !TryGetReadyPlayer(playerId) || sourceWorker == Entity.Null
+            || !entityManager.Exists(sourceWorker) || !CommandAuthority.CanControl(entityManager, playerId, sourceWorker)
+            || !entityManager.HasBuffer<BuildOffer>(sourceWorker)) return;
+        bool offered = false;
+        foreach (var offer in entityManager.GetBuffer<BuildOffer>(sourceWorker))
+            if (offer.DefinitionID == buildingId) { offered = true; break; }
+        if (!offered) return;
 
         currentBuildingId = buildingId;
         sourceWorkerEntity = sourceWorker;
@@ -135,7 +148,7 @@ public class BuildingPlacer : MonoBehaviour
             currentLocalRect.ExpandTo(new float2(1.5f, 1.5f));
         }
 
-        GameObject previewSource = EntityPresentation.BuildingPreview(buildingId);
+        GameObject previewSource = EntityPresentation.BuildingPreview(entityManager, buildingId);
         if (previewSource != null)
         {
             currentGhost = CreateGhostFromPrefab(previewSource);
@@ -191,7 +204,9 @@ public class BuildingPlacer : MonoBehaviour
             MeshRenderer newMr = part.AddComponent<MeshRenderer>();
             Shader urpShader = Shader.Find("Universal Render Pipeline/Lit");
             if (urpShader == null) urpShader = Shader.Find("Universal Render Pipeline/Unlit");
-            newMr.sharedMaterial = validGhostMaterial != null ? validGhostMaterial : (urpShader != null ? new Material(urpShader) : null);
+            if (validGhostMaterial == null && fallbackGhostMaterial == null && urpShader != null)
+                fallbackGhostMaterial = new Material(urpShader);
+            newMr.sharedMaterial = validGhostMaterial != null ? validGhostMaterial : fallbackGhostMaterial;
         }
 
         int ghostLayer = LayerMask.NameToLayer("Ghost");
@@ -263,7 +278,8 @@ public class BuildingPlacer : MonoBehaviour
     }
     private void PlaceBuilding(Vector3 rootPosition, int playerId)
     {
-        if (selectedBuildingPrefab == Entity.Null || entityManager == default)
+        if (!RefreshWorld() || !TryGetReadyPlayer(playerId) || selectedBuildingPrefab == Entity.Null
+            || !entityManager.Exists(selectedBuildingPrefab))
             return;
 
         List<Entity> sources = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
@@ -273,19 +289,9 @@ public class BuildingPlacer : MonoBehaviour
 
     private Entity GetBuildingPrefabEntityFromRegistry(FixedString64Bytes buildingId)
     {
-        if (entityManager == default)
+        if (!ClientPresentationCatalog.TryGet(entityManager, out var regEntity, out _))
             return Entity.Null;
 
-        EntityQuery query = entityManager.CreateEntityQuery(
-            ComponentType.ReadOnly<GameDataRegistryComponent>(),
-            ComponentType.ReadOnly<RegistryBlobElement>(),
-            ComponentType.ReadOnly<RegistryPrefabElement>()
-        );
-
-        if (query.IsEmpty)
-            return Entity.Null;
-
-        Entity regEntity = query.GetSingletonEntity();
         var blobBuffer = entityManager.GetBuffer<RegistryBlobElement>(regEntity);
         var prefabBuffer = entityManager.GetBuffer<RegistryPrefabElement>(regEntity);
 
@@ -296,7 +302,8 @@ public class BuildingPlacer : MonoBehaviour
         int pIndex = blobRef.Value.Base.PrefabIndex;
         if (pIndex >= 0 && pIndex < prefabBuffer.Length)
         {
-            return prefabBuffer[pIndex].Prefab;
+            var prefab = prefabBuffer[pIndex].Prefab;
+            return entityManager.Exists(prefab) ? prefab : Entity.Null;
         }
 
         return Entity.Null;
@@ -308,11 +315,40 @@ public class BuildingPlacer : MonoBehaviour
             Destroy(currentGhost);
 
         currentGhost = null;
+        if (fallbackGhostMaterial != null) Destroy(fallbackGhostMaterial);
+        fallbackGhostMaterial = null;
         currentGhostRenderers = null;
         isPlacing = false;
         currentBuildingId = default;
         selectedBuildingPrefab = Entity.Null;
+        sourceWorkerEntity = Entity.Null;
+        localPlayerId = -1;
+        currentLocalRect = default;
+        currentCanPlace = false;
     }
+
+    private bool RefreshWorld()
+    {
+        if (!ClientPresentationCatalog.TryGetCurrent(out var world, out var em))
+        {
+            CancelPlacement();
+            presentationWorld = null;
+            presentationWorldSequence = 0;
+            entityManager = default;
+            return false;
+        }
+        if (!ReferenceEquals(presentationWorld, world) || presentationWorldSequence != world.SequenceNumber)
+        {
+            CancelPlacement();
+            presentationWorld = world;
+            presentationWorldSequence = world.SequenceNumber;
+            entityManager = em;
+        }
+        return ClientPresentationCatalog.IsReady(entityManager);
+    }
+
+    private bool TryGetReadyPlayer(int expectedId)
+        => expectedId >= 0 && SelectHelper.TryGetLocalPlayerId(out int currentId) && currentId == expectedId;
 
     private void SetGhostMaterial(BuildingPreviewState preview)
     {

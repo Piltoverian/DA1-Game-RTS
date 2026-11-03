@@ -1,6 +1,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Transforms;
 
 // Call on the simulation thread after the fixed tick, then hand the frame to presentation.
@@ -33,7 +34,9 @@ public static class FogOfWarSnapshot
         var fog = fogs.GetSingleton<FogOfWarSpatialSystemData>();
         var unitMap = units.GetSingleton<UnitSpatialBucket>().Bucket;
         var neutralMap = neutrals.GetSingleton<NeutralSpatialBucket>().Bucket;
-        if (!fog.Visible.IsCreated || !unitMap.IsCreated || !neutralMap.IsCreated) return false;
+        uint revision = em.HasComponent<MapBuildState>(gridEntity) ? em.GetComponentData<MapBuildState>(gridEntity).Revision : 0;
+        if (!fog.Ready || fog.SourceGrid != gridEntity || fog.GridRevision != revision
+            || !fog.Visible.IsCreated || !unitMap.IsCreated || !neutralMap.IsCreated) return false;
 
         frame.Width = grid.width; frame.Height = grid.height;
         frame.CellSize = grid.cellsize; frame.Origin = grid.origin;
@@ -73,7 +76,7 @@ public static class FogOfWarSnapshot
         }
         ProductionJobs.TryRegistry(em, out var registryEntity);
         foreach (var entity in candidates)
-            if (TryRead(em, entity, grid, visibleCells, registryEntity, out var data)) frame.Entities.Add(data);
+            if (TryReadVisible(em, entity, grid, visibleCells, registryEntity, out var data)) frame.Entities.Add(data);
         frame.IsValid = true;
         return true;
     }
@@ -84,7 +87,7 @@ public static class FogOfWarSnapshot
         do { candidates.Add(entity); } while (map.TryGetNextValue(out entity, ref iterator));
     }
 
-    private static bool TryRead(EntityManager em, Entity entity, in GridComponent grid,
+    public static bool TryReadVisible(EntityManager em, Entity entity, in GridComponent grid,
         NativeHashSet<int> visibleCells, Entity registryEntity, out FogEntityRenderData data)
     {
         data = default;
@@ -96,6 +99,7 @@ public static class FogOfWarSnapshot
         data.Transform = em.GetComponentData<LocalTransform>(entity);
         if (!math.all(math.isfinite(data.Transform.Position))) return false;
         data.Entity = entity;
+        if (em.HasComponent<GhostInstance>(entity)) data.NeutralId = NeutralMemoryIdentity.FromGhost(em.GetComponentData<GhostInstance>(entity));
         data.OwnerId = em.HasComponent<EntityOwner>(entity) ? em.GetComponentData<EntityOwner>(entity).PlayerID : -1;
         data.PostTransform = em.HasComponent<PostTransformMatrix>(entity)
             ? em.GetComponentData<PostTransformMatrix>(entity).Value : float4x4.identity;

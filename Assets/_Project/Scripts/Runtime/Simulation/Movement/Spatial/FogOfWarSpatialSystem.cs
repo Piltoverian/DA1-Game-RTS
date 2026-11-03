@@ -10,6 +10,9 @@ public struct FogOfWarSpatialSystemData : IComponentData
 {
     public NativeParallelMultiHashMap<int, int> Visible;
     public NativeParallelMultiHashMap<int, int> Explored;
+    public Entity SourceGrid;
+    public uint GridRevision;
+    public bool Ready;
 
     public bool IsVisibleTo(int cellIndex, int playerId) => HasPlayer(Visible, cellIndex, playerId);
     public bool IsExploredBy(int cellIndex, int playerId) => HasPlayer(Explored, cellIndex, playerId);
@@ -84,12 +87,15 @@ partial struct FogOfWarSpatialSystem : ISystem
     {
         var container = SystemAPI.GetSingletonRW<FogOfWarSpatialSystemData>();
         ref var data = ref container.ValueRW;
+        data.Ready = false;
         data.Visible.Clear();
 
         var gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
         var grid = SystemAPI.GetSingleton<GridComponent>();
         uint revision = SystemAPI.HasComponent<MapBuildState>(gridEntity)
             ? SystemAPI.GetComponent<MapBuildState>(gridEntity).Revision : 0;
+        data.SourceGrid = gridEntity;
+        data.GridRevision = revision;
         if (sourceGrid != gridEntity || sourceRevision != revision
             || previousGrid.width != grid.width || previousGrid.height != grid.height
             || previousGrid.cellsize != grid.cellsize || math.any(previousGrid.origin != grid.origin))
@@ -151,6 +157,7 @@ partial struct FogOfWarSpatialSystem : ISystem
                 }
             }
         }
+        data.Ready = true;
     }
 
     [BurstCompile]

@@ -51,6 +51,7 @@ public static class ServerMatch
         if (!server && Cache.Data.Initialized && Cache.Data.IsServer) return false;
 
         var query = state.GetEntityQuery(ComponentType.ReadWrite<MatchState>());
+        if (server && query.IsEmptyIgnoreFilter) return false;
         if (query.IsEmptyIgnoreFilter)
             state.EntityManager.CreateSingleton(new MatchState { Phase = MatchPhase.Preparing });
         var phase = query.GetSingleton<MatchState>().Phase;
@@ -64,7 +65,7 @@ public static class ServerMatch
         return true;
     }
 
-    /// <summary>Updates ECS first, then the cache. Does not send anything to clients yet.</summary>
+    /// <summary>Updates the authoritative ghost state first, then the server cache.</summary>
     public static bool SetPhase(ref SystemState state, MatchPhase phase)
     {
         if (!Cache.Data.Initialized || Cache.Data.Owner != state.WorldUnmanaged.SequenceNumber)

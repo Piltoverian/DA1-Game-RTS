@@ -5,36 +5,6 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 
-public struct TerrainReadyRequest : IRpcCommand { public uint Session, Epoch; }
-public struct TerrainClientReady : IComponentData { public uint Session, Epoch; }
-
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(TerrainVisualSourceSystem))]
-public partial class TerrainReadyServerSystem : SystemBase
-{
-    protected override void OnUpdate()
-    {
-        using var sources=EntityManager.CreateEntityQuery(typeof(TerrainVisualSource));
-        if(sources.CalculateEntityCount()!=1)return;
-        var source=EntityManager.GetComponentObject<TerrainVisualSource>(sources.GetSingletonEntity());
-        using var readyQuery=EntityManager.CreateEntityQuery(typeof(TerrainReadyRequest),typeof(ReceiveRpcCommandRequest));
-        using var readyRequests=readyQuery.ToEntityArray(Allocator.Temp);
-        foreach(var e in readyRequests){
-            var ready=EntityManager.GetComponentData<TerrainReadyRequest>(e);
-            var connection=EntityManager.GetComponentData<ReceiveRpcCommandRequest>(e).SourceConnection;
-            if(EntityManager.Exists(connection)&&EntityManager.HasComponent<NetworkId>(connection)
-                &&!EntityManager.HasComponent<NetworkStreamRequestDisconnect>(connection)&&EntityManager.HasComponent<PlayerConnection>(connection)
-                &&ready.Session==EntityManager.GetComponentData<PlayerConnection>(connection).Session&&ready.Epoch==source.Epoch){
-                var value=new TerrainClientReady{Session=ready.Session,Epoch=ready.Epoch};
-                if(EntityManager.HasComponent<TerrainClientReady>(connection))EntityManager.SetComponentData(connection,value);
-                else EntityManager.AddComponentData(connection,value);
-            }
-            EntityManager.DestroyEntity(e);
-        }
-    }
-}
-
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
@@ -60,9 +30,14 @@ public partial class TerrainNetworkServerSystem : SystemBase
         if(sourceQuery.CalculateEntityCount()!=1)return;
         var source=EntityManager.GetComponentObject<TerrainVisualSource>(sourceQuery.GetSingletonEntity());
         if(source.Settings.Prefab==Entity.Null)return;
-        using var fogQuery=EntityManager.CreateEntityQuery(typeof(FogOfWarSpatialSystemData));
-        var fog=fogQuery.GetSingleton<FogOfWarSpatialSystemData>();
-        if(!fog.Explored.IsCreated||!fog.Visible.IsCreated)return;
+        if(!GameplayGhostVisibility.TryGetFog(EntityManager,out var grid,out var fog)
+            ||sourceQuery.GetSingletonEntity()!=fog.SourceGrid||source.Revision!=fog.GridRevision
+            ||source.Grid.width!=grid.width||source.Grid.height!=grid.height||source.Grid.cellsize!=grid.cellsize
+            ||math.any(source.Grid.origin!=grid.origin)||source.Cells==null||source.Cells.Length!=(long)grid.width*grid.height
+            ||!fog.Explored.IsCreated||!fog.Visible.IsCreated){
+            // Keep already-authorized immutable chunks during a transient unavailable FOW frame.
+            return;
+        }
         // Disconnect cleanup also works if the Netcode connection entity was already destroyed.
         var removed=new List<Entity>();
         foreach(var pair in streams){
@@ -73,6 +48,15 @@ public partial class TerrainNetworkServerSystem : SystemBase
         foreach(var e in removed)streams.Remove(e);
         using var query=EntityManager.CreateEntityQuery(typeof(NetworkId),typeof(NetworkStreamInGame),typeof(PlayerConnection));
         using var connections=query.ToEntityArray(Allocator.Temp);
+        int across=(source.Grid.width+ChunkSide-1)/ChunkSide;
+        var byPlayer=new Dictionary<int,SortedDictionary<int,SortedSet<int>>>();
+        foreach(var pair in fog.Explored){
+            int i=pair.Key;if(i<0||i>=source.Cells.Length)continue;
+            int chunk=(i/source.Grid.width/ChunkSide)*across+(i%source.Grid.width/ChunkSide);
+            if(!byPlayer.TryGetValue(pair.Value,out var playerGroups))byPlayer.Add(pair.Value,playerGroups=new());
+            if(!playerGroups.TryGetValue(chunk,out var playerCells))playerGroups.Add(chunk,playerCells=new());
+            playerCells.Add(i);
+        }
         foreach(var connection in connections){
             if(EntityManager.HasComponent<NetworkStreamRequestDisconnect>(connection))continue;
             var owner=EntityManager.GetComponentData<PlayerConnection>(connection);
@@ -80,20 +64,9 @@ public partial class TerrainNetworkServerSystem : SystemBase
             if(!streams.TryGetValue(connection,out var stream))streams.Add(connection,stream=new PlayerStream());
             if(stream.Epoch!=source.Epoch){
                 DestroyChunks(stream);stream.Epoch=source.Epoch;
-                if(EntityManager.HasComponent<TerrainClientReady>(connection)){
-                    var ready=EntityManager.GetComponentData<TerrainClientReady>(connection);
-                    if(ready.Session!=owner.Session||ready.Epoch!=source.Epoch)EntityManager.RemoveComponent<TerrainClientReady>(connection);
-                }
+
             }
-            var groups=new SortedDictionary<int,SortedSet<int>>();
-            int across=(source.Grid.width+ChunkSide-1)/ChunkSide;
-            foreach(var pair in fog.Explored){
-                int i=pair.Key;
-                if(pair.Value!=owner.PlayerId||i<0||i>=source.Cells.Length)continue;
-                int chunk=(i/source.Grid.width/ChunkSide)*across+(i%source.Grid.width/ChunkSide);
-                if(!groups.TryGetValue(chunk,out var cells))groups.Add(chunk,cells=new SortedSet<int>());
-                cells.Add(i);
-            }
+            if(!byPlayer.TryGetValue(owner.PlayerId,out var groups))groups=new SortedDictionary<int,SortedSet<int>>();
             // One empty header lets a player with zero explored cells still finish receiving map metadata.
             if(groups.Count==0)groups.Add(-1,new SortedSet<int>());
             var obsolete=new List<int>();
@@ -106,7 +79,7 @@ public partial class TerrainNetworkServerSystem : SystemBase
                     EntityManager.SetComponentData(entity,new GhostOwner{NetworkId=networkId});
                     stream.Chunks[group.Key]=entity;
                 }
-                var header=new TerrainChunkGhost{Session=owner.Session,Epoch=source.Epoch,Revision=source.Revision,
+                var header=new TerrainChunkGhost{Session=owner.MatchSessionId,JoinGeneration=owner.JoinGeneration,Epoch=source.Epoch,Revision=source.Revision,
                     ChunkIndex=group.Key,ExpectedChunks=groups.Count,PlayerId=owner.PlayerId,
                     Width=source.Grid.width,Height=source.Grid.height,CellSize=source.Grid.cellsize,Origin=source.Grid.origin,
                     SpawnPosition=spawn,VisualSeed=source.Settings.VisualSeed,MountainTiers=source.Settings.MountainTiers,

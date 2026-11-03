@@ -185,13 +185,13 @@ public partial struct BuilderSystem : ISystem
         }
     }
 
-    public static void EnqueuePlan(EntityManager em, Entity worker, Entity prefab, float3 position)
+    public static void EnqueuePlan(EntityManager em, Entity worker, Entity prefab, float3 position, Entity networkBuildOrder = default)
     {
         var builder = em.GetComponentData<BuilderComponent>(worker);
         if (em.IsComponentEnabled<BuilderComponent>(worker) && builder.State != BuilderState.Idle && !builder.RepairOnly)
         {
             if (em.HasBuffer<BuilderQueueElement>(worker)) em.GetBuffer<BuilderQueueElement>(worker).Add(
-                new BuilderQueueElement { Prefab = prefab, Position = position });
+                new BuilderQueueElement { Prefab = prefab, Position = position, NetworkBuildOrder = networkBuildOrder });
             return;
         }
         CommandQueue.DeactiveAllAbility(em, worker);
@@ -199,6 +199,7 @@ public partial struct BuilderSystem : ISystem
         builder.RepairOnly = false; builder.KnownTarget = default; builder.FogApproachRequested = false;
         builder.TargetConstructionSite = Entity.Null;
         builder.PlannedPrefab = prefab; builder.PlannedPosition = position;
+        builder.NetworkBuildOrder = networkBuildOrder;
         builder.WaitingForPlacement = false; builder.State = BuilderState.GoingToSite;
         em.SetComponentData(worker, builder); em.SetComponentEnabled<BuilderComponent>(worker, true);
         if (em.HasComponent<TargetCache>(worker)) em.SetComponentData(worker, new TargetCache { lastTargetPosition = position });
@@ -206,6 +207,22 @@ public partial struct BuilderSystem : ISystem
 
     private static void UpdatePlan(EntityManager em, RefRW<BuilderComponent> builder, Entity worker, float3 position, EntityCommandBuffer ecb)
     {
+        var networkOrder = builder.ValueRO.NetworkBuildOrder;
+        if (networkOrder != Entity.Null)
+        {
+            if (!NetworkBuildOrders.Current(em, worker, networkOrder))
+            { builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.NetworkBuildOrder = Entity.Null; StopBuilder(em, builder, worker); return; }
+            var order = em.GetComponentData<NetworkBuildOrder>(networkOrder);
+            if (order.Phase == NetworkBuildPhase.Failed || (order.Phase == NetworkBuildPhase.Site && !NetworkBuildOrders.CanContinue(em, order)))
+            { builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.NetworkBuildOrder = Entity.Null; StopBuilder(em, builder, worker); return; }
+            if (order.Phase == NetworkBuildPhase.Site)
+            {
+                builder.ValueRW.TargetConstructionSite = order.Site;
+                builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.NetworkBuildOrder = Entity.Null;
+                builder.ValueRW.State = BuilderState.GoingToSite;
+                return;
+            }
+        }
         var prefab = builder.ValueRO.PlannedPrefab;
         if (!em.Exists(prefab) || !em.HasComponent<BlockageData>(prefab))
         { builder.ValueRW.PlannedPrefab = Entity.Null; StopBuilder(em, builder, worker); return; }
@@ -224,6 +241,8 @@ public partial struct BuilderSystem : ISystem
             if (!KnownTargetOrders.Approach(em, worker, position, root.xz + rect.MinPoint, root.xz + rect.MaxPoint, builder.ValueRO.BuildRange))
             { builder.ValueRW.FogApproachRequested = true; return; }
         }
+        // Network members share the one request published by NetworkBuildOrderSystem.
+        if (networkOrder != Entity.Null) return;
         Entity request = ecb.CreateEntity();
         ecb.AddComponent(request, new PlaceBuildingRequest { PlayerId = player, PrefabEntity = prefab, Position = root });
         ecb.AddBuffer<PlaceBuildingWorkerElement>(request).Add(new PlaceBuildingWorkerElement { WorkerEntity = worker });
@@ -278,6 +297,8 @@ public partial struct BuilderSystem : ISystem
             var next = pending[0];
             Entity site = next.BuildingEntity;
             pending.RemoveAt(0);
+            if (next.NetworkBuildOrder != Entity.Null && !NetworkBuildOrders.Current(em, entity, next.NetworkBuildOrder)) continue;
+            builder.ValueRW.NetworkBuildOrder = next.NetworkBuildOrder;
             builder.ValueRW.KnownTarget = default; builder.ValueRW.FogApproachRequested = false;
             if (next.Prefab != Entity.Null)
             {

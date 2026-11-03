@@ -1,5 +1,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
+using Unity.NetCode.Hybrid;
 using UnityEngine;
 
 public class GridAuthoring : MonoBehaviour
@@ -61,9 +63,12 @@ public class GridAuthoring : MonoBehaviour
             {
                 // TerrainMapRenderer renders the baked cells; retain the plane collider.
                 AddComponent<Unity.Rendering.DisableRendering>(entity);
-                AddComponent(entity,MapGenerationRecipe.From(authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings));
-                AddComponent(entity,new MapBuildState{Phase=MapBuildPhase.Requested,Revision=1});
-                AddBuffer<GridSpawnCell>(entity);
+                if (this.GetNetcodeTarget(false) != NetcodeConversionTarget.Client)
+                {
+                    AddComponent(entity, MapGenerationRecipe.From(authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings));
+                    AddComponent(entity, new MapBuildState { Phase = MapBuildPhase.Requested, Revision = 1 });
+                    AddBuffer<GridSpawnCell>(entity);
+                }
                 if(authoring.TerrainTheme){
                     DependsOn(authoring.TerrainTheme);
                     var theme=authoring.TerrainTheme;

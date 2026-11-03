@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
@@ -29,7 +30,18 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     {
         playerId = -1;
         var world = World.DefaultGameObjectInjectionWorld;
-        if (world == null || !world.IsCreated) return false;
+        if (world == null || !world.IsCreated)
+        {
+            return false;
+        }
+        if (world.IsClient())
+        {
+            if (!PlayerNetwork.TryLocal(world, out _, out var identity)) return false;
+            using var match = world.EntityManager.CreateEntityQuery(typeof(MatchState));
+            if (!match.TryGetSingleton<MatchState>(out var phase) || phase.Phase != MatchPhase.Running) return false;
+            playerId = identity.PlayerId;
+            return true;
+        }
         using var local = world.EntityManager.CreateEntityQuery(typeof(LocalTestPlayer));
         using var bootstrap = world.EntityManager.CreateEntityQuery(typeof(PlayerBootstrapState));
         int localCount = local.CalculateEntityCount();
@@ -71,7 +83,12 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
             selectingRect.DeleteRect();
             selectingRect.StartPoint = mousePos;
             pressStartedOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-            if (!pressStartedOverUI && TryGetSelectionManager(out var em)) SingleSelecting(mousePos, em);
+            if (!pressStartedOverUI && TryGetSelectionManager(out var em))
+            {
+
+                SingleSelecting(mousePos, em);
+                Debug.Log($"SelectManager: Single selecting at {mousePos}");
+            }
             return;
         }
         if (pressStartedOverUI) return;
@@ -101,7 +118,11 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 
     public void SingleSelecting(Vector2 currentMousePos,EntityManager em)
     {
-        if (!TryGetPlayerId(out int playerId)) return;
+        if (!TryGetPlayerId(out int playerId))
+        {
+            Debug.LogWarning("SelectManager: Failed to get player ID for selection.");
+            return;
+        }
         if (cam==null)
         {
             return;
@@ -120,7 +141,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
                 v2 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MaxPoint, cam),
                 v3 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MinPoint.x, selectingRect.MaxPoint.y), cam),
                 v4 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MaxPoint.x, selectingRect.MinPoint.y), cam),
-                rayInput = PhysicConvertHelper.GetRayCastInput(currentMousePos, cam, uint.MaxValue)//uint.MaxValue
+                rayInput = PhysicConvertHelper.GetRayCastInput(currentMousePos, cam, ~PhysicsLayersDefine.Ground)
             });
         }
 

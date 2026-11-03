@@ -39,6 +39,7 @@ public struct FogActiveJobSnapshot
 public struct FogEntityRenderData
 {
     public Entity Entity;
+    public ulong NeutralId;
     // Existing registry IDs are strings. A missing registry source falls back to
     // the live local entity; presentation must capture its visuals while visible.
     public FixedString64Bytes? GameRegId;

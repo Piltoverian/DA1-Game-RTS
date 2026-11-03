@@ -117,6 +117,25 @@ public struct PlayerContext : IComponentData
 
 public static class PlayerContextHelper
 {
+    public static bool AreAllies(EntityManager em, int firstPlayer, int secondPlayer)
+    {
+        if (firstPlayer == secondPlayer) return true;
+        using var rosterQuery = em.CreateEntityQuery(typeof(MatchPlayerRoster));
+        if (rosterQuery.CalculateEntityCount() == 1)
+        {
+            var roster = em.GetBuffer<MatchPlayerRoster>(rosterQuery.GetSingletonEntity(), true);
+            int firstTeam = -1, secondTeam = -1;
+            foreach (var player in roster)
+            {
+                if (player.PlayerId == firstPlayer) firstTeam = player.TeamId;
+                if (player.PlayerId == secondPlayer) secondTeam = player.TeamId;
+            }
+            return firstTeam >= 0 && firstTeam == secondTeam;
+        }
+        using var contexts = em.CreateEntityQuery(typeof(PlayerContext));
+        using var players = contexts.ToComponentDataArray<PlayerContext>(Allocator.Temp);
+        return AreAllies(players, firstPlayer, secondPlayer);
+    }
     // Unassigned/missing teams preserve individual-player hostility.
     public static bool AreAllies(NativeArray<PlayerContext> contexts, int firstPlayer, int secondPlayer)
     {

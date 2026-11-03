@@ -27,7 +27,7 @@ public sealed class FogOfWarRenderView
 
     public void Apply(FogOfWarFrame frame)
     {
-        if (!frame.IsValid) { Clear(); return; }
+        if (!frame.IsValid) return;
         if (!hasFrame || playerId != frame.PlayerId || width != frame.Width || height != frame.Height
             || cellSize != frame.CellSize || math.any(origin != frame.Origin)) Clear();
         hasFrame = true;
@@ -48,7 +48,7 @@ public sealed class FogOfWarRenderView
         {
             if (visibleIds.Contains(id)) continue;
             var remembered = entities[id];
-            if (!remembered.IsStatic || IsFootprintVisible(remembered)) entities.Remove(id);
+            if ((!remembered.IsStatic && remembered.OwnerId >= 0) || IsFootprintVisible(remembered)) entities.Remove(id);
             else
             {
                 remembered.IsVisible = false;

@@ -25,6 +25,7 @@ public class UnitAuthoring : MonoBehaviour
                 throw new InvalidOperationException($"UnitSO '{authoring.unitDef.name}' has invalid or duplicate costs. Run Registry Validate.");
 
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent<CustomGhostRelevancy>(entity);
             BakeBase(entity, authoring.unitDef.basedSO, authoring.initialHealth, authoring.playerID);
             AddComponent(entity, new UnitComponent
             {

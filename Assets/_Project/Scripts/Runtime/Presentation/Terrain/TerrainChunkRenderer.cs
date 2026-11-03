@@ -25,24 +25,72 @@ public class TerrainChunkRenderer : MonoBehaviour
     readonly List<Mesh> meshes = new List<Mesh>();
     public GameObject PresentationRoot => root;
 
-    public void Build(GridComponent grid, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld, IReadOnlyDictionary<int, TerrainCellVisualData> visualCells)
+    Dictionary<Texture2D,int> ids;
+    Rect[] rects;
+    TerrainArt art;
+    sealed class TerrainArt
     {
-        var profile=MeasureBuild?new BuildProfile():null;
-        long start=profile==null?0:System.Diagnostics.Stopwatch.GetTimestamp(),stamp=start;
-        void Mark(ref double value){long now=System.Diagnostics.Stopwatch.GetTimestamp();value=(now-stamp)*1000.0/System.Diagnostics.Stopwatch.Frequency;stamp=System.Diagnostics.Stopwatch.GetTimestamp();}
+        public int References = 1;
+        public Texture2D Atlas, Geometry;
+        public Material Material;
+        public Dictionary<Texture2D,int> Ids;
+        public Rect[] Rects;
+        public TerrainTheme Theme;
+        public GridComponent Grid;
+        public void ReleaseReference()
+        {
+            if (--References != 0) return;
+            Release(Material); Release(Atlas); Release(Geometry);
+        }
+    }
+
+    public void Build(GridComponent grid, TerrainTheme theme, Camera camera, Unity.Entities.World presentationWorld, IReadOnlyDictionary<int,TerrainCellVisualData> visualCells)
+    {
+        var routine = BuildInSteps(grid, theme, camera, presentationWorld, visualCells);
+        while (routine.MoveNext()) { }
+        Publish();
+    }
+
+    public System.Collections.IEnumerator BuildInSteps(GridComponent grid, TerrainTheme theme, Camera camera,
+        Unity.Entities.World presentationWorld, IReadOnlyDictionary<int,TerrainCellVisualData> visualCells, TerrainChunkRenderer reuse = null)
+    {
         Clear();
-        if(profile!=null)Mark(ref profile.clearMs);
+        var core = BuildCore(grid, theme, camera, presentationWorld, visualCells, reuse);
         try
         {
-            if (!theme || !camera || !camera.orthographic)
-                throw new InvalidOperationException("Assign a terrain theme and orthographic isometric camera");
-            if (Mathf.Abs(camera.transform.right.y) > .001f)
-                throw new InvalidOperationException("Canonical camera requires zero roll");
-            float rise = theme.ResolveTierRise(grid.cellsize, camera.transform.forward);
-            if(!theme.IsRenderReady(out string reason))throw new InvalidOperationException(reason);
+            while (true)
+            {
+                bool more;
+                try { more = core.MoveNext(); }
+                catch { Clear(); throw; }
+                if (!more) break;
+                yield return null;
+            }
+        }
+        finally { (core as IDisposable)?.Dispose(); }
+    }
 
+    System.Collections.IEnumerator BuildCore(GridComponent grid, TerrainTheme theme, Camera camera,
+        Unity.Entities.World presentationWorld, IReadOnlyDictionary<int,TerrainCellVisualData> visualCells, TerrainChunkRenderer reuse)
+    {
+        var profile = MeasureBuild ? new BuildProfile() : null;
+        long start = System.Diagnostics.Stopwatch.GetTimestamp(), stamp = start;
+        void Mark(ref double value) { long now=System.Diagnostics.Stopwatch.GetTimestamp(); value=(now-stamp)*1000.0/System.Diagnostics.Stopwatch.Frequency; stamp=now; }
+        if (!theme || !camera || !camera.orthographic)
+            throw new InvalidOperationException("Assign a terrain theme and orthographic isometric camera");
+        if (Mathf.Abs(camera.transform.right.y) > .001f) throw new InvalidOperationException("Canonical camera requires zero roll");
+        float rise = theme.ResolveTierRise(grid.cellsize, camera.transform.forward);
+        if (!theme.IsRenderReady(out string reason)) throw new InvalidOperationException(reason);
+        if (reuse && reuse.art != null && reuse.art.Theme == theme && reuse.art.Grid.width == grid.width
+            && reuse.art.Grid.height == grid.height && reuse.art.Grid.cellsize == grid.cellsize && reuse.art.Grid.origin.Equals(grid.origin))
+        {
+            art=reuse.art; art.References++;
+            atlas=art.Atlas; geometryAtlas=art.Geometry; groundMaterial=art.Material; ids=art.Ids; rects=art.Rects;
+        }
+        else
+        {
             var textures = new List<Texture2D>();
-            var ids = new Dictionary<Texture2D, int>();
+            ids = new Dictionary<Texture2D, int>();
             void Add(Texture2D texture, bool tile)
             {
                 if (!texture || !texture.isReadable)
@@ -68,7 +116,7 @@ public class TerrainChunkRenderer : MonoBehaviour
 
             atlas = new Texture2D(2, 2, TextureFormat.RGBA32, false)
                 { name = "Canonical terrain atlas", filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            var rects = atlas.PackTextures(textures.ToArray(), 4, 2048, false);
+            rects = atlas.PackTextures(textures.ToArray(), 4, 2048, false);
             for(int i=0;i<textures.Count;i++)
                 if(Mathf.Abs(rects[i].width*atlas.width-textures[i].width)>1 || Mathf.Abs(rects[i].height*atlas.height-textures[i].height)>1)
                     throw new InvalidOperationException("Atlas packing scaled terrain art; reduce the texture bank before promotion");
@@ -92,26 +140,34 @@ public class TerrainChunkRenderer : MonoBehaviour
             }
             if(profile!=null)Mark(ref profile.materialMs);
 
-            surface = new TerrainVisualSurface(grid, rise, visualCells);
-            if(profile!=null)Mark(ref profile.surfaceMs);
-            root = CanonicalIsometricSprites.Build(grid, theme, surface, camera.transform.forward, groundMaterial, ids, rects, meshes,visualCells);
-            root.AddComponent<TerrainMountainFade>().Initialize(groundMaterial,camera,surface,theme.mountainFadeRadiusCells,presentationWorld);
-            if(profile!=null)Mark(ref profile.meshMs);
-            foreach (var filter in root.GetComponentsInChildren<MeshFilter>())
-                foreach (var vertex in filter.sharedMesh.vertices)
-                    if (vertex.y != 0 || filter.transform.TransformPoint(vertex).y != 0)
-                        throw new InvalidOperationException("Terrain vertices must remain exactly local/world Y=0");
-            view = camera;
-            viewRotation = camera.transform.rotation;
-            surface.Activate();
-            if(profile!=null){Mark(ref profile.verifyMs);profile.totalMs=(System.Diagnostics.Stopwatch.GetTimestamp()-start)*1000.0/System.Diagnostics.Stopwatch.Frequency;
-                profile.batches=meshes.Count;foreach(var mesh in meshes)profile.vertices+=mesh.vertexCount;
-                profile.atlasRuntimeBytes=UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(atlas);
-            }
-            LastBuildProfile=profile;
+
+            art=new TerrainArt { Atlas=atlas, Geometry=geometryAtlas, Material=groundMaterial, Ids=ids, Rects=rects, Theme=theme, Grid=grid };
         }
-        catch { Clear(); throw; }
+        // Resource banks are compiled once per view/theme, not for each explored cell update.
+        yield return null;
+        surface=new TerrainVisualSurface(grid,rise,visualCells);
+        var geometrySteps=CanonicalIsometricSprites.BuildInSteps(grid,theme,surface,camera.transform.forward,groundMaterial,ids,rects,meshes,visualCells,value=>root=value);
+        while(geometrySteps.MoveNext()) yield return null;
+        root.SetActive(false);
+        root.AddComponent<TerrainMountainFade>().Initialize(groundMaterial,camera,surface,theme.mountainFadeRadiusCells,presentationWorld);
+        if (MeasureBuild)
+            foreach(var filter in root.GetComponentsInChildren<MeshFilter>())
+            {
+                foreach(var vertex in filter.sharedMesh.vertices)
+                    if(vertex.y!=0 || filter.transform.TransformPoint(vertex).y!=0) throw new InvalidOperationException("Terrain vertices must remain exactly local/world Y=0");
+                yield return null;
+            }
+        view=camera; viewRotation=camera.transform.rotation;
+        if(profile!=null)
+        {
+            profile.totalMs=(System.Diagnostics.Stopwatch.GetTimestamp()-start)*1000.0/System.Diagnostics.Stopwatch.Frequency;
+            profile.batches=meshes.Count; foreach(var mesh in meshes)profile.vertices+=mesh.vertexCount;
+            profile.atlasRuntimeBytes=UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(atlas);
+        }
+        LastBuildProfile=profile;
     }
+
+    public void Publish() { if(root)root.SetActive(true); surface?.Activate(); }
 
     void LateUpdate()
     {
@@ -144,9 +200,9 @@ public class TerrainChunkRenderer : MonoBehaviour
         Release(root); root = null;
         foreach (var mesh in meshes) Release(mesh);
         meshes.Clear();
-        Release(groundMaterial); groundMaterial = null;
-        Release(atlas); atlas = null;
-        Release(geometryAtlas);geometryAtlas=null;
+        if (art != null) { art.ReleaseReference(); art = null; }
+        else { Release(groundMaterial); Release(atlas); Release(geometryAtlas); }
+        groundMaterial=null; atlas=null; geometryAtlas=null; ids=null; rects=null;
         view = null; warned = false;
     }
     void OnDestroy() { Clear(); }

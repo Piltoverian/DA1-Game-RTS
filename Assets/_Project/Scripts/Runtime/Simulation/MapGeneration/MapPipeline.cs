@@ -2,6 +2,7 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using UnityEngine;
 
 public enum MapBuildPhase : byte { Requested, TerrainReady, NavigationReady, GameplayReady, Failed }
@@ -81,6 +82,7 @@ public static class MapTerrainSnapshot
 
 [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation|WorldSystemFilterFlags.ServerSimulation)]
 [UpdateInGroup(typeof(InitializationSystemGroup))]
+[UpdateAfter(typeof(ServerMapSeedSystem))]
 public partial class MapTerrainGenerationSystem : SystemBase
 {
     protected override void OnCreate(){RequireForUpdate<MapGenerationRecipe>();}
@@ -90,6 +92,7 @@ public partial class MapTerrainGenerationSystem : SystemBase
         using var entities=query.ToEntityArray(Allocator.Temp);
         foreach(var entity in entities){
             var state=EntityManager.GetComponentData<MapBuildState>(entity);if(state.Phase!=MapBuildPhase.Requested)continue;
+            if (World.IsServer() && EntityManager.HasComponent<ServerMapGenerated>(entity)) continue;
             try{
                 var recipe=EntityManager.GetComponentData<MapGenerationRecipe>(entity);
                 if(recipe.AlgorithmVersion!=MapGenerationRecipe.CurrentAlgorithmVersion)throw new InvalidOperationException("Unsupported map algorithm version");
@@ -98,6 +101,7 @@ public partial class MapTerrainGenerationSystem : SystemBase
                 var map=TerrainGeneration.Generate(grid,recipe.Settings());
                 var spawns=new GridSpawnCell[map.spawns.Length];for(int i=0;i<spawns.Length;i++)spawns[i]=new GridSpawnCell{playerId=i,cell=map.spawns[i]};
                 MapTerrainSnapshot.Apply(EntityManager,entity,map.cells,spawns,state.Revision,MapTerrainSnapshot.Hash(grid,map.cells,spawns));
+                if (World.IsServer()) EntityManager.AddComponent<ServerMapGenerated>(entity);
             }catch(Exception error){state.Phase=MapBuildPhase.Failed;state.Error=new FixedString512Bytes(error.Message.Length>400?error.Message.Substring(0,400):error.Message);EntityManager.SetComponentData(entity,state);Debug.LogException(error);}
         }
     }

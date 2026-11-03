@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using Unity.NetCode;
 
 public enum CommandType
 {
@@ -25,6 +26,7 @@ public struct CommandQueueElement : IBufferElementData
     public Vector3 position;
     public GridRect gridRect;
     public FogKnownTarget KnownTarget;
+    public Entity BuildOrder;
 }
 
 public struct CommandQueueComponent : IComponentData
@@ -35,8 +37,13 @@ public static class CommandDataHelper
 {
     // Snapshot selection now; processing must not read a later UI selection.
     public static void AddPlanBuildToQueue(EntityManager em, int playerId,
-        System.Collections.Generic.IReadOnlyList<Entity> sources, Entity prefab, Vector3 position)
+        System.Collections.Generic.IReadOnlyList<Entity> sources, Entity prefab, Vector3 position, Entity buildOrder = default)
     {
+        if (em.World.IsClient())
+        {
+            GameplayCommandNetwork.SendPlacement(em, sources, prefab, position);
+            return;
+        }
         using var query = em.CreateEntityQuery(typeof(CommandQueueComponent));
         var queue = query.GetSingletonEntity();
         var payload = em.CreateEntity();
@@ -46,7 +53,7 @@ public static class CommandDataHelper
         em.GetBuffer<CommandQueueElement>(queue).Add(new CommandQueueElement
         {
             PlayerId = playerId, Type = CommandType.PlanBuild, targetEntity = prefab,
-            position = position, SourcesEntity = payload
+            position = position, SourcesEntity = payload, BuildOrder = buildOrder
         });
     }
 
@@ -59,8 +66,14 @@ public static class CommandDataHelper
         Entity targetEntity = default,
         Vector3 position = default,
         GridRect gridRect = default,
-        FogKnownTarget knownTarget = default)
+        FogKnownTarget knownTarget = default,
+        Entity buildOrder = default)
     {
+        if (entityManager.World.IsClient())
+        {
+            GameplayCommandNetwork.Send(entityManager, sourceEntity, type, progression, targetEntity, position);
+            return;
+        }
         using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<CommandQueueComponent>());
         var commandQueueEntity = query.GetSingletonEntity();
         var commandBuffer = entityManager.GetBuffer<CommandQueueElement>(commandQueueEntity);
@@ -74,7 +87,19 @@ public static class CommandDataHelper
             position = position,
             gridRect = gridRect,
             KnownTarget = knownTarget,
+            BuildOrder = buildOrder,
         });
+    }
+
+    public static void CancelBuilding(EntityManager em, int playerId, Entity building)
+    {
+        if (em.World.IsClient())
+        {
+            GameplayCommandNetwork.Send(em, building, CommandType.Build, default, Entity.Null, default, true);
+            return;
+        }
+        var request = em.CreateEntity();
+        em.AddComponentData(request, new CancelBuildingRequest { BuildingEntity = building, PlayerId = playerId });
     }
 }
 
@@ -113,6 +138,8 @@ partial struct CommandQueue : ISystem
 
     private static void ProcessCommand(ref SystemState state, CommandQueueElement command)
     {
+        if (command.BuildOrder != Entity.Null && command.Type != CommandType.PlanBuild
+            && !NetworkBuildOrders.Current(state.EntityManager, command.sourceEntity, command.BuildOrder)) return;
         if (command.Type == CommandType.PlanBuild)
         {
             HandlePlanBuild(ref state, command);
@@ -163,6 +190,16 @@ partial struct CommandQueue : ISystem
         if (payload == Entity.Null || !em.Exists(payload)) return;
         try
         {
+        if (command.BuildOrder != Entity.Null)
+        {
+            if (em.HasBuffer<PlaceBuildingWorkerElement>(payload))
+            {
+                using var members = em.GetBuffer<PlaceBuildingWorkerElement>(payload).ToNativeArray(Allocator.Temp);
+                foreach (var member in members)
+                    NetworkBuildOrders.Route(em, command.BuildOrder, member.WorkerEntity);
+            }
+            return;
+        }
         if (command.PlayerId < 0 || !em.HasBuffer<PlaceBuildingWorkerElement>(payload)
             || !em.Exists(command.targetEntity) || !em.HasComponent<Prefab>(command.targetEntity)
             || !em.HasComponent<BuildingComponent>(command.targetEntity)
@@ -460,6 +497,7 @@ partial struct CommandQueue : ISystem
             var builder = em.GetComponentData<BuilderComponent>(entity);
             if (builder.WaitingForPlacement && em.Exists(builder.PlacementRequest)) em.DestroyEntity(builder.PlacementRequest);
             builder.WaitingForPlacement = false; builder.PlannedPrefab = Entity.Null; builder.KnownTarget = default;
+            builder.NetworkBuildOrder = Entity.Null;
             em.SetComponentData(entity, builder);
         }
         if (em.HasComponent<FogTargetTravel>(entity)) em.RemoveComponent<FogTargetTravel>(entity);

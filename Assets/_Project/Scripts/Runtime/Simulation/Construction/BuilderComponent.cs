@@ -22,6 +22,7 @@ public struct BuilderComponent : IComponentData,IEnableableComponent
     [GhostField]
     public bool RepairOnly;
     public Entity PlannedPrefab;
+    public Entity NetworkBuildOrder;
     public float3 PlannedPosition;
     public bool WaitingForPlacement;
     public Entity PlacementRequest;
@@ -32,6 +33,7 @@ public struct BuilderComponent : IComponentData,IEnableableComponent
 // Pending buildings, in placement order. The active target remains in BuilderComponent.
 public struct BuilderQueueElement : IBufferElementData
 {
+    public Entity NetworkBuildOrder;
     public Entity BuildingEntity;
     public Entity Prefab;
     public float3 Position;

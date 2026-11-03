@@ -1,6 +1,6 @@
 # Fog of War local: render và lệnh
 
-FOW quyết định player được biết ô/entity nào và giữ ký ức hình khi mất vision. Snapshot entity vẫn là dữ liệu local, chưa phải giao thức Netcode cho unit/building/resource. [Terrain](Terrain.md) sở hữu geometry/renderer; [Multiplayer](../Multiplayer/README.md) sở hữu chunk/session; [CurrentState](../Maintenance/CurrentState.md) ghi giới hạn kiểm chứng.
+FOW quyết định player được biết ô/entity nào và giữ ký ức hình khi mất vision. Snapshot/memory mô tả ở trang này vẫn là dữ liệu local. Ghost live unit/building/resource đã có relevancy phía server; phần memory client khi mất relevancy chưa được nối. [Terrain](Terrain.md) sở hữu geometry/renderer; [Multiplayer](../Multiplayer/README.md) sở hữu chunk/session; [CurrentState](../Maintenance/CurrentState.md) ghi giới hạn kiểm chứng.
 
 ## Luồng dữ liệu
 
@@ -37,7 +37,7 @@ TerrainVisualSource (compile map một lần theo revision/hash)
 
 Đối tượng tĩnh chỉ gồm building/resource; các vật cản khác là terrain. Root/hình con tra LinkedEntityGroup và Parent. DisableRendering chỉ áp phần graphics, không disable simulation. SpriteRenderer cần quản lý riêng và khôi phục khi hiện lại/dispose; selection/minimap đối chiếu trạng thái chọn hiện tại. Material ký ức được sao chép để không nhận shader state mới trong fog. LocalToWorld đã chứa snap/scale, không áp PostTransformMatrix lần hai.
 
-Snapshot vẫn giữ ability đang thực thi, job production đầu queue, Health Current/MaxOverride và Resource Amount theo hợp đồng đã có. Các trường health/ability/job hiện chưa có consumer UI trong source; chưa xóa hoặc tách một schema song song. Không clone gameplay hoặc gửi queue/danh sách khả năng. Ghost entity thuộc phần [multiplayer](../Multiplayer/README.md) chưa hoàn tất.
+Snapshot vẫn giữ ability đang thực thi, job production đầu queue, Health Current/MaxOverride và Resource Amount theo hợp đồng đã có. Các trường health/ability/job hiện chưa có consumer UI trong source; chưa xóa hoặc tách một schema song song. Không clone gameplay hoặc gửi queue/danh sách khả năng. Ghost live entity thuộc phần [multiplayer](../Multiplayer/README.md); không dùng queue Owner-only để cung cấp job của đối phương và chưa nối memory network vào snapshot local này.
 
 ## Tầm nhìn và terrain
 

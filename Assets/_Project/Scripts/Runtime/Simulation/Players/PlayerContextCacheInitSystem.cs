@@ -1,9 +1,11 @@
+using Unity.NetCode;
 using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(LateSimulationSystemGroup))]
 partial struct PlayerContextCacheInitSystem : ISystem
 {
     [BurstCompile]
@@ -13,10 +15,12 @@ partial struct PlayerContextCacheInitSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer ecb = new EntityCommandBuffer(AllocatorManager.Temp);
+        using var ecb = new EntityCommandBuffer(AllocatorManager.Temp);
         var eventBus = Resources.Load<EventBus>("EventBus");
         foreach (var (playerContextEntity,tag,entity) in SystemAPI.Query<PlayerContext,PlayerContextCachePendingTag>().WithEntityAccess())
         {
+            if ((state.WorldUnmanaged.Flags & WorldFlags.GameClient) == WorldFlags.GameClient
+                && (!PlayerNetwork.TryLocal(state.World, out _, out var local) || playerContextEntity.PlayerId != local.PlayerId)) continue;
             var resourcechangeEvent = new ResourceChangeEvent();
             resourcechangeEvent.playerId = playerContextEntity.PlayerId;
             var buffer = SystemAPI.GetBuffer<ResourcePair>(entity);
@@ -51,7 +55,6 @@ partial struct PlayerContextCacheInitSystem : ISystem
             ecb.RemoveComponent<PlayerContextCachePendingTag>(entity);
         }
         ecb.Playback(state.EntityManager);
-        ecb.Dispose();
     }
 
     [BurstCompile]

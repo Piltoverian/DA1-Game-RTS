@@ -67,6 +67,8 @@ public class TerrainMapRenderer : MonoBehaviour
     }
     static World FindPresentationWorld()
     {
+        var active = World.DefaultGameObjectInjectionWorld;
+        if(active!=null&&active.IsCreated&&active.IsClient()&&!active.IsThinClient())return active;
         foreach(var world in World.All)if(world.IsCreated&&world.IsClient()&&!world.IsThinClient())return world;
         // Never render the server's complete authoritative map on a host.
         foreach(var world in World.All)if(world.IsCreated&&!world.IsServer()&&!world.IsClient()&&!world.IsThinClient()

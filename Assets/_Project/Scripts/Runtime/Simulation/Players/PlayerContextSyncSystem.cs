@@ -1,3 +1,4 @@
+using Unity.NetCode;
 using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
@@ -12,7 +13,7 @@ using UnityEngine;
 /// 
 [UpdateAfter(typeof(PlayerContextCacheInitSystem))]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerContextSyncSystem : ISystem
 {
      private static EventBus s_CachedEventBus;
@@ -32,6 +33,7 @@ public partial struct PlayerContextSyncSystem : ISystem
 
         foreach (var (playerContext,playerContextCache, contextEntity) in SystemAPI.Query<PlayerContext, PlayerContextCache>().WithEntityAccess())
         {
+            if (state.World.IsClient() && (!PlayerNetwork.TryLocal(state.World, out _, out var local) || playerContext.PlayerId != local.PlayerId)) continue;
             var buffer = SystemAPI.GetBuffer<ResourcePair>(contextEntity);
             var resourcescontextcache = SystemAPI.GetBuffer<ResourcePairCache>(contextEntity);
             bool flowcontrol = true; // Dùng để debug, tránh gọi event nhiều lần khi chưa fix xong logic so sánh.
@@ -97,10 +99,12 @@ public partial struct PlayerContextSyncSystem : ISystem
         DynamicBuffer<ResourcePair> buffer,
         ref DynamicBuffer<ResourcePairCache> cacheBuffer)
     {
-        bool changed = false;
+        bool changed = buffer.Length != cacheBuffer.Length;
+        int previousLength = cacheBuffer.Length;
+        if (changed) cacheBuffer.ResizeUninitialized(buffer.Length);
         for (int i = 0; i < buffer.Length; i++)
         {
-            if (i >= cacheBuffer.Length || buffer[i].Amount != cacheBuffer[i].Amount)
+            if (i >= previousLength || buffer[i].Type != cacheBuffer[i].Type || buffer[i].Amount != cacheBuffer[i].Amount)
             {
                 changed = true;
                 SyncResource(ref cacheBuffer, buffer, i);

@@ -65,9 +65,9 @@ public partial class LocalFogPresentationSystem : SystemBase
         var currentGrid = grids.CalculateEntityCount() == 1 ? grids.GetSingletonEntity() : Entity.Null;
         uint currentRevision = currentGrid != Entity.Null && EntityManager.HasComponent<MapBuildState>(currentGrid)
             ? EntityManager.GetComponentData<MapBuildState>(currentGrid).Revision : 0;
-        if (viewer != player || gridEntity != currentGrid || mapRevision != currentRevision)
-        { ResetMemory(); viewer = player; gridEntity = currentGrid; mapRevision = currentRevision; ScopeVersion++; }
         FogOfWarSnapshot.Collect(EntityManager, player, Frame);
+        if (Frame.IsValid && (viewer != player || gridEntity != currentGrid || mapRevision != currentRevision))
+        { ResetMemory(); viewer = player; gridEntity = currentGrid; mapRevision = currentRevision; ScopeVersion++; }
         View.Apply(Frame);
         foreach (var data in Frame.Entities)
             if (data.Kind == FogRenderKind.Resource && EntityManager.HasComponent<ResourceNodeData>(data.Entity))
@@ -79,6 +79,7 @@ public partial class LocalFogPresentationSystem : SystemBase
         owners.Clear();
         using var roots = EntityManager.CreateEntityQuery(new EntityQueryDesc { Any = new[] {
             ComponentType.ReadOnly<EntityOwner>(), ComponentType.ReadOnly<ResourceNodeData>(),
+            ComponentType.ReadOnly<UnitComponent>(), ComponentType.ReadOnly<BuildingComponent>(), ComponentType.ReadOnly<BlockageData>(),
             ComponentType.ReadOnly<Bullet>(), ComponentType.ReadOnly<ArtilleryBullet>() } });
         using var entities = roots.ToEntityArray(Allocator.Temp);
         foreach (var root in entities)
@@ -97,7 +98,7 @@ public partial class LocalFogPresentationSystem : SystemBase
             View.Entities.TryGetValue(root, out var data);
             bool visible = Frame.IsValid && data.IsVisible;
             SetHidden(renderer, !visible);
-            if (visible && data.IsStatic) Capture(root, renderer);
+            if (visible && (data.IsStatic || data.OwnerId < 0)) Capture(root, renderer);
         }
         // Hybrid selection/minimap sprites are not controlled by DisableRendering.
         using var sprites = EntityManager.CreateEntityQuery(typeof(SpriteRenderer));
@@ -107,7 +108,7 @@ public partial class LocalFogPresentationSystem : SystemBase
             var root = FindOwner(sprite);
             if (root == Entity.Null) continue;
             var renderer = EntityManager.GetComponentObject<SpriteRenderer>(sprite);
-            bool visible = View.Entities.TryGetValue(root, out var data) && data.IsVisible;
+            bool visible = Frame.IsValid && View.Entities.TryGetValue(root, out var data) && data.IsVisible;
             if (!visible)
             {
                 if (!hiddenSprites.ContainsKey(sprite)) hiddenSprites.Add(sprite, renderer.enabled);
@@ -127,7 +128,7 @@ public partial class LocalFogPresentationSystem : SystemBase
         foreach (var entity in iconEntities)
         {
             var root = FindOwner(entity);
-            if (root == Entity.Null || !View.Entities.TryGetValue(root, out var data) || !data.IsVisible) continue;
+            if (!Frame.IsValid || root == Entity.Null || !View.Entities.TryGetValue(root, out var data) || !data.IsVisible) continue;
             var icon = EntityManager.GetComponentData<MinimapRenderer>(entity);
             bool selected = EntityManager.HasComponent<Selected>(root) && EntityManager.IsComponentEnabled<Selected>(root);
             if (EntityManager.Exists(icon.selectedIcon) && EntityManager.HasComponent<SpriteRenderer>(icon.selectedIcon)) EntityManager.GetComponentObject<SpriteRenderer>(icon.selectedIcon).enabled = selected;
@@ -137,7 +138,7 @@ public partial class LocalFogPresentationSystem : SystemBase
         foreach (var pair in memories)
         {
             if (!View.Entities.TryGetValue(pair.Key, out var data)) removed.Add(pair.Key);
-            else if (!data.IsVisible) pair.Value.Draw();
+            else if (Frame.IsValid && !data.IsVisible) pair.Value.Draw();
         }
         foreach (var key in removed) { memories[key].Clear(); memories.Remove(key); }
         hidden.RemoveWhere(e => !EntityManager.Exists(e));
