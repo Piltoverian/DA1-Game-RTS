@@ -808,6 +808,10 @@ MonoBehaviour:
   ConnectionLabel: {fileID: 3994311890261028960}
   StartHostButton: {fileID: 1832511949907437032}
   StartClientButton: {fileID: 6854988246180719574}
+  RetryButton: {fileID: 0}
+  DisconnectButton: {fileID: 0}
+  LocalProfile: 
+  ResumePlayerId: -1
 --- !u!114 &5972489141119983356
 MonoBehaviour:
   m_ObjectHideFlags: 0

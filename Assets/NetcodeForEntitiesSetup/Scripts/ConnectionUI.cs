@@ -458,7 +458,14 @@ namespace Unity.Multiplayer.Center.NetcodeForEntitiesSetup
                     && EntityManager.GetComponentData<ClientPlayerState>(connectionEntity).Phase == ClientLoadingPhase.ServerReady;
                 int playerId = EntityManager.HasComponent<ClientPlayerState>(connectionEntity) ? EntityManager.GetComponentData<ClientPlayerState>(connectionEntity).PlayerId : -1;
                 if (playerId >= 0) UIBehaviour.NotePlayer(playerId);
-                UIBehaviour.ShowStatus(true, ready ? $"Player {playerId} | {address} | {m_PingText}" : $"{address} | Receiving current match...");
+                string loading = !EntityManager.HasComponent<PlayerJoinSent>(connectionEntity) ? "Loading local scene/prefabs"
+                    : EntityManager.HasComponent<ClientPlayerState>(connectionEntity)
+                        && EntityManager.GetComponentData<ClientPlayerState>(connectionEntity).Phase == ClientLoadingPhase.ReadySent
+                        ? "Waiting for server Ready acceptance"
+                    : EntityManager.HasComponent<ClientReadinessStatus>(connectionEntity)
+                        ? "Waiting for " + EntityManager.GetComponentData<ClientReadinessStatus>(connectionEntity).WaitingFor
+                        : "Receiving match identity";
+                UIBehaviour.ShowStatus(true, ready ? $"Player {playerId} | {address} | {m_PingText}" : $"{address} | {loading}");
             }
             else
             {

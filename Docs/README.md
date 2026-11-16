@@ -12,6 +12,7 @@
 | SO, registry, blob, authoring và thêm kiểu dữ liệu | [GameData](Guides/GameData.md) |
 | Connection/player, terrain Ghost, ACK và phần mạng chưa hoàn tất | [Multiplayer](Multiplayer/README.md) |
 | Kết quả đã kiểm chứng, giới hạn và việc đầu tiên cần test | [Trạng thái hiện tại](Maintenance/CurrentState.md) |
+| Học game online, đọc flow RTS, NGO/NfE và FPS có backend | [Giáo trình tiếng Việt — 32 bài có hình](../../../Learning/OnlineGame/README.md) |
 
 ## Cách cập nhật
 

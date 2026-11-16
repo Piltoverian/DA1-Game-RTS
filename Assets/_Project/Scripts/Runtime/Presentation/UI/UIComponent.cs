@@ -1,19 +1,11 @@
-using Unity.IO.LowLevel.Unsafe;
+using Unity.Entities;
 using UnityEngine;
 
 public class UIComponent : MonoBehaviour
 {
     [SerializeField] protected int playerId;
-    protected virtual void Start()
+    protected bool TryGetPlayer(out EntityManager em)
     {
-        UIManager uiManager = FindAnyObjectByType<UIManager>();
-        if(uiManager != null)
-        {
-            playerId = uiManager.PlayerId;
-        }
-        else
-        {
-            Debug.LogError("UIComponent could not find a UIManager in the scene.");
-        }   
+        return UIManager.TryGetPlayer(out em, out playerId);
     }
 }

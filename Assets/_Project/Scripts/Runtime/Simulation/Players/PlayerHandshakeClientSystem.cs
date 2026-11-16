@@ -121,7 +121,8 @@ public partial class PlayerHandshakeReceiveSystem : SystemBase
             if (EntityManager.GetComponentData<ReceiveRpcCommandRequest>(request).SourceConnection != current)
             { EntityManager.DestroyEntity(request); continue; }
             if (PlayerNetwork.CompareVersion(player, value.MatchSessionId, value.JoinGeneration, value.Epoch) > 0) continue;
-            if (PlayerNetwork.Matches(player, value.MatchSessionId, value.JoinGeneration, value.Epoch))
+            if (PlayerNetwork.Matches(player, value.MatchSessionId, value.JoinGeneration, value.Epoch)
+                && player.Phase == ClientLoadingPhase.ReadySent)
                 player.Phase = ClientLoadingPhase.ServerReady;
             EntityManager.DestroyEntity(request);
         }
@@ -163,6 +164,61 @@ public static class PlayerBootstrapReceipt
     }
 }
 
+// All client bootstrap requirements are evaluated here; receivers never send Ready.
+public enum ClientReadinessStage : byte
+{
+    LocalPrefabs, TerrainData, Manifest, NeutralMemory, TerrainPresentation,
+    ContextOwnership, MatchState, PhysicsSelection, Complete
+}
+public struct ClientReadinessStatus : IComponentData { public ClientReadinessStage WaitingFor; }
+
+public static class PlayerClientReadiness
+{
+    public static ClientReadinessStage Evaluate(World world, Entity connection, ref ClientPlayerState player)
+    {
+        var em = world.EntityManager;
+        if (!PlayerClientPrefabReadiness.IsReady(em)) return ClientReadinessStage.LocalPrefabs;
+        var receiver = world.GetExistingSystemManaged<TerrainNetworkReceiveSystem>();
+        if (receiver == null || !receiver.View.Ready || receiver.Header.Session != player.MatchSessionId
+            || receiver.Header.JoinGeneration != player.JoinGeneration || receiver.Header.Epoch != player.Epoch)
+            return ClientReadinessStage.TerrainData;
+        if (player.InitialTerrainVersion == 0) player.InitialTerrainVersion = receiver.View.GeometryVersion;
+        if (!em.HasBuffer<RequiredBootstrapGhost>(connection)
+            || !PlayerBootstrapReceipt.Complete(em.GetBuffer<RequiredBootstrapGhost>(connection, true), player.ExpectedGhosts))
+            return ClientReadinessStage.Manifest;
+        if (!NeutralMemoryClientSystem.IsReady(world, player)) return ClientReadinessStage.NeutralMemory;
+        using var presentation = em.CreateEntityQuery(typeof(MapPresentationBinding), typeof(MapPresentationState));
+        using var presentations = presentation.ToEntityArray(Allocator.Temp);
+        bool applied = false;
+        foreach (var entity in presentations)
+        {
+            var binding = em.GetComponentObject<MapPresentationBinding>(entity);
+            if (!binding.Owner || !binding.Owner.isActiveAndEnabled) continue;
+            var state = em.GetComponentData<MapPresentationState>(entity);
+            if (state.Phase != MapPresentationPhase.Ready || state.Revision < player.InitialTerrainVersion
+                || !binding.Renderer || binding.View != receiver.View) return ClientReadinessStage.TerrainPresentation;
+            applied = true;
+        }
+        if (!applied) return ClientReadinessStage.TerrainPresentation;
+        if (PlayerContextHelper.GetPlayerContextEntity(em, player.PlayerId, out var context, out _) != FunctionResult.Success
+            || !em.HasComponent<PlayerContextSession>(context) || !em.HasComponent<GhostOwner>(context))
+            return ClientReadinessStage.ContextOwnership;
+        var contextSession = em.GetComponentData<PlayerContextSession>(context);
+        if (contextSession.MatchSessionId != player.MatchSessionId || contextSession.JoinGeneration != player.JoinGeneration
+            || em.GetComponentData<GhostOwner>(context).NetworkId != em.GetComponentData<NetworkId>(connection).Value)
+            return ClientReadinessStage.ContextOwnership;
+        using var matchQuery = em.CreateEntityQuery(typeof(MatchSession), typeof(MatchState), typeof(MatchTimeComponent));
+        if (!matchQuery.TryGetSingleton<MatchSession>(out var matchSession) || matchSession.Id != player.MatchSessionId)
+            return ClientReadinessStage.MatchState;
+        using var physics = em.CreateEntityQuery(typeof(PhysicsWorldSingleton));
+        using var selection = em.CreateEntityQuery(typeof(DOTSSelectManagerComponent), typeof(SelectionRequest));
+        if (physics.CalculateEntityCount() != 1 || selection.CalculateEntityCount() != 1
+            || world.GetExistingSystemManaged<ClientPresentationSelectionSystem>() == null)
+            return ClientReadinessStage.PhysicsSelection;
+        return ClientReadinessStage.Complete;
+    }
+}
+
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
 public partial class PlayerHandshakeClientSystem : SystemBase
@@ -171,44 +227,17 @@ public partial class PlayerHandshakeClientSystem : SystemBase
     {
         if (!PlayerNetwork.TryLocal(World, out var connection, out var player, false)
             || player.Phase != ClientLoadingPhase.Receiving) return;
-        PlayerBootstrapReceipt.Observe(EntityManager, connection);
-        var receiver = World.GetExistingSystemManaged<TerrainNetworkReceiveSystem>();
-        if (receiver == null || !receiver.View.Ready || receiver.Header.Session != player.MatchSessionId
-            || receiver.Header.JoinGeneration != player.JoinGeneration || receiver.Header.Epoch != player.Epoch) return;
-        if (player.InitialTerrainVersion == 0)
+        if (EntityManager.HasBuffer<RequiredBootstrapGhost>(connection)) PlayerBootstrapReceipt.Observe(EntityManager, connection);
+        var stage = PlayerClientReadiness.Evaluate(World, connection, ref player);
+        var status = new ClientReadinessStatus { WaitingFor = stage };
+        if (EntityManager.HasComponent<ClientReadinessStatus>(connection)) EntityManager.SetComponentData(connection, status);
+        else EntityManager.AddComponentData(connection, status);
+        if (stage == ClientReadinessStage.Complete)
         {
-            player.InitialTerrainVersion = receiver.View.GeometryVersion;
-            EntityManager.SetComponentData(connection, player);
+            player.Phase = ClientLoadingPhase.ReadySent;
+            PlayerNetwork.Send(EntityManager, connection, new PlayerReadyRequest {
+                MatchSessionId = player.MatchSessionId, JoinGeneration = player.JoinGeneration, Epoch = player.Epoch });
         }
-        if (player.ExpectedGhosts <= 0) return;
-        if (!ClientPresentationCatalog.IsReady(EntityManager) || !NeutralMemoryClientSystem.IsReady(World, player)) return;
-        using var presentation = EntityManager.CreateEntityQuery(typeof(MapPresentationBinding), typeof(MapPresentationState));
-        using var presentations = presentation.ToEntityArray(Allocator.Temp);
-        bool applied = false;
-        foreach (var entity in presentations)
-        {
-            var binding = EntityManager.GetComponentObject<MapPresentationBinding>(entity);
-            if (!binding.Owner || !binding.Owner.isActiveAndEnabled) continue;
-            var state = EntityManager.GetComponentData<MapPresentationState>(entity);
-            if (state.Phase != MapPresentationPhase.Ready || state.Revision < player.InitialTerrainVersion
-                || !binding.Renderer || binding.View != receiver.View) return;
-            applied = true;
-        }
-        if (!applied) return;
-        if (!PlayerBootstrapReceipt.Complete(EntityManager.GetBuffer<RequiredBootstrapGhost>(connection, true), player.ExpectedGhosts)) return;
-        if (PlayerContextHelper.GetPlayerContextEntity(EntityManager, player.PlayerId, out var context, out _) != FunctionResult.Success
-            || !EntityManager.HasComponent<PlayerContextSession>(context) || !EntityManager.HasComponent<GhostOwner>(context)) return;
-        var contextSession = EntityManager.GetComponentData<PlayerContextSession>(context);
-        if (contextSession.MatchSessionId != player.MatchSessionId || contextSession.JoinGeneration != player.JoinGeneration
-            || EntityManager.GetComponentData<GhostOwner>(context).NetworkId != EntityManager.GetComponentData<NetworkId>(connection).Value) return;
-        using var matchQuery = EntityManager.CreateEntityQuery(typeof(MatchSession));
-        if (!matchQuery.TryGetSingleton<MatchSession>(out var matchSession) || matchSession.Id != player.MatchSessionId) return;
-        using var physics = EntityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton));
-        using var selection = EntityManager.CreateEntityQuery(typeof(DOTSSelectManagerComponent), typeof(SelectionRequest));
-        if (physics.CalculateEntityCount() != 1 || selection.CalculateEntityCount() != 1) return;
-        var value = new PlayerReadyRequest { MatchSessionId = player.MatchSessionId, JoinGeneration = player.JoinGeneration, Epoch = player.Epoch };
-        player.Phase = ClientLoadingPhase.ReadySent;
         EntityManager.SetComponentData(connection, player);
-        PlayerNetwork.Send(EntityManager, connection, value);
     }
 }

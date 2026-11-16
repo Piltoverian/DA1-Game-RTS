@@ -6,6 +6,7 @@ using Unity.Transforms;
 
 // Gameplay acquisition is a circle on XZ, independent of collider/terrain height.
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
+[UpdateAfter(typeof(FogOfWarSpatialSystem))]
 [UpdateBefore(typeof(ShootAttackSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [BurstCompile]
@@ -28,14 +29,21 @@ public partial struct FindTargetSystem : ISystem
         var owners = SystemAPI.GetComponentLookup<EntityOwner>(true);
         var health = SystemAPI.GetComponentLookup<EntityHealth>(true);
         var transforms = SystemAPI.GetComponentLookup<LocalTransform>(true);
+        var footprints = SystemAPI.GetComponentLookup<BlockageData>(true);
+        bool hasFog = SystemAPI.TryGetSingleton<FogOfWarSpatialSystemData>(out var fog);
         using var contexts = SystemAPI.QueryBuilder().WithAll<PlayerContext>().Build()
             .ToComponentDataArray<PlayerContext>(Allocator.Temp);
         foreach (var (transform, find, target, owner) in SystemAPI.Query<RefRO<LocalTransform>,
             RefRW<FindTarget>, RefRW<Target>, RefRO<EntityOwner>>())
         {
             var current = target.ValueRO.targetEntity;
+            // Retain an unseen pursuit even if the target died in fog.
+            if (current != Entity.Null && target.ValueRO.lastSeenEntity == current
+                && !FogOrderRules.IsVisible(owner.ValueRO.PlayerID, current, hasFog, grid, fog, transforms, footprints)) continue;
             if (current != Entity.Null && health.HasComponent(current) && health[current].CurrentHP > 0
-                && owners.HasComponent(current) && !PlayerContextHelper.AreAllies(contexts, owners[current].PlayerID, owner.ValueRO.PlayerID)) continue;
+                && owners.HasComponent(current) && !PlayerContextHelper.AreAllies(contexts, owners[current].PlayerID, owner.ValueRO.PlayerID)
+                && FogOrderRules.IsVisible(owner.ValueRO.PlayerID, current, hasFog, grid, fog, transforms, footprints)) continue;
+            target.ValueRW = default;
             find.ValueRW.timer -= SystemAPI.Time.DeltaTime;
             if (find.ValueRO.timer > 0) continue;
             find.ValueRW.timer = find.ValueRO.timerMax;
@@ -54,7 +62,8 @@ public partial struct FindTargetSystem : ISystem
                 do {
                     if (!health.HasComponent(candidate) || health[candidate].CurrentHP <= 0
                         || !owners.HasComponent(candidate) || PlayerContextHelper.AreAllies(contexts, owners[candidate].PlayerID, owner.ValueRO.PlayerID)
-                        || !transforms.HasComponent(candidate)) continue;
+                        || !transforms.HasComponent(candidate)
+                        || !FogOrderRules.IsVisible(owner.ValueRO.PlayerID, candidate, hasFog, grid, fog, transforms, footprints)) continue;
                     float distance = math.distancesq(position, transforms[candidate].Position.xz);
                     if (distance <= bestDistance) { bestDistance = distance; best = candidate; }
                 } while (bucket.TryGetNextValue(out candidate, ref iterator));

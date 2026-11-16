@@ -72,12 +72,14 @@ Server chốt danh sách Ghost ID + spawn tick của các entity initially relev
 
 Client chỉ gửi PlayerReadyRequest khi:
 
+`PlayerClientReadiness.Evaluate` là nơi duy nhất tổng hợp điều kiện; các receiver cập nhật dữ liệu đã nhận. `PlayerHandshakeClientSystem` chạy cuối Presentation, ghi ClientReadinessStatus và gửi một ACK khi kết quả Complete. UI hiển thị điều kiện còn thiếu hoặc trạng thái chờ server chấp nhận. Acceptance chỉ chuyển sang ServerReady khi client đang ReadySent và tuple khớp; acceptance đến sớm/của join cũ không mở input.
+
 1. Identity hợp lệ và manifest/summary cùng tuple.
 2. Mỗi Ghost ID/spawn tick đã nhận ít nhất một lần hoặc được server rút khỏi yêu cầu vì despawn/mất quyền nhìn. Context và Match Ghost vẫn phải hiện hữu và đúng identity khi ACK.
 3. Context có PlayerId, PlayerContextSession và GhostOwner khớp identity.
-4. MatchSession nhận mạng khớp trận và registry hiện có.
+4. MatchSession nhận mạng khớp trận, MatchState/MatchTime đã có trên cùng entity và registry/prefab local vẫn sẵn sàng.
 5. Terrain đủ chunk hợp lệ, renderer/fog/camera binding đã dựng ít nhất GeometryVersion ban đầu được chốt. Exploration mới không làm lùi cutoff và chặn ACK liên tục.
-6. Physics/selection infrastructure, catalog của chính client world và snapshot neutral memory đã sẵn sàng.
+6. Physics/selection infrastructure cùng ClientPresentationSelectionSystem, catalog của chính client world và snapshot neutral memory đã sẵn sàng.
 
 Server validate SourceConnection, MatchSessionId, JoinGeneration, Epoch và trạng thái đã gửi manifest; trả PlayerReadyAcceptedRpc. MatchLifecycle bắt đầu ngay khi đủ roster ready; nếu chưa đủ, chờ JoinTimeoutSeconds (mặc định 30 giây từ WaitingForPlayers), giữ slot vắng ở trạng thái Disconnected rồi chuyển Running. Connection đã được nhận có deadline tải riêng mặc định 60 giây theo wall clock; hết hạn tải mới bị ngắt và vẫn giữ slot/context. Rejoin trong Running cũng có deadline riêng và không pause trận. Client mở input khi đã được chấp nhận và nhận MatchState Running.
 
@@ -126,7 +128,7 @@ Unity6000.3.13f1 compile gồm NetCode serializers/IL post-processing. Menu `Too
 - SeedNetworkingChecks: seed chỉ tạo trên server, không đổi khi update/rejoin, late resource settings, offline deterministic và client stripping.
 - RejoinNetworkingChecks: 45 assertions về vé, giữ slot/disconnect/takeover, timeout, mutable manifest, lưu file/profile và chỉ disconnect đúng UI-owned client.
 - RejoinWorldLifetimeChecks: 8 assertions giữ ServerWorld khi thay client world.
-- ProtocolTimingChecks: 29 assertions về deadline riêng, backlog, manifest budget, validation lệnh neutral và cold-client prefab gate (chưa tải catalog/prefab → chưa Join/InGame; tải đủ → đúng một Join; thiếu thật → timeout rõ ràng).
+- ProtocolTimingChecks: 46 assertions về deadline riêng, backlog, manifest budget, validation lệnh neutral, cold-client prefab gate và coordinator Ready. Kiểm tra từng điều kiện thiếu không gửi ACK, cutoff terrain, MatchTime, ownership, gửi đúng một ACK, acceptance đến sớm/join cũ không mở input và acceptance hợp lệ hoàn tất handshake.
 - WorldCatalogChecks: 14 assertions về catalog và selection qua các world generation.
 - NeutralMemoryChecks: 216 assertions về quan sát riêng từng player, hidden change/death/conversion, revision, paging budget, privacy, rejoin và page tới trước header.
 - TerrainStagingChecks: 18 assertions về staging, ordering, chia batch, chia sẻ art, fog mask và hủy candidate.
@@ -136,6 +138,8 @@ Unity6000.3.13f1 compile gồm NetCode serializers/IL post-processing. Menu `Too
 Regression đã quan sát fail khi tái lập barrier chờ đủ member, rồi pass khi bỏ barrier. Bộ tích hợp cuối đã pass trong Unity batch và thoát mã0 với `--burst-force-sync-compilation`. Lần trước các assertions đã pass nhưng background Burst compiler crash lúc shutdown; chạy đồng bộ đã kết thúc sạch. Không đổi cấu hình Burst của project.
 
 Kiểm tra lại ngày03/11/2026 sau hardening: cả10 nhóm trong NetworkingProtocolChecks pass, compile/NetCode generation thành công và Unity thoát mã0. Test lifecycle dọn singleton NetCode do chính fixture khởi tạo; lần cuối không còn cảnh báo native allocation leak. Kiểm tra whitespace source/docs pass; các dòng trống có dấu cách trong YAML prefab do Unity serialize không được sửa kèm.
+
+Sau khi gom client readiness: cả10 nhóm pass lại, Unity thoát mã0 với Burst sync. Lần chạy đầu crash trong native Burst compiler trước assertions; lần chạy lại hoàn tất sạch. Đây là kiểm tra ECS/batch, chưa thay thế smoke hai client thật với UI/presentation.
 
 ## Giới hạn còn lại
 

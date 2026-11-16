@@ -15,6 +15,7 @@ public static class ProtocolTimingChecks
     {
         checks = 0;
         CheckColdClientPrefabGate();
+        CheckUnifiedClientReadiness();
         CheckIndependentLoadingDeadlines();
         CheckDeliveredCommandDrain();
         CheckLoadingInputGate();
@@ -80,6 +81,97 @@ public static class ProtocolTimingChecks
                 "A genuinely missing local prefab must fail explicitly after the loading deadline");
         }
         finally { UnityEngine.Object.DestroyImmediate(catalog); }
+    }
+
+    static void CheckUnifiedClientReadiness()
+    {
+        using var world = new World("Client readiness coordinator", WorldFlags.GameClient);
+        var em = world.EntityManager;
+        var catalog = ScriptableObject.CreateInstance<GameDataRegistry>();
+        var owner = new GameObject("Readiness presentation fixture");
+        try
+        {
+            var connection = em.CreateEntity(typeof(NetworkId), typeof(ClientPlayerState));
+            em.SetComponentData(connection, new NetworkId { Value = 17 });
+            em.SetComponentData(connection, new ClientPlayerState { PlayerId = 2, MatchSessionId = 100,
+                JoinGeneration = 3, Epoch = 7, ExpectedGhosts = 1 });
+            var sender = world.GetOrCreateSystemManaged<PlayerHandshakeClientSystem>();
+            Expect(ClientReadinessStage.LocalPrefabs);
+            var registry = em.CreateEntity(typeof(GameDataRegistryComponent), typeof(PresentationCatalogReference));
+            em.SetComponentData(registry, new PresentationCatalogReference { Catalog = catalog });
+            em.AddBuffer<RegistryBlobElement>(registry); em.AddBuffer<RegistryPrefabElement>(registry); em.AddBuffer<RegistryTechEffectElement>(registry);
+            var prefab = em.CreateEntity(typeof(Prefab), typeof(GhostType), typeof(GhostInstance));
+            var root = em.CreateEntity(typeof(NetworkGameplayPrefabs), typeof(TerrainSyncSettings));
+            em.SetComponentData(root, new NetworkGameplayPrefabs { Match = prefab, PlayerContext = prefab });
+            em.SetComponentData(root, new TerrainSyncSettings { Prefab = prefab });
+            Expect(ClientReadinessStage.TerrainData);
+            var terrain = world.GetOrCreateSystemManaged<TerrainNetworkReceiveSystem>();
+            terrain.View.Ready = true; terrain.View.GeometryVersion = 5;
+            var header = new TerrainChunkGhost { Session = 100, JoinGeneration = 3, Epoch = 8 };
+            SetHeader(); Expect(ClientReadinessStage.TerrainData);
+            header.Epoch = 7; SetHeader(); Expect(ClientReadinessStage.Manifest);
+            Check(em.GetComponentData<ClientPlayerState>(connection).InitialTerrainVersion == 5,
+                "The coordinator must latch the authorized initial terrain cutoff");
+            em.AddBuffer<RequiredBootstrapGhost>(connection).Add(new RequiredBootstrapGhost { GhostId = 1, Withdrawn = true });
+            Expect(ClientReadinessStage.NeutralMemory);
+            var neutral = world.GetOrCreateSystemManaged<NeutralMemoryClientSystem>();
+            neutral.Memory.Begin(new NeutralMemoryHeaderRpc { MatchSessionId = 100, JoinGeneration = 3, Epoch = 7, StreamGeneration = 1 });
+            neutral.Memory.End(new NeutralMemoryDoneRpc { MatchSessionId = 100, JoinGeneration = 3, Epoch = 7, StreamGeneration = 1 });
+            Expect(ClientReadinessStage.TerrainPresentation);
+            var bindingEntity = em.CreateEntity(typeof(MapPresentationState));
+            em.AddComponentObject(bindingEntity, new MapPresentationBinding { Owner = owner.AddComponent<TerrainMapRenderer>(),
+                Renderer = owner.AddComponent<TerrainChunkRenderer>(), View = terrain.View });
+            em.SetComponentData(bindingEntity, new MapPresentationState { Phase = MapPresentationPhase.Ready, Revision = 4 });
+            Expect(ClientReadinessStage.TerrainPresentation);
+            em.SetComponentData(bindingEntity, new MapPresentationState { Phase = MapPresentationPhase.Ready, Revision = 5 });
+            Expect(ClientReadinessStage.ContextOwnership);
+            var context = em.CreateEntity(typeof(PlayerContext), typeof(PlayerContextSession), typeof(GhostOwner));
+            em.SetComponentData(context, new PlayerContext { PlayerId = 2 });
+            em.SetComponentData(context, new PlayerContextSession { MatchSessionId = 100, JoinGeneration = 3 });
+            em.SetComponentData(context, new GhostOwner { NetworkId = 99 });
+            Expect(ClientReadinessStage.ContextOwnership);
+            em.SetComponentData(context, new GhostOwner { NetworkId = 17 });
+            Expect(ClientReadinessStage.MatchState);
+            var match = em.CreateEntity(typeof(MatchSession), typeof(MatchState));
+            em.SetComponentData(match, new MatchSession { Id = 100 });
+            Expect(ClientReadinessStage.MatchState);
+            em.AddComponent<MatchTimeComponent>(match);
+            Expect(ClientReadinessStage.PhysicsSelection);
+            em.CreateEntity(typeof(Unity.Physics.PhysicsWorldSingleton));
+            em.CreateEntity(typeof(DOTSSelectManagerComponent), typeof(SelectionRequest));
+            world.GetOrCreateSystemManaged<ClientPresentationSelectionSystem>();
+            // A matching acceptance before local completion cannot bypass the coordinator.
+            Accept(3); world.GetOrCreateSystemManaged<PlayerHandshakeReceiveSystem>().Update();
+            Check(em.GetComponentData<ClientPlayerState>(connection).Phase == ClientLoadingPhase.Receiving,
+                "Unsolicited server acceptance must not open input before local Ready");
+            sender.Update(); sender.Update();
+            using var requests = em.CreateEntityQuery(typeof(PlayerReadyRequest));
+            Check(requests.CalculateEntityCount() == 1 && em.GetComponentData<ClientPlayerState>(connection).Phase == ClientLoadingPhase.ReadySent,
+                "Only the coordinator may emit one Ready after every local requirement completes");
+            Accept(2); world.GetExistingSystemManaged<PlayerHandshakeReceiveSystem>().Update();
+            Check(em.GetComponentData<ClientPlayerState>(connection).Phase == ClientLoadingPhase.ReadySent,
+                "Acceptance from a previous join must not release the current client");
+            Accept(3); world.GetExistingSystemManaged<PlayerHandshakeReceiveSystem>().Update();
+            Check(em.GetComponentData<ClientPlayerState>(connection).Phase == ClientLoadingPhase.ServerReady,
+                "Current server acceptance must finish the locally validated handshake");
+
+            void Expect(ClientReadinessStage stage)
+            {
+                sender.Update();
+                using var requests = em.CreateEntityQuery(typeof(PlayerReadyRequest));
+                Check(requests.IsEmptyIgnoreFilter && em.GetComponentData<ClientReadinessStatus>(connection).WaitingFor == stage
+                    && em.GetComponentData<ClientPlayerState>(connection).Phase == ClientLoadingPhase.Receiving,
+                    "Client must remain Receiving without ACK while waiting for " + stage);
+            }
+            void SetHeader() => typeof(TerrainNetworkReceiveSystem).GetProperty("Header").SetValue(terrain, header);
+            void Accept(uint generation)
+            {
+                var request = em.CreateEntity(typeof(PlayerReadyAcceptedRpc), typeof(ReceiveRpcCommandRequest));
+                em.SetComponentData(request, new PlayerReadyAcceptedRpc { MatchSessionId = 100, JoinGeneration = generation, Epoch = 7 });
+                em.SetComponentData(request, new ReceiveRpcCommandRequest { SourceConnection = connection });
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(owner); UnityEngine.Object.DestroyImmediate(catalog); }
     }
 
     static void CheckIndependentLoadingDeadlines()

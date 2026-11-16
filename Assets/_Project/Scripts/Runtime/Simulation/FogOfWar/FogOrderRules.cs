@@ -22,6 +22,24 @@ public struct FogTargetTravel : IComponentData
 
 public static class FogOrderRules
 {
+    // Cached data path for combat loops; no EntityQuery creation per candidate.
+    public static bool IsVisible(int player, Entity entity, bool hasFog, in GridComponent grid,
+        in FogOfWarSpatialSystemData fog, in ComponentLookup<LocalTransform> transforms,
+        in ComponentLookup<BlockageData> footprints)
+    {
+        if (!transforms.HasComponent(entity)) return false;
+        if (!hasFog) return true;
+        if (!SpatialCellCoverage.IsGridValid(grid)) return false;
+        var pos = transforms[entity].Position;
+        int2 min = GridHelper.WorldToGrid(pos, grid), max = min;
+        if (footprints.HasComponent(entity)
+            && !PlayerSpawnPlacement.TryFootprint(grid, pos, footprints[entity].LocalRect, out min, out max)) return false;
+        for (int y = min.y; y <= max.y; y++)
+        for (int x = min.x; x <= max.x; x++)
+            if (PlayerSpawnPlacement.InBounds(new int2(x, y), grid) && fog.IsVisibleTo(y * grid.width + x, player)) return true;
+        return false;
+    }
+
     public static bool TryGrid(EntityManager em, out Entity entity, out GridComponent grid)
     {
         using var q = em.CreateEntityQuery(typeof(GridComponent));

@@ -432,8 +432,12 @@ partial struct CommandQueue : ISystem
 
         if (em.HasComponent<Target>(command.sourceEntity))
         {
-            var targetData = em.GetComponentData<Target>(command.sourceEntity);
-            targetData.targetEntity = command.targetEntity;
+            var targetData = new Target
+            {
+                targetEntity = command.targetEntity,
+                lastSeenEntity = command.targetEntity,
+                lastSeenPosition = em.GetComponentData<LocalTransform>(command.targetEntity).Position
+            };
             em.SetComponentData(command.sourceEntity, targetData);
         }
 
