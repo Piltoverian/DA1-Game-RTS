@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Transforms;
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct HealthBarSystem : ISystem
 {
     public void OnUpdate(ref SystemState state)
@@ -23,12 +24,14 @@ partial struct HealthBarSystem : ISystem
             }
 
             EntityHealth health = SystemAPI.GetComponent<EntityHealth>(healthBar.ValueRO.healthEntity);
-            if (!health.Changed)
+            if (healthBar.ValueRO.Initialized
+                && health.CurrentHP == healthBar.ValueRO.LastDisplayedHP
+                && health.MaxHP == healthBar.ValueRO.LastDisplayedMaxHP)
             {
                 continue;
             }
-            //Debug.Log(health.Changed);
-            float healthNormalized = (float)health.CurrentHP / health.MaxHP;
+            float healthNormalized = health.MaxHP > 0f
+                ? math.saturate(health.CurrentHP / health.MaxHP) : 0f;
 
             if (healthNormalized == 1f)
             {
@@ -41,6 +44,9 @@ partial struct HealthBarSystem : ISystem
             
             RefRW<PostTransformMatrix> barVisualPostTransformMatrix = SystemAPI.GetComponentRW<PostTransformMatrix>(healthBar.ValueRO.barVisualEntity);
             barVisualPostTransformMatrix.ValueRW.Value = float4x4.Scale(new float3(healthNormalized, 1f, 1f));
+            healthBar.ValueRW.LastDisplayedHP = health.CurrentHP;
+            healthBar.ValueRW.LastDisplayedMaxHP = health.MaxHP;
+            healthBar.ValueRW.Initialized = true;
         }
     }
 }

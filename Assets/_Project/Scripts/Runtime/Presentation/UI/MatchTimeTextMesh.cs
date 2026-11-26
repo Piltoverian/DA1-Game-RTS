@@ -1,22 +1,31 @@
-using System;
 using TMPro;
+using Unity.Entities;
 using UnityEngine;
 
 public class MatchTimeTextMesh : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    TextMeshProUGUI textMesh;
+
+    void Awake()
     {
-        
+        textMesh = GetComponent<TextMeshProUGUI>();
+        if (textMesh != null) textMesh.text = "Time: --";
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
-        var world = Unity.Entities.World.DefaultGameObjectInjectionWorld;
-        var query = world.EntityManager.CreateEntityQuery(typeof(MatchTimeComponent));
-        var matchTime = query.GetSingleton<MatchTimeComponent>();
-        TextMeshProUGUI textMesh = GetComponent<TextMeshProUGUI>();
-        textMesh.text = "Time: "+Mathf.Round(matchTime.Value).ToString();
+        if (textMesh == null) return;
+
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world == null || !world.IsCreated)
+        {
+            textMesh.text = "Time: --";
+            return;
+        }
+
+        using var query = world.EntityManager.CreateEntityQuery(typeof(MatchTimeComponent));
+        textMesh.text = query.TryGetSingleton<MatchTimeComponent>(out var matchTime)
+            ? "Time: " + Mathf.Round(matchTime.Value).ToString()
+            : "Time: --";
     }
 }

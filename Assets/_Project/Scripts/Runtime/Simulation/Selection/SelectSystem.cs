@@ -15,6 +15,8 @@ using UnityEngine;
 
 
 [UpdateAfter(typeof(SelectableSpatialSystem))]
+[UpdateAfter(typeof(PhysicsSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 partial struct SelectSystem : ISystem
 {
@@ -69,11 +71,12 @@ partial struct SelectSystem : ISystem
         var transformLookup = state.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
         var dragSelectableLookup = state.GetComponentLookup<DragSelectableEntity>(true);
         var selectableLookup = state.GetComponentLookup<Selectable>(true);
+        var ownerLookup = state.GetComponentLookup<EntityOwner>(true);
         var selectedLookup = state.GetComponentLookup<Selected>(true);
 
-        foreach (var (selectable,tags, selected, entity) in SystemAPI.Query<Selectable,SingleSelectableEntity, Selected>().WithEntityAccess())
+        foreach (var (owner, _, entity) in SystemAPI.Query<RefRO<EntityOwner>, RefRO<Selected>>().WithAll<Selectable>().WithEntityAccess())
         {
-            if (selectable.playerID != request.playerId)
+            if (owner.ValueRO.PlayerID != request.playerId)
                 continue;
             ecb.SetComponentEnabled<Selected>(entity, false);
         }
@@ -128,6 +131,8 @@ partial struct SelectSystem : ISystem
 
                         if (!selectableLookup.HasComponent(unit))
                             continue;
+                        if (!ownerLookup.HasComponent(unit))
+                            continue;
 
                         float3 pos = transformLookup[unit].Position;
 
@@ -142,15 +147,13 @@ partial struct SelectSystem : ISystem
 
                         if (pos.x >= minX && pos.x <= maxX)
                         {
-                            var selectable = selectableLookup[unit];
-                            if (selectable.playerID != request.playerId)
+                            if (ownerLookup[unit].PlayerID != request.playerId)
                                 continue;
 
                             if (selectedLookup.HasComponent(unit))
-                                if (state.EntityManager.IsComponentEnabled<Selected>(unit))
-                                    continue;
-                                else
-                                    ecb.SetComponentEnabled<Selected>(unit, true);
+                            {
+                                ecb.SetComponentEnabled<Selected>(unit, true);
+                            }
                         }
 
                     } while (bucket.TryGetNextValue(out unit, ref it));
@@ -167,25 +170,32 @@ partial struct SelectSystem : ISystem
         foreach (var (_, entity) in
                  SystemAPI.Query<RefRO<Selected>>().WithEntityAccess())
         {
+            if (state.EntityManager.HasComponent<EntityOwner>(entity)
+                && state.EntityManager.GetComponentData<EntityOwner>(entity).PlayerID != request.playerId)
+                continue;
             ecb.SetComponentEnabled<Selected>(entity, false);
         }
         var rayInput = request.rayInput;
-        Unity.Physics.RaycastHit raycastResults = new Unity.Physics.RaycastHit();
-
         var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
 
-        physicsWorld.CastRay(rayInput, out raycastResults);
-        if (raycastResults.Entity != Entity.Null)
+        if (physicsWorld.CastRay(rayInput, out Unity.Physics.RaycastHit raycastResults) && raycastResults.Entity != Entity.Null)
         {
-            if (state.EntityManager.HasComponent<Selectable>(raycastResults.Entity))
+            Entity target = raycastResults.Entity;
+            for (int i = 0; i < 16 && state.EntityManager.Exists(target) && !state.EntityManager.HasComponent<Selectable>(target) && state.EntityManager.HasComponent<Parent>(target); i++)
             {
-                var selectable = state.EntityManager.GetComponentData<Selectable>(raycastResults.Entity);
-                if (selectable.playerID == request.playerId)
-                {
-                    ecb.SetComponentEnabled<Selected>(raycastResults.Entity, true);
-                }
+                target = state.EntityManager.GetComponentData<Parent>(target).Value;
             }
 
+            if (state.EntityManager.HasComponent<Selectable>(target)
+                && state.EntityManager.HasComponent<EntityOwner>(target)
+                && state.EntityManager.HasComponent<Selected>(target))
+            {
+                var owner = state.EntityManager.GetComponentData<EntityOwner>(target);
+                if (owner.PlayerID == request.playerId)
+                {
+                    ecb.SetComponentEnabled<Selected>(target, true);
+                }
+            }
         }
     }
 

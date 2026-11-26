@@ -1,36 +1,52 @@
+using Unity.Entities;
 using UnityEngine;
 
 public class UnitInfoPanel : MonoBehaviour
 {
     [SerializeField] private InfoPanel InfoPanelPrefab;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private InfoPanel healthPanel;
+    private Sprite healthIcon;
+    private Entity lastSelected;
+    private ulong lastWorldSequence;
+    private float lastMaxHealth = float.NaN;
+
+    void Awake()
     {
-        
+        var mapping = Resources.Load<InfoIconMapping>("InfoIconMapping");
+        if (mapping != null) healthIcon = mapping.GetIconForStat(StatInfo.MaxHealth);
     }
 
-    // Update is called once per frame
     void Update()
     {
-        ClearInfo();
-        var world = Unity.Entities.World.DefaultGameObjectInjectionWorld;
-        var entityManager = world.EntityManager;
-        var query = entityManager.CreateEntityQuery(typeof(Selected), typeof(EntityOwner));
-        if (query.IsEmpty) return;
-        var selectedUnits = query.ToEntityArray(Unity.Collections.Allocator.Temp);
-        var firstUnit = selectedUnits[0];
-        InfoPanel healthpanel = Instantiate(InfoPanelPrefab, transform);
-        InfoIconMapping infoIconMapping = Resources.Load<InfoIconMapping>("InfoIconMapping");
-        healthpanel.SetInfoIcon(infoIconMapping.GetIconForStat(StatInfo.MaxHealth));
-        healthpanel.SetInfoValue(entityManager.GetComponentData<EntityHealth>(firstUnit).MaxHP);
+        if (!ClientPresentationSelection.TryGet(out var world, out var em, out var selected, out _)
+            || !em.HasComponent<EntityHealth>(selected) || InfoPanelPrefab == null)
+        {
+            ClearInfo();
+            return;
+        }
+        float maxHealth = em.GetComponentData<EntityHealth>(selected).MaxHP;
+        if (healthPanel == null)
+        {
+            healthPanel = Instantiate(InfoPanelPrefab, transform);
+            if (healthIcon != null) healthPanel.SetInfoIcon(healthIcon);
+        }
+        if (lastWorldSequence != world.SequenceNumber || lastSelected != selected || lastMaxHealth != maxHealth)
+        {
+            healthPanel.SetInfoValue(maxHealth);
+            lastWorldSequence = world.SequenceNumber;
+            lastSelected = selected;
+            lastMaxHealth = maxHealth;
+        }
+        if (!healthPanel.gameObject.activeSelf) healthPanel.gameObject.SetActive(true);
     }
 
     public void ClearInfo()
     {
-        foreach (Transform child in transform)
-        {
-            if (child.GetComponent<InfoPanel>() != null)
-                Destroy(child.gameObject);
-        }
+        if (healthPanel != null && healthPanel.gameObject.activeSelf) healthPanel.gameObject.SetActive(false);
+        lastSelected = Entity.Null;
+        lastWorldSequence = 0;
+        lastMaxHealth = float.NaN;
     }
+
+    void OnDisable() => ClearInfo();
 }

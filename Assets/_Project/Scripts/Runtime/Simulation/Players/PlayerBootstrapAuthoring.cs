@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using Unity.NetCode;
+using Unity.NetCode.Hybrid;
 
 public enum PlayerBootstrapPhase : byte { Waiting, Finalizing, Ready, Failed }
 
@@ -48,7 +50,9 @@ public class PlayerBootstrapAuthoring : MonoBehaviour
             DependsOn(settings);
 
             if (settings.StartingWorkerCount < 0 || settings.PlacementRadiusCells < 1 ||
-                settings.StartingResources == null || authoring.Players == null || authoring.Players.Count == 0)
+                settings.StartingResources == null || authoring.Players == null || authoring.Players.Count == 0 ||
+                !float.IsFinite(settings.JoinTimeoutSeconds) || settings.JoinTimeoutSeconds < 0 ||
+                !float.IsFinite(settings.LoadingTimeoutSeconds) || settings.LoadingTimeoutSeconds <= 0)
                 throw new InvalidOperationException("Invalid player bootstrap settings or empty roster.");
             var resources = new HashSet<ResourceType>();
             foreach (var resource in settings.StartingResources)
@@ -62,18 +66,33 @@ public class PlayerBootstrapAuthoring : MonoBehaviour
                     throw new InvalidOperationException("Each player requires a unique ID, unique spawn slot, and civilization.");
 
             Entity root = GetEntity(TransformUsageFlags.None);
-            AddComponent(root, new PlayerBootstrapState
+            bool client = this.GetNetcodeTarget(false) == NetcodeConversionTarget.Client;
+            if (!client)
             {
-                WorkerCount = settings.StartingWorkerCount,
-                PlacementRadiusCells = settings.PlacementRadiusCells
+                AddComponent(root, new PlayerBootstrapState
+                {
+                    WorkerCount = settings.StartingWorkerCount,
+                    PlacementRadiusCells = settings.PlacementRadiusCells
+                });
+                AddComponent(root, new PlayerJoinTimeout { Seconds = settings.JoinTimeoutSeconds, LoadingSeconds = settings.LoadingTimeoutSeconds });
+                AddBuffer<PlayerBootstrapSlot>(root);
+                AddBuffer<PlayerBootstrapSpawned>(root);
+            }
+            var playerGhost = Resources.Load<GameObject>("Networking/PlayerContextGhost");
+            var matchGhost = Resources.Load<GameObject>("Networking/MatchGhost");
+            if (!playerGhost || !matchGhost) throw new InvalidOperationException("Networking ghost prefabs are missing.");
+            DependsOn(playerGhost); DependsOn(matchGhost);
+            AddComponent(root, new NetworkGameplayPrefabs
+            {
+                PlayerContext = GetEntity(playerGhost, TransformUsageFlags.None),
+                Match = GetEntity(matchGhost, TransformUsageFlags.None)
             });
-            AddBuffer<PlayerBootstrapSlot>(root);
-            AddBuffer<PlayerBootstrapSpawned>(root);
             if (authoring.MapConfig)
             {
                 var config = authoring.MapConfig.Resources;
                 if (config == null) throw new InvalidOperationException("Map resource config must not be null.");
-                var prefabs = AddBuffer<MapResourcePrefab>(root);
+                var ghostPrefabs = AddBuffer<MapResourceGhostPrefabReference>(root);
+                var prefabs = client ? default : AddBuffer<MapResourcePrefab>(root);
                 if (config.Enabled)
                 {
                     if (config.Catalog == null || config.Catalog.Count == 0 || config.ClusterMin < 1 || config.ClusterMax < config.ClusterMin ||
@@ -95,39 +114,37 @@ public class PlayerBootstrapAuthoring : MonoBehaviour
                         if (!resourceAuthoring || resourceAuthoring.ResourceType != definition.Type)
                             throw new InvalidOperationException($"Resource '{definition.Id}' type must match ResourceAuthoring on its prefab.");
                         DependsOn(resourceAuthoring);
-                        prefabs.Add(new MapResourcePrefab { Value = GetEntity(definition.Prefab, TransformUsageFlags.Dynamic),
+                        var prefab = GetEntity(definition.Prefab, TransformUsageFlags.Dynamic);
+                        ghostPrefabs.Add(new MapResourceGhostPrefabReference { Value = prefab });
+                        if (!client) prefabs.Add(new MapResourcePrefab { Value = prefab,
                             Id = new FixedString64Bytes(definition.Id), Type = definition.Type, Tier = definition.Tier,
                             AllowedClusters = definition.AllowedClusters, Weight = definition.Weight, AmountPerMine = definition.AmountPerMine });
                     }
-                    AddComponent(root, new MapResourceSettings {
-                        Seed = authoring.MapConfig.Terrain.seed,
-                        ClusterMin = config.ClusterMin, ClusterMax = config.ClusterMax,
-                        Quotas = new Unity.Mathematics.int4(config.MainClusters, config.SecondaryClusters, config.AdvantageClusters, config.ContestedClusters),
-                        MainDistanceCells = config.Main.DistanceCells, MainMineCount = config.Main.MinesPerCluster,
-                        SecondaryRange = config.SecondaryRange, AdvantageRange = config.AdvantageRange, ContestedRange = config.ContestedRange,
-                        MinimumClusterRadius = config.MinimumClusterRadius, RadiusPerSqrtCount = config.RadiusPerSqrtCount,
-                        ClusterGap = config.ClusterGap, MemberSpacing = config.MemberSpacing,
-                        CenterAttempts = config.CenterAttempts, MemberAttempts = config.MemberAttempts });
-                    AddComponent<MapResourceReport>(root);
+                    if (!client)
+                    {
+                        AddComponent(root, new MapResourceSettings {
+                            Seed = authoring.MapConfig.Terrain.seed,
+                            ClusterMin = config.ClusterMin, ClusterMax = config.ClusterMax,
+                            Quotas = new Unity.Mathematics.int4(config.MainClusters, config.SecondaryClusters, config.AdvantageClusters, config.ContestedClusters),
+                            MainDistanceCells = config.Main.DistanceCells, MainMineCount = config.Main.MinesPerCluster,
+                            SecondaryRange = config.SecondaryRange, AdvantageRange = config.AdvantageRange, ContestedRange = config.ContestedRange,
+                            MinimumClusterRadius = config.MinimumClusterRadius, RadiusPerSqrtCount = config.RadiusPerSqrtCount,
+                            ClusterGap = config.ClusterGap, MemberSpacing = config.MemberSpacing,
+                            CenterAttempts = config.CenterAttempts, MemberAttempts = config.MemberAttempts });
+                        AddComponent<MapResourceReport>(root);
+                    }
                 }
             }
+            if (client) return;
             foreach (var player in authoring.Players)
             {
                 DependsOn(player.Civilization);
                 Entity contextEntity = CreateAdditionalEntity(TransformUsageFlags.None);
                 var context = new PlayerContext(player.PlayerId, 0, settings.StartingAge, new FixedString64Bytes(player.Civilization.Id), player.TeamID);
-                AddComponent(contextEntity, context);
-                AddComponent(contextEntity, new PlayerContextCache(context));
-                AddComponent<PlayerContextCachePendingTag>(contextEntity);
-                AddBuffer<PlayerTechnology>(contextEntity);
-                AddBuffer<PlayerPendingTech>(contextEntity);
-                AddBuffer<ResourcePair>(contextEntity);
-                AddBuffer<ResourcePairCache>(contextEntity);
+                AddComponent(contextEntity, new PlayerContextSeed { Value = context });
+                var starting = AddBuffer<PlayerResourceSeed>(contextEntity);
                 foreach (var resource in settings.StartingResources)
-                {
-                    AppendToBuffer(contextEntity, resource);
-                    AppendToBuffer(contextEntity, new ResourcePairCache(resource));
-                }
+                    starting.Add(new PlayerResourceSeed { Value = resource });
                 AppendToBuffer(root, new PlayerBootstrapSlot { PlayerId = player.PlayerId, SpawnSlot = player.SpawnSlot, Context = contextEntity });
             }
         }

@@ -1,103 +1,32 @@
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class TrainButtonScript : MonoBehaviour
 {
     private Button button;
-    private EntityQuery selectedQuery;
-    private int buttonIndexInPrefabList = 0; // Assuming this button trains the first unit in the prefab list
-    private void Awake()
+    private int buttonIndexInPrefabList = 0;
+
+    private void Awake() => button = GetComponent<Button>();
+
+    private bool TryGetProduction(out EntityManager em, out Entity entity, out int playerId)
     {
-        button = GetComponent<Button>();
-    }
-
-    private void Start()
-    {
-        var world = World.DefaultGameObjectInjectionWorld;
-
-        if (world == null || !world.IsCreated)
-        {
-            Debug.LogError("No ECS world found!");
-            enabled = false;
-            return;
-        }
-
-        selectedQuery = world.EntityManager.CreateEntityQuery(
-            ComponentType.ReadOnly<Selected>()
-        );
+        if (!ClientPresentationSelection.TryGet(out _, out em, out entity, out playerId)) return false;
+        return CommandAuthority.CanControl(em, playerId, entity) && em.HasComponent<BuildingComponent>(entity)
+            && em.HasBuffer<ProductionElement>(entity) && buttonIndexInPrefabList >= 0
+            && buttonIndexInPrefabList < em.GetBuffer<ProductionElement>(entity).Length
+            && !BuildingHelper.IsUnderConstruction(em, entity);
     }
 
     public void OnButtonClick()
     {
-        var world = World.DefaultGameObjectInjectionWorld;
-
-        if (world == null || !world.IsCreated || !SelectHelper.TryGetLocalPlayerId(out int playerId))
-            return;
-
-        var entityManager = world.EntityManager;
-
-        using var selectedEntities = selectedQuery.ToEntityArray(Allocator.Temp);
-
-        if (selectedEntities.Length == 0)
-        {
-            return;
-        }
-
-        var entity = selectedEntities[0];
-
-        if (!entityManager.Exists(entity))
-        {
-            return;
-        }
-
-        if (!entityManager.HasBuffer<ProductionElement>(entity)) return;
-        var offers = entityManager.GetBuffer<ProductionElement>(entity);
-        if (buttonIndexInPrefabList < 0 || buttonIndexInPrefabList >= offers.Length) return;
-        TrainUnitHelper.TrainUnit(entityManager, entity, offers[buttonIndexInPrefabList].JobReference, playerId);
+        if (!TryGetProduction(out var em, out var entity, out int playerId)) return;
+        var offer = em.GetBuffer<ProductionElement>(entity)[buttonIndexInPrefabList];
+        TrainUnitHelper.TrainUnit(em, entity, offer.JobReference, playerId);
     }
 
     private void Update()
     {
-        var world = World.DefaultGameObjectInjectionWorld;
-
-        if (world == null || !world.IsCreated)
-        {
-            button.interactable = false;
-            return;
-        }
-
-        var entityManager = world.EntityManager;
-
-        using var selectedEntities = selectedQuery.ToEntityArray(Allocator.Temp);
-
-        if (selectedEntities.Length == 0)
-        {
-            button.interactable = false;
-            return;
-        }
-
-        var entity = selectedEntities[0];
-
-        if (!entityManager.Exists(entity))
-        {
-            button.interactable = false;
-            return;
-        }
-
-        if (!entityManager.HasComponent<BuildingComponent>(entity))
-        {
-            button.interactable = false;
-            return;
-        }
-
-        var buildingData =
-            entityManager.GetComponentData<BuildingComponent>(entity);
-
-        button.interactable = SelectHelper.TryGetLocalPlayerId(out int playerId)
-            && CommandAuthority.CanControl(entityManager, playerId, entity)
-            && entityManager.HasBuffer<ProductionElement>(entity) && entityManager.GetBuffer<ProductionElement>(entity).Length > buttonIndexInPrefabList && !BuildingHelper.IsUnderConstruction(entityManager, entity);
+        if (button != null) button.interactable = TryGetProduction(out _, out _, out _);
     }
 }

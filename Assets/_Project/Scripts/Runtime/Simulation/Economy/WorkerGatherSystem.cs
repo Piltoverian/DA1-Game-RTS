@@ -3,6 +3,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct WorkerGatherSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
@@ -12,6 +14,7 @@ public partial struct WorkerGatherSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         float dt = SystemAPI.Time.DeltaTime;
 
         Entity gridEntity = SystemAPI.GetSingletonEntity<GridComponent>();
@@ -518,22 +521,16 @@ public partial struct WorkerGatherSystem : ISystem
     {
         ecb.SetComponentEnabled<MoveOverride>(entity, false);
 
-        if (agentLookup.HasComponent(entity))
-        {
-            var agent = agentLookup[entity];
-            agent.hastarget = false;
-            agent.velocity = float3.zero;
-            ecb.SetComponent(entity, agent);
-        }
-
+        if (!agentLookup.HasComponent(entity)) return;
+        var agent = agentLookup[entity];
         if (steeringLookup.HasComponent(entity))
         {
             var steering = steeringLookup[entity];
-            steering.isSettled = true;
-            steering.stuckTime = 0;
-            steering.minDistanceToTarget = float.MaxValue;
+            MovementAgentAPI.StopAgent(ref agent, ref steering, MovementStopReason.Paused);
             ecb.SetComponent(entity, steering);
         }
+        else MovementAgentAPI.StopAgent(ref agent, MovementStopReason.Paused);
+        ecb.SetComponent(entity, agent);
     }
 
     private static Entity FindNearestDepot(
@@ -573,7 +570,7 @@ public partial struct WorkerGatherSystem : ISystem
         in GridComponent grid,
         ref NativeParallelMultiHashMap<int, ResourceNodeSpatialInfo> nodeSpatialCache, EntityManager em, int viewer)
     {
-        const int cellRadius = FogOrderRules.NearbyCellRadius;
+        const int cellRadius = KnownTargetOrders.NearbyCellRadius;
         int2 centerCell = GridHelper.WorldToGrid(centerPos, grid);
 
         Entity bestNode = Entity.Null;

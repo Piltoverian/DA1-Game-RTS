@@ -5,6 +5,7 @@ using UnityEngine;
 
 [UpdateAfter(typeof(SelectSystem))]
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct SelecUISystem : ISystem
 {
     [BurstCompile]

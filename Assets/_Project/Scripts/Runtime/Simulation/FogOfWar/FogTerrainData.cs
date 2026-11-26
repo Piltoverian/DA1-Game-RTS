@@ -1,37 +1,30 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-public struct FogTerrainCellData
-{
-    public int CellIndex;
-    // Static terrain only. Dynamic occupancy/navigation costs are not sent.
-    public GridTerrain Terrain;
-}
-
-// Receiver-owned explored terrain. Collect sends the full authorized set every time.
-// The session owner must Clear at match boundaries, even for identical map geometry.
+// Explored membership only. Static geometry lives in TerrainVisualSource/TerrainView.
 public sealed class FogTerrainMemory
 {
-    private readonly Dictionary<int, GridTerrain> cells = new();
-    private bool hasFrame;
-    private int playerId, width, height;
-    private float cellSize;
-    private float3 origin;
-
-    public IReadOnlyDictionary<int, GridTerrain> Cells => cells;
-
-    private bool Matches(FogOfWarFrame frame) => hasFrame && playerId == frame.PlayerId
-        && width == frame.Width && height == frame.Height && cellSize == frame.CellSize
-        && math.all(origin == frame.Origin);
-
-    public void Clear() { cells.Clear(); hasFrame = false; }
-
+    readonly HashSet<int> cells = new();
+    readonly HashSet<int> incoming = new();
+    bool hasFrame;
+    int playerId, width, height;
+    float cellSize;
+    float3 origin;
+    public IReadOnlyCollection<int> Cells => cells;
+    public int Version { get; private set; }
+    public void Clear() { cells.Clear(); incoming.Clear(); hasFrame = false; Version++; }
     public void Apply(FogOfWarFrame frame)
     {
-        if (!frame.IsValid) { Clear(); return; }
-        if (!Matches(frame)) Clear();
+        if (!frame.IsValid) { if (hasFrame) Clear(); return; }
+        bool scopeChanged = !hasFrame || playerId != frame.PlayerId || width != frame.Width || height != frame.Height
+            || cellSize != frame.CellSize || math.any(origin != frame.Origin);
+        incoming.Clear();
+        foreach (int cell in frame.ExploredCells) incoming.Add(cell);
+        if (scopeChanged || !cells.SetEquals(incoming))
+        {
+            cells.Clear(); cells.UnionWith(incoming); Version++;
+        }
         playerId = frame.PlayerId; width = frame.Width; height = frame.Height;
         cellSize = frame.CellSize; origin = frame.Origin; hasFrame = true;
-        foreach (var cell in frame.TerrainCells) cells[cell.CellIndex] = cell.Terrain;
     }
 }

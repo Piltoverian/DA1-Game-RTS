@@ -1,3 +1,3 @@
 # Tài liệu art
 
-Xem [hướng dẫn chính](../../../../../../../Docs/Guides/ArtAssets.md).
+Xem [hướng dẫn chính](../../../../../../../Docs/Architecture/Terrain.md).

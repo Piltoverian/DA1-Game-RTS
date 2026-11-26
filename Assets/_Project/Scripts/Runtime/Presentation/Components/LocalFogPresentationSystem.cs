@@ -17,16 +17,15 @@ public partial class LocalFogPresentationSystem : SystemBase
     public FogOfWarFrame Frame { get; private set; }
     public FogOfWarRenderView View { get; } = new();
     public int ScopeVersion { get; private set; }
-    public Texture2D Mask { get; private set; }
     public readonly Dictionary<Entity, ResourceType> ResourceTypes = new();
     readonly Dictionary<Entity, Entity> owners = new();
     readonly HashSet<Entity> hidden = new();
     readonly Dictionary<Entity, bool> hiddenSprites = new();
     readonly Dictionary<Entity, MemoryVisual> memories = new();
     readonly List<Entity> removed = new();
-    Color32[] maskPixels;
     int viewer = -1;
     Entity gridEntity;
+    uint mapRevision;
     Camera fogCamera;
     CameraClearFlags cameraFlags;
     Color cameraBackground;
@@ -64,9 +63,11 @@ public partial class LocalFogPresentationSystem : SystemBase
         if (player < 0 && GameManager.Instance != null) SelectHelper.TryGetLocalPlayerId(out player);
         using var grids = EntityManager.CreateEntityQuery(typeof(GridComponent));
         var currentGrid = grids.CalculateEntityCount() == 1 ? grids.GetSingletonEntity() : Entity.Null;
-        if (viewer != player || gridEntity != currentGrid)
-        { ResetMemory(); viewer = player; gridEntity = currentGrid; ScopeVersion++; }
+        uint currentRevision = currentGrid != Entity.Null && EntityManager.HasComponent<MapBuildState>(currentGrid)
+            ? EntityManager.GetComponentData<MapBuildState>(currentGrid).Revision : 0;
         FogOfWarSnapshot.Collect(EntityManager, player, Frame);
+        if (Frame.IsValid && (viewer != player || gridEntity != currentGrid || mapRevision != currentRevision))
+        { ResetMemory(); viewer = player; gridEntity = currentGrid; mapRevision = currentRevision; ScopeVersion++; }
         View.Apply(Frame);
         foreach (var data in Frame.Entities)
             if (data.Kind == FogRenderKind.Resource && EntityManager.HasComponent<ResourceNodeData>(data.Entity))
@@ -74,10 +75,11 @@ public partial class LocalFogPresentationSystem : SystemBase
         removed.Clear();
         foreach (var pair in ResourceTypes) if (!View.Entities.ContainsKey(pair.Key)) removed.Add(pair.Key);
         foreach (var entity in removed) ResourceTypes.Remove(entity);
-        UpdateMask();
+        UpdateBackdrop();
         owners.Clear();
         using var roots = EntityManager.CreateEntityQuery(new EntityQueryDesc { Any = new[] {
             ComponentType.ReadOnly<EntityOwner>(), ComponentType.ReadOnly<ResourceNodeData>(),
+            ComponentType.ReadOnly<UnitComponent>(), ComponentType.ReadOnly<BuildingComponent>(), ComponentType.ReadOnly<BlockageData>(),
             ComponentType.ReadOnly<Bullet>(), ComponentType.ReadOnly<ArtilleryBullet>() } });
         using var entities = roots.ToEntityArray(Allocator.Temp);
         foreach (var root in entities)
@@ -96,7 +98,7 @@ public partial class LocalFogPresentationSystem : SystemBase
             View.Entities.TryGetValue(root, out var data);
             bool visible = Frame.IsValid && data.IsVisible;
             SetHidden(renderer, !visible);
-            if (visible && data.IsStatic) Capture(root, renderer);
+            if (visible && (data.IsStatic || data.OwnerId < 0)) Capture(root, renderer);
         }
         // Hybrid selection/minimap sprites are not controlled by DisableRendering.
         using var sprites = EntityManager.CreateEntityQuery(typeof(SpriteRenderer));
@@ -106,7 +108,7 @@ public partial class LocalFogPresentationSystem : SystemBase
             var root = FindOwner(sprite);
             if (root == Entity.Null) continue;
             var renderer = EntityManager.GetComponentObject<SpriteRenderer>(sprite);
-            bool visible = View.Entities.TryGetValue(root, out var data) && data.IsVisible;
+            bool visible = Frame.IsValid && View.Entities.TryGetValue(root, out var data) && data.IsVisible;
             if (!visible)
             {
                 if (!hiddenSprites.ContainsKey(sprite)) hiddenSprites.Add(sprite, renderer.enabled);
@@ -126,7 +128,7 @@ public partial class LocalFogPresentationSystem : SystemBase
         foreach (var entity in iconEntities)
         {
             var root = FindOwner(entity);
-            if (root == Entity.Null || !View.Entities.TryGetValue(root, out var data) || !data.IsVisible) continue;
+            if (!Frame.IsValid || root == Entity.Null || !View.Entities.TryGetValue(root, out var data) || !data.IsVisible) continue;
             var icon = EntityManager.GetComponentData<MinimapRenderer>(entity);
             bool selected = EntityManager.HasComponent<Selected>(root) && EntityManager.IsComponentEnabled<Selected>(root);
             if (EntityManager.Exists(icon.selectedIcon) && EntityManager.HasComponent<SpriteRenderer>(icon.selectedIcon)) EntityManager.GetComponentObject<SpriteRenderer>(icon.selectedIcon).enabled = selected;
@@ -136,7 +138,7 @@ public partial class LocalFogPresentationSystem : SystemBase
         foreach (var pair in memories)
         {
             if (!View.Entities.TryGetValue(pair.Key, out var data)) removed.Add(pair.Key);
-            else if (!data.IsVisible) pair.Value.Draw();
+            else if (Frame.IsValid && !data.IsVisible) pair.Value.Draw();
         }
         foreach (var key in removed) { memories[key].Clear(); memories.Remove(key); }
         hidden.RemoveWhere(e => !EntityManager.Exists(e));
@@ -188,15 +190,9 @@ public partial class LocalFogPresentationSystem : SystemBase
         if (graphics != null && info.Material >= 0 && info.Mesh >= 0)
             memory.Capture(graphics.GetMesh(info.MeshID), graphics.GetMaterial(info.MaterialID), matrix, info.SubMesh, reveal);
     }
-    void UpdateMask()
+    void UpdateBackdrop()
     {
-        if (!Frame.IsValid) { if (maskPixels != null) { System.Array.Clear(maskPixels, 0, maskPixels.Length); Mask.SetPixels32(maskPixels); Mask.Apply(false); } return; }
-        if (!Mask || Mask.width != Frame.Width || Mask.height != Frame.Height)
-        { Release(Mask); Mask = new Texture2D(Frame.Width, Frame.Height, TextureFormat.RGBA32, false, true) { name = "Local FOW", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp }; maskPixels = new Color32[Frame.Width * Frame.Height]; }
-        System.Array.Clear(maskPixels, 0, maskPixels.Length);
-        foreach (var cell in View.Terrain.Cells.Keys) maskPixels[cell] = new Color32(80, 80, 80, 255);
-        foreach (var cell in Frame.VisibleCells) maskPixels[cell] = new Color32(255, 255, 255, 255);
-        Mask.SetPixels32(maskPixels); Mask.Apply(false);
+        if (!Frame.IsValid) return;
         var camera = Camera.main;
         if (fogCamera != camera)
         {
@@ -214,6 +210,6 @@ public partial class LocalFogPresentationSystem : SystemBase
     {
         foreach (var entity in hidden) if (EntityManager.Exists(entity) && EntityManager.HasComponent<DisableRendering>(entity)) EntityManager.RemoveComponent<DisableRendering>(entity);
         foreach (var pair in hiddenSprites) if (EntityManager.Exists(pair.Key) && EntityManager.HasComponent<SpriteRenderer>(pair.Key)) EntityManager.GetComponentObject<SpriteRenderer>(pair.Key).enabled = pair.Value;
-        ResetMemory(); Frame?.Dispose(); Release(Mask); RestoreCamera();
+        ResetMemory(); Frame?.Dispose(); RestoreCamera();
     }
 }

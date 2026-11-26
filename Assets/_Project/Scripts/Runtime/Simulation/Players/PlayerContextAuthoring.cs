@@ -3,6 +3,8 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.NetCode;
+using Unity.NetCode.Hybrid;
 
 
 public class PlayerContextAuthoring : MonoBehaviour
@@ -36,6 +38,8 @@ public class PlayerContextAuthoring : MonoBehaviour
                 return;
             }
 
+            if (this.GetNetcodeTarget(false) == NetcodeConversionTarget.Client) return;
+
             var playerContext = new PlayerContext(
                 authoring.playerId,
                 0,
@@ -43,31 +47,10 @@ public class PlayerContextAuthoring : MonoBehaviour
                 civKey,
                 authoring.teamId
             );
-            AddComponent(entity, playerContext);
-            AddBuffer<PlayerTechnology>(entity);
-            AddBuffer<PlayerPendingTech>(entity);
-
-            var buffer = AddBuffer<ResourcePair>(entity);
-            var resources = authoring.startResources ?? new List<ResourcePair>();
-            buffer.ResizeUninitialized(resources.Count);
-
-            for (int i = 0; i < resources.Count; i++)
-            {
-                buffer[i] = resources[i];
-            }
-
-            var contextCache = new PlayerContextCache(playerContext);
-
-            AddComponent(entity, contextCache);
-
-            var cacheBuffer = AddBuffer<ResourcePairCache>(entity);
-            cacheBuffer.ResizeUninitialized(resources.Count);
-            for (int i = 0; i < resources.Count; i++)
-            {
-                cacheBuffer[i] = new ResourcePairCache(resources[i]);
-            }
-
-            AddComponent(entity, new PlayerContextCachePendingTag());
+            AddComponent(entity, new PlayerContextSeed { Value = playerContext });
+            var resources = AddBuffer<PlayerResourceSeed>(entity);
+            foreach (var resource in authoring.startResources ?? new List<ResourcePair>())
+                resources.Add(new PlayerResourceSeed { Value = resource });
         }
     }
 }

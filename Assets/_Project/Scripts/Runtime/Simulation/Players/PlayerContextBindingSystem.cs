@@ -7,7 +7,7 @@ public struct PlayerContextBinding : IComponentData
     public FixedString64Bytes CivID;
     public bool Applied;
 }
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [UpdateBefore(typeof(PlayerBootstrapSystem))]
 public partial struct PlayerContextBindingSystem : ISystem

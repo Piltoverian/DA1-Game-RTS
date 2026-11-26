@@ -2,13 +2,15 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateBefore(typeof(BuilderSystem))]
 [UpdateBefore(typeof(ConstructionSystem))]
 public partial struct BuildingCancelSystem : ISystem
 {
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var em = state.EntityManager;
         var ecb = new EntityCommandBuffer(Allocator.Temp);
 

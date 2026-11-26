@@ -3,26 +3,31 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
 
+
+
 [MaterialProperty("_RevealHeight")]
 public struct RevealHeightProperty : IComponentData
 {
     public float Value;
 }
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [BurstCompile]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct ConstructionSystem : ISystem
 {
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
-        state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+        state.RequireForUpdate<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         EntityCommandBuffer ecb = SystemAPI
-            .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+            .GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()
             .CreateCommandBuffer(state.WorldUnmanaged);
 
         ComponentLookup<RevealHeightProperty> revealLookup =

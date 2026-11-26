@@ -14,8 +14,7 @@ public class DragSelectableObject : SelectableObject
             AddComponent(entity, new DragSelectableEntity());
             AddComponent(entity, new Selectable
             {
-                playerID = authoring.playerID,
-                GridIndex = -1//new EntityOwner
+                GridIndex = -1
             });
             AddComponent(entity,new Selected
             {

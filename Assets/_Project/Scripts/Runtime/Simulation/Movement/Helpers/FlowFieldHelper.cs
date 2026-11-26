@@ -91,8 +91,7 @@ public static class FlowFieldHelper
             }
         }
         unit.FieldEntity = Entity.Null;
-        unit.hastarget = false;
-        unit.stopReason = MovementStopReason.Released;
+        MovementAgentAPI.StopAgent(ref unit, MovementStopReason.Released);
         if (em.HasComponent<MovementAgentFieldCleanUpData>(unitEntity))
         {
             var cleanup = em.GetComponentData<MovementAgentFieldCleanUpData>(unitEntity);

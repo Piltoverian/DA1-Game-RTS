@@ -1,6 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
-
+using Unity.NetCode;
 public struct MovementAgentFieldCleanUpData : ICleanupComponentData
 {
     public Entity FieldEntity;
@@ -19,6 +19,8 @@ public enum MovementStopReason : byte
     None, Arrived, CrowdedDestination, InvalidTarget, Released, Paused
 }
 
+
+[GhostComponent(OwnerSendType = SendToOwnerType.All)]
 public struct MovementAgentComponent : IComponentData
 {
     public MovementStopReason stopReason;
@@ -30,6 +32,7 @@ public struct MovementAgentComponent : IComponentData
     public int2 navigationTargetCell;
     public uint targetResolutionGeneration;
     public TargetResolutionKind targetResolutionKind;
+    [GhostField]
     public float3 velocity;        // Velocity thực tế (output từ ORCA, collision-free)
     public float3 preferredVelocity; // Velocity mong muốn (output từ TargetSystem, input cho ORCA)
     public float3 lookAtPoint;     // Điểm mà lính sẽ nhìn vào sau khi dừng hẳn

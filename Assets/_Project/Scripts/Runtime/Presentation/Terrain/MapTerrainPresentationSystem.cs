@@ -1,94 +1,141 @@
 using System;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
+using Unity.NetCode;
 using UnityEngine;
 
-public enum MapPresentationPhase : byte { WaitingTerrain, Ready, Failed }
+public enum MapPresentationPhase : byte { WaitingTerrain, Ready, Failed, Building }
 public struct MapPresentationState : IComponentData
 {
     public MapPresentationPhase Phase;
-    public uint Revision;
+    public uint Revision; // Player-view geometry version, not authoritative map revision.
     public FixedString512Bytes Error;
 }
+
 public sealed class MapPresentationBinding : IComponentData
 {
     public TerrainMapRenderer Owner;
     public LocalBaseCameraSnapper Snapper;
     public TerrainChunkRenderer Renderer;
-    public GeneratedTerrain Map;
-    public int FogScope = -1, KnownCells = -1;
+    public readonly LocalTerrainView Local = new();
+    public TerrainView View;
+    public TerrainChunkRenderer Candidate;
+    public System.Collections.IEnumerator BuildSteps;
+    public uint CandidateVersion;
+    public double RetryAfter;
+    public void CancelBuild()
+    {
+        (BuildSteps as IDisposable)?.Dispose(); BuildSteps=null;
+        if (Candidate)
+        {
+            Candidate.Clear();
+            if(Application.isPlaying) UnityEngine.Object.Destroy(Candidate); else UnityEngine.Object.DestroyImmediate(Candidate);
+        }
+        Candidate=null;
+    }
     public void Release()
     {
-        if(Renderer){Renderer.Clear();if(Application.isPlaying)UnityEngine.Object.Destroy(Renderer);else UnityEngine.Object.DestroyImmediate(Renderer);}
-        Renderer=null;Map=null;
+        if (Renderer)
+        {
+            Renderer.Clear();
+            if (Application.isPlaying) UnityEngine.Object.Destroy(Renderer); else UnityEngine.Object.DestroyImmediate(Renderer);
+        }
+        Renderer = null;
     }
+    public void Dispose() { CancelBuild(); Release(); Local.Dispose(); View = null; }
 }
 
-// Unity graphics calls stay on the main thread, in the client presentation world.
-[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation|WorldSystemFilterFlags.ClientSimulation)]
-[UpdateInGroup(typeof(PresentationSystemGroup),OrderFirst=true)]
-[UpdateAfter(typeof(LocalFogPresentationSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation)]
+[UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true)]
+[UpdateAfter(typeof(TerrainNetworkReceiveSystem))]
 public partial class MapTerrainPresentationSystem : SystemBase
 {
-    protected override void OnCreate(){RequireForUpdate<GridComponent>();RequireForUpdate<MapPresentationBinding>();}
+    protected override void OnCreate() { RequireForUpdate<MapPresentationBinding>(); }
     protected override void OnUpdate()
     {
-        using var grids=EntityManager.CreateEntityQuery(typeof(GridComponent),typeof(GridTerrain));
-        if(grids.CalculateEntityCount()!=1)return;
-        var ge=grids.GetSingletonEntity();var grid=EntityManager.GetComponentData<GridComponent>(ge);
-        uint revision=0;
-        if(EntityManager.HasComponent<MapBuildState>(ge)){
-            var mapState=EntityManager.GetComponentData<MapBuildState>(ge);
-            if(mapState.Phase==MapBuildPhase.Requested||mapState.Phase==MapBuildPhase.Failed)return;
-            revision=mapState.Revision;
-        }
-        var cells=EntityManager.GetBuffer<GridTerrain>(ge);if(cells.Length!=grid.width*grid.height)return;
-        var fog=World.GetExistingSystemManaged<LocalFogPresentationSystem>();
-        using var bindings=EntityManager.CreateEntityQuery(typeof(MapPresentationBinding),typeof(MapPresentationState));
-        using var entities=bindings.ToEntityArray(Allocator.Temp);
-        foreach(var entity in entities){
-            var state=EntityManager.GetComponentData<MapPresentationState>(entity);
-            var binding=EntityManager.GetComponentObject<MapPresentationBinding>(entity);
-            if(!binding.Owner||!binding.Owner.isActiveAndEnabled)continue;
-            if(fog!=null&&!fog.Frame.IsValid){binding.Release();binding.KnownCells=-1;continue;}
-            if(fog!=null&&binding.Renderer)binding.Renderer.SetFog(fog.Mask);
-            if(state.Phase==MapPresentationPhase.Failed&&state.Revision==revision)continue;
-            if(state.Phase==MapPresentationPhase.Ready&&state.Revision==revision&&binding.Renderer
-                &&(fog==null||(binding.FogScope==fog.ScopeVersion&&binding.KnownCells==fog.View.Terrain.Cells.Count)))continue;
-            var camera=Camera.main;if(!camera)continue;
-            bool firstBuild=state.Phase!=MapPresentationPhase.Ready;
-            try{
-                using var probe=RuntimePerformanceProbe.Measure("terrainCompileAndBuild");
-                if(!binding.Owner.theme)throw new InvalidOperationException("Assign TerrainMapRenderer.theme");
-                binding.Release();
-                var map=new GeneratedTerrain{grid=grid,cells=new GridTerrain[cells.Length],spawns=Array.Empty<int2>()};
-                if(fog==null){for(int i=0;i<cells.Length;i++)map.cells[i]=cells[i];}
-                else {
-                    // Placeholder cells carry only the shared height datum; their
-                    // actual terrain remains unknown and no sprites are emitted.
-                    for(int i=0;i<map.cells.Length;i++)map.cells[i].heightLevel=fog.Frame.TerrainBaseLevel;
-                    foreach(var cell in fog.View.Terrain.Cells)map.cells[cell.Key]=cell.Value;
+        bool network = World.IsClient();
+        var receiver = network ? World.GetExistingSystemManaged<TerrainNetworkReceiveSystem>() : null;
+        var fog = network ? null : World.GetExistingSystemManaged<LocalFogPresentationSystem>();
+        using var query = EntityManager.CreateEntityQuery(typeof(MapPresentationBinding), typeof(MapPresentationState));
+        using var entities = query.ToEntityArray(Allocator.Temp);
+        foreach (var entity in entities)
+        {
+            var binding = EntityManager.GetComponentObject<MapPresentationBinding>(entity);
+            if (!binding.Owner || !binding.Owner.isActiveAndEnabled) continue;
+            var view = network ? receiver?.View
+                : binding.Local.Update(EntityManager, fog) ? binding.Local.View : null;
+            binding.View = view;
+            var status = EntityManager.GetComponentData<MapPresentationState>(entity);
+            if (view == null || !view.Ready)
+            {
+                binding.CancelBuild();
+                // No fresh observation is not a request to destroy the last authorized image.
+                if(!binding.Renderer) EntityManager.SetComponentData(entity, new MapPresentationState { Phase = MapPresentationPhase.WaitingTerrain });
+                continue;
+            }
+            if (binding.Renderer) binding.Renderer.SetFog(view.Mask);
+            if (binding.BuildSteps == null && status.Revision == view.GeometryVersion && binding.Renderer) continue;
+            if (UnityEngine.Time.realtimeSinceStartupAsDouble < binding.RetryAfter) continue;
+            var camera = binding.Owner.ResolveCamera();
+            if (!camera) continue;
+            bool firstBuild = !binding.Renderer;
+            try
+            {
+                var theme = binding.Owner.theme;
+                if (!theme || !theme.IsRenderReady(out _))
+                {
+                    // Dependencies may become available in a later loading frame.
+                    if(!binding.Renderer) status.Phase=MapPresentationPhase.WaitingTerrain;
+                    EntityManager.SetComponentData(entity,status); continue;
                 }
-                if(EntityManager.HasBuffer<GridSpawnCell>(ge)){
-                    var anchors=EntityManager.GetBuffer<GridSpawnCell>(ge);map.spawns=new int2[anchors.Length];
-                    for(int i=0;i<anchors.Length;i++)map.spawns[i]=anchors[i].cell;
+                ValidateTheme(theme, view.Settings);
+                IsometricTerrainCamera.Configure(camera);
+                if(view.Mask){camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.black;}
+                if(binding.BuildSteps==null)
+                {
+                    binding.CandidateVersion=view.GeometryVersion;
+                    binding.Candidate=binding.Owner.gameObject.AddComponent<TerrainChunkRenderer>();
+                    binding.BuildSteps=binding.Candidate.BuildInSteps(view.Grid,theme,camera,World,view.Cells,binding.Renderer);
+                    if(!binding.Renderer) status.Phase=MapPresentationPhase.Building;
                 }
-                TerrainRampCompiler.Compile(map);IsometricTerrainCamera.Configure(camera);
-                binding.Renderer=binding.Owner.gameObject.AddComponent<TerrainChunkRenderer>();
-                binding.Renderer.Build(map,binding.Owner.theme,camera,World,fog?.View.Terrain.Cells);
-                if(fog!=null){binding.Renderer.SetFog(fog.Mask);binding.FogScope=fog.ScopeVersion;binding.KnownCells=fog.View.Terrain.Cells.Count;}
-                binding.Map=map;
-                state=new MapPresentationState{Phase=MapPresentationPhase.Ready,Revision=revision};
-                if(firstBuild)EntityManager.SetComponentEnabled<CameraSnapPending>(entity,true);
-            }catch(Exception error){binding.Release();state=new MapPresentationState{Phase=MapPresentationPhase.Failed,Revision=revision,Error=new FixedString512Bytes(error.Message.Length>400?error.Message.Substring(0,400):error.Message)};Debug.LogException(error);}
-            EntityManager.SetComponentData(entity,state);
+                bool more;
+                using(RuntimePerformanceProbe.Measure("terrainBuildStep")) more=binding.BuildSteps.MoveNext();
+                if(more){EntityManager.SetComponentData(entity,status);continue;}
+                (binding.BuildSteps as IDisposable)?.Dispose(); binding.BuildSteps=null;
+                var completed=binding.Candidate; binding.Candidate=null;
+                completed.SetFog(view.Mask); completed.Publish();
+                binding.Release(); binding.Renderer=completed;
+                status=new MapPresentationState { Phase=MapPresentationPhase.Ready, Revision=binding.CandidateVersion };
+                binding.RetryAfter=0;
+                if(network)
+                {
+                    if(firstBuild && binding.Snapper && binding.Snapper.snapOnReady) binding.Snapper.Snap(camera,receiver.Header.SpawnPosition);
+                    EntityManager.SetComponentEnabled<CameraSnapPending>(entity,false);
+                }
+                else if(firstBuild) EntityManager.SetComponentEnabled<CameraSnapPending>(entity,true);
+            }
+            catch(Exception error)
+            {
+                binding.CancelBuild();
+                var message=new FixedString512Bytes(error.Message.Length>400?error.Message.Substring(0,400):error.Message);
+                if(!status.Error.Equals(message)) Debug.LogException(error);
+                status.Error=message;
+                status.Phase=binding.Renderer?MapPresentationPhase.Ready:MapPresentationPhase.Failed;
+                binding.RetryAfter=UnityEngine.Time.realtimeSinceStartupAsDouble+1;
+            }
+            EntityManager.SetComponentData(entity, status);
         }
+    }
+    static void ValidateTheme(TerrainTheme theme, TerrainSyncSettings settings)
+    {
+        if (theme.groundVisualSeed != settings.VisualSeed || theme.mountainVisualTiers != settings.MountainTiers
+            || theme.mountainCaps[0].height != settings.CapPixels || theme.groundRegionCells != settings.GroundRegionCells)
+            throw new InvalidOperationException("Scene TerrainTheme differs from the grid's baked terrain presentation settings.");
     }
     protected override void OnDestroy()
     {
-        using var query=EntityManager.CreateEntityQuery(typeof(MapPresentationBinding));
-        using var entities=query.ToEntityArray(Allocator.Temp);
-        foreach(var entity in entities)EntityManager.GetComponentObject<MapPresentationBinding>(entity).Release();
+        using var query = EntityManager.CreateEntityQuery(typeof(MapPresentationBinding));
+        using var entities = query.ToEntityArray(Allocator.Temp);
+        foreach (var entity in entities) EntityManager.GetComponentObject<MapPresentationBinding>(entity).Dispose();
     }
 }

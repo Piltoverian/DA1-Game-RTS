@@ -1,29 +1,48 @@
-# Cấu trúc dự án
+# Cấu trúc và cách làm việc
 
-Source Unity do dự án quản lý nằm trong Assets/_Project. Bộ tài liệu chính duy nhất nằm trong Docs.
+## Mở project
 
-```text
-Assets/_Project/
-  Scripts/
-    Runtime/
-      Simulation/    (map, movement, combat, construction, economy)
-      Presentation/  (input, camera, terrain, UI)
-      GameData/      (definitions, baking, validation)
-      Events/
-    Editor/
-      GameData/      (registry, ID, validation cho designer)
-      Terrain/       (import, geometry baker, atlas preview)
-  Tests/Fixtures/    (asset gameplay đang được Main/registry dùng)
-  Data/, Resources/, Scenes/, Prefabs/, Art/, Settings/
-ArtSource/Terrain/JadeSlate/  (nguồn reference atlas duy nhất)
-Docs/                       (hướng dẫn, kiến trúc, trạng thái, lịch sử)
-Artifacts/                  (log/receipt kiểm chứng)
-```
+Unity Editor **6000.3.13f1**, theo [ProjectVersion.txt](../ProjectSettings/ProjectVersion.txt). Package được resolve trong [packages-lock.json](../Packages/packages-lock.json); không dùng một phiên bản manifest cũ để kết luận package đang chạy.
 
-Không còn Tests/Editor hoặc runner Tools. Folder Fixtures còn tên cũ vì giữ đường dẫn/GUID của asset gameplay đang dùng. Công cụ import/design ở Scripts/Editor, không biên dịch vào player. Validator runtime vẫn nằm trong GameData/Validation và Simulation.
+| Package | Phiên bản resolve lúc cập nhật docs |
+|---|---|
+| Entities | 1.5.0 |
+| Entities Graphics | 1.5.0 |
+| Unity Physics | 1.4.5 |
+| Netcode for Entities | 1.14.3 |
+| Transport | 2.7.4 |
+| Burst | 1.8.30 |
+| URP | 17.3.0 |
 
-Main hiện tham chiếu MoonTerrain/LunarTheme.asset. JadeSlate là nguồn reference thiết kế; JadeSlateAtlas là đầu ra của tool tạo ví dụ. Không đổi asset scene trong lượt dọn.
+Mở project bằng Unity Hub, chờ import/compile rồi mở [Main](../Assets/_Project/Scenes/Main.unity). Grid, registry và player authoring nằm trong [EntitySubscene](../Assets/_Project/Scenes/Main/EntitySubscene.unity). Main dùng [LunarTheme](../Assets/_Project/Data/Terrain/Generated/MoonTerrain/LunarTheme.asset).
 
-[Chọn chủ đề](README.md) · [Trạng thái](Maintenance/CurrentState.md) · [Import atlas](TerrainVisualizer/14_SuDung_Atlas_Implementation.md).
+Offline cần LocalSimulation World; kiểm tra cấu hình [CustomBootstrap](../Assets/NetcodeForEntitiesSetup/Scripts/CustomBootstrap.cs) nếu bật chế độ host/client. Kết nối mạng bắt đầu từ [ConnectionUI](../Assets/NetcodeForEntitiesSetup/Scenes/ConnectionUI.unity); xem [Multiplayer](Multiplayer/README.md). Không thay bootstrap chỉ để che lỗi scene/data chưa sẵn sàng.
 
-Library, Logs, obj, bin, .vs và csproj Unity là dữ liệu generated/cache; không xóa cache đang dùng để dọn source. Thay đổi chưa commit chỉ tồn tại trong working tree; không reset diff chưa hiểu.
+## Tìm đúng nơi sửa
+
+| Thư mục dưới Assets/_Project/Scripts | Trách nhiệm |
+|---|---|
+| Runtime/Simulation/Commands | Quyền, dispatch command, tiếp cận mục tiêu đã biết. |
+| Runtime/Simulation/Construction, Economy, Combat | State machine gameplay và biến đổi dữ liệu authoritative. |
+| Runtime/Simulation/Movement | Grid/cost, field, target, ORCA, actuation, height. |
+| Runtime/Simulation/MapGeneration, Players | Map recipe, geometry source, resource plan, bootstrap và connection/player. |
+| Runtime/Simulation/FogOfWar | Visibility queries, explored membership, snapshot được phép biết. |
+| Runtime/Presentation | Input, UI, camera, render, picking và ký ức hình. |
+| Runtime/GameData | SO definitions, validation, authoring, blobs và registry. |
+| Runtime/Events | Cầu nối event tới presentation. |
+| Editor/GameData, Editor/Terrain | Inspector/validator và atlas import/preview; không vào player runtime. |
+
+Tests/Fixtures còn chứa prefab/SO được Main/registry tham chiếu: **không xóa theo tên Tests**. ArtSource là nguồn thiết kế; Art/Data/Resources/Prefabs chứa dữ liệu bàn giao/runtime. Library, Temp, obj và csproj/solution Unity là generated/cache; không dọn toàn bộ cache như một phần sửa code.
+
+## World, tick và structural change
+
+- Simulation authoritative chạy LocalSimulation hoặc ServerSimulation; client nhận dữ liệu và render. Kiểm tra WorldSystemFilter/UpdateInGroup của system đang sửa.
+- Gameplay/navigation chủ yếu trong FixedStepSimulationSystemGroup; có thể có nhiều fixed tick trong một render frame. Late/presentation không mặc nhiên thuộc cùng nhịp.
+- [ServerMatch.cs](../Assets/_Project/Scripts/Runtime/Simulation/Shared/ServerMatch.cs) cho local chạy; server chỉ chạy khi phase Running và cache thuộc đúng World; client không chạy gameplay authoritative. Đổi phase qua SetPhase, không ghi singleton trực tiếp rồi bỏ qua SharedStatic cache.
+- [MatchLifecycleSystem](../Assets/_Project/Scripts/Runtime/Simulation/Shared/MatchlLifeCycleSystem.cs) hiện chỉ chuyển Preparing → WaitingForPlayers khi bootstrap Ready. Terrain Ready không tự bắt đầu toàn trận.
+- Không giữ DynamicBuffer/RefRW qua structural change. Snapshot command trước khi placement/production tạo entity; ECB playback là điểm publish thay đổi đã hoãn. Deferred Entity trong ECB phải được remap ở cả component/buffer tham chiếu.
+- Job đọc/ghi lookup/buffer cần dependency đúng; hoàn tất job trước khi đưa dữ liệu sang managed Unity graphics. Native container phải có owner/disposal rõ ràng.
+
+## Quy tắc sửa
+
+Đọc caller và source trước; giữ validation, rollback và ranh giới thông tin FOW. Dùng API/helper hiện có; không thêm framework cho một caller. Tách kiểm chứng compile, fixture ECS và Play Mode/mạng thật. Không tự stage/commit/push/merge. Kết quả và việc tiếp theo nằm ở [CurrentState](Maintenance/CurrentState.md).

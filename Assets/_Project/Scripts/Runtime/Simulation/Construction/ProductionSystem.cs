@@ -3,13 +3,20 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using System.Collections.Generic;
+using Unity.Burst;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(PopulationSystem))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
+[UpdateAfter(typeof(ConstructionSystem))]
 public partial struct ProductionSystem : ISystem
 {
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<PlayerBootstrapState>();
+    }
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -35,7 +42,7 @@ public partial struct ProductionSystem : ISystem
             item.RemainingWork = math.max(0, item.RemainingWork - math.max(0, work.ValueRO.Rate) * SystemAPI.Time.DeltaTime);
             queue[0] = item;
             if (item.RemainingWork > 0) continue;
-            if (item.Offer.Kind == ProductionKind.Research)
+            if (item.Kind == ProductionKind.Research)
             {
                 if (!em.HasBuffer<PlayerTechnology>(player)) continue;
                 if (!TechUnlockHelper.IsTechCompleted(em, player, item.TechID))
@@ -47,7 +54,16 @@ public partial struct ProductionSystem : ISystem
             }
             else
             {
-                Entity prefab = item.Offer.UnitPrefab;
+                Entity prefab = Entity.Null;
+                if (em.HasBuffer<ProductionElement>(entity))
+                {
+                    foreach (var offer in em.GetBuffer<ProductionElement>(entity, true))
+                    {
+                        if (offer.JobID != item.JobID || offer.Kind != item.Kind) continue;
+                        prefab = offer.UnitPrefab;
+                        break;
+                    }
+                }
                 if (!em.Exists(prefab) || !em.HasComponent<UnitComponent>(prefab)) { ProductionJobs.RemoveFirst(em, entity, true); continue; }
                 int cost = em.GetComponentData<UnitComponent>(prefab).PopulationCost;
                 if (cost > 0 && (long)context.currentPopulation + cost > context.maxPopulation) continue; // Ready: do not restart work.
@@ -58,10 +74,6 @@ public partial struct ProductionSystem : ISystem
                 var local = em.GetComponentData<LocalTransform>(prefab);
                 local.Position = transform.ValueRO.TransformPoint(production.ValueRO.SpawnOffset);
                 ecb.SetComponent(unit, local);
-                if (em.HasComponent<Selectable>(prefab))
-                {
-                    var selectable = em.GetComponentData<Selectable>(prefab); selectable.playerID = item.PlayerID; ecb.SetComponent(unit, selectable);
-                }
                 if (em.HasComponent<MoveOverride>(prefab))
                 {
                     var move = em.GetComponentData<MoveOverride>(prefab);
@@ -88,9 +100,7 @@ public partial struct ProductionSystem : ISystem
             }
             catch (System.Exception exception)
             {
-                // The queue item is consumed: do not automatically repeat effects that already ran.
-                UnityEngine.Debug.LogError($"Tech '{completion.TechID}' failed while conducting effects. Earlier effects are not rolled back.");
-                UnityEngine.Debug.LogException(exception);
+
             }
         }
     }
@@ -100,7 +110,7 @@ public partial struct ProductionSystem : ISystem
         effects = null;
         if (!ProductionJobs.TryRegistry(em, out var registryEntity)) return false;
         var registry = em.GetBuffer<RegistryBlobElement>(registryEntity, true);
-        var research = registry.GetBlobByID<ResearchBlob>(item.Offer.JobID, out var found);
+        var research = registry.GetBlobByID<ResearchBlob>(item.JobID, out var found);
         if (found != FunctionResult.Success || research.Value.Tech.ID != item.TechID) return false;
         ref var indices = ref research.Value.Tech.EffectIndices;
         if (indices.Length == 0) { effects = System.Array.Empty<TechEffect>(); return true; }

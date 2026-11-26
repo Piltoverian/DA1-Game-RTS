@@ -2,6 +2,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.NetCode;
 
 // Scene bindings only. All offers and gameplay settings come from BasedSO.Jobs.
 public class ProductionAuthoring : MonoBehaviour
@@ -16,6 +17,7 @@ public struct ProductionData : IComponentData
     public int NextItemID;
 }
 public enum ProductionKind : byte { Train, Research }
+
 public struct ProductionElement : IBufferElementData
 {
     public FixedString64Bytes JobID;
@@ -29,12 +31,21 @@ public struct ProductionElement : IBufferElementData
         ID = JobID
     };
 }
+
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 public struct ProductionQueueElement : IBufferElementData
 {
+    [GhostField]
     public int ItemID;
+    [GhostField]
     public int PlayerID;
-    public ProductionElement Offer;
+    [GhostField]
+    public FixedString64Bytes JobID;
+    [GhostField]
+    public ProductionKind Kind;
+    [GhostField]
     public FixedString64Bytes TechID;
+    [GhostField]
     public float RemainingWork;
 }
 public struct ProductionPayment : IBufferElementData
@@ -43,13 +54,16 @@ public struct ProductionPayment : IBufferElementData
     public ResourceType Type;
     public float Amount;
 }
+
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 public struct PlayerTechnology : IBufferElementData
 {
-    public FixedString64Bytes ID;
+    [GhostField] public FixedString64Bytes ID;
 }
 
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 public struct PlayerPendingTech : IBufferElementData
 {
-    public FixedString64Bytes TechID;
-    public Entity Producer;
+    [GhostField] public FixedString64Bytes TechID;
+    [GhostField] public Entity Producer;
 }

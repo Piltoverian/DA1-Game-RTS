@@ -1,18 +1,17 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Transforms;
 
 // Call on the simulation thread after the fixed tick, then hand the frame to presentation.
 public static class FogOfWarSnapshot
 {
-    // The optional cache parameter is retained for existing local callers. Terrain
-    // is always full Explored now, regardless of receiver cache contents.
-    public static bool Collect(EntityManager em, int playerId, FogOfWarFrame frame, FogTerrainMemory knownTerrain = null)
+    public static bool Collect(EntityManager em, int playerId, FogOfWarFrame frame)
     {
         frame.Entities.Clear();
         frame.VisibleCells.Clear();
-        frame.TerrainCells.Clear();
+        frame.ExploredCells.Clear();
         frame.IsValid = false;
         frame.PlayerId = playerId;
         em.CompleteAllTrackedJobs();
@@ -35,28 +34,19 @@ public static class FogOfWarSnapshot
         var fog = fogs.GetSingleton<FogOfWarSpatialSystemData>();
         var unitMap = units.GetSingleton<UnitSpatialBucket>().Bucket;
         var neutralMap = neutrals.GetSingleton<NeutralSpatialBucket>().Bucket;
-        if (!fog.Visible.IsCreated || !unitMap.IsCreated || !neutralMap.IsCreated) return false;
+        uint revision = em.HasComponent<MapBuildState>(gridEntity) ? em.GetComponentData<MapBuildState>(gridEntity).Revision : 0;
+        if (!fog.Ready || fog.SourceGrid != gridEntity || fog.GridRevision != revision
+            || !fog.Visible.IsCreated || !unitMap.IsCreated || !neutralMap.IsCreated) return false;
 
         frame.Width = grid.width; frame.Height = grid.height;
         frame.CellSize = grid.cellsize; frame.Origin = grid.origin;
-        frame.TerrainBaseLevel = 0;
-        // Explored includes history imported from teammates. It authorizes terrain, not current entities.
-        if (fog.Explored.IsCreated && em.HasBuffer<GridTerrain>(gridEntity))
+        // Static geometry is compiled separately. FOW publishes only authorized cell membership.
+        if (fog.Explored.IsCreated)
         {
-            var terrain = em.GetBuffer<GridTerrain>(gridEntity, true);
-            if (terrain.Length == (long)grid.width * grid.height)
-            {
-                int minimum = int.MaxValue;
-                for (int i = 0; i < terrain.Length; i++) minimum = math.min(minimum, terrain[i].heightLevel);
-                frame.TerrainBaseLevel = minimum;
-                using var emitted = new NativeHashSet<int>(128, Allocator.Temp);
-                foreach (var pair in fog.Explored)
-                {
-                    int cell = pair.Key;
-                    if (pair.Value != playerId || cell < 0 || cell >= terrain.Length || !emitted.Add(cell)) continue;
-                    frame.TerrainCells.Add(new FogTerrainCellData { CellIndex = cell, Terrain = terrain[cell] });
-                }
-            }
+            using var emitted = new NativeHashSet<int>(128, Allocator.Temp);
+            foreach (var pair in fog.Explored)
+                if (pair.Value == playerId && pair.Key >= 0 && pair.Key < (long)grid.width * grid.height && emitted.Add(pair.Key))
+                    frame.ExploredCells.Add(pair.Key);
         }
         using var visibleCells = new NativeHashSet<int>(128, Allocator.Temp);
         using var candidates = new NativeHashSet<Entity>(128, Allocator.Temp);
@@ -86,7 +76,7 @@ public static class FogOfWarSnapshot
         }
         ProductionJobs.TryRegistry(em, out var registryEntity);
         foreach (var entity in candidates)
-            if (TryRead(em, entity, grid, visibleCells, registryEntity, out var data)) frame.Entities.Add(data);
+            if (TryReadVisible(em, entity, grid, visibleCells, registryEntity, out var data)) frame.Entities.Add(data);
         frame.IsValid = true;
         return true;
     }
@@ -97,7 +87,7 @@ public static class FogOfWarSnapshot
         do { candidates.Add(entity); } while (map.TryGetNextValue(out entity, ref iterator));
     }
 
-    private static bool TryRead(EntityManager em, Entity entity, in GridComponent grid,
+    public static bool TryReadVisible(EntityManager em, Entity entity, in GridComponent grid,
         NativeHashSet<int> visibleCells, Entity registryEntity, out FogEntityRenderData data)
     {
         data = default;
@@ -109,6 +99,7 @@ public static class FogOfWarSnapshot
         data.Transform = em.GetComponentData<LocalTransform>(entity);
         if (!math.all(math.isfinite(data.Transform.Position))) return false;
         data.Entity = entity;
+        if (em.HasComponent<GhostInstance>(entity)) data.NeutralId = NeutralMemoryIdentity.FromGhost(em.GetComponentData<GhostInstance>(entity));
         data.OwnerId = em.HasComponent<EntityOwner>(entity) ? em.GetComponentData<EntityOwner>(entity).PlayerID : -1;
         data.PostTransform = em.HasComponent<PostTransformMatrix>(entity)
             ? em.GetComponentData<PostTransformMatrix>(entity).Value : float4x4.identity;
@@ -235,8 +226,8 @@ public static class FogOfWarSnapshot
             if (queue.Length > 0 && queue[0].PlayerID == data.OwnerId)
             {
                 var current = queue[0];
-                data.ActiveJob = new FogActiveJobSnapshot { Id = current.Offer.JobID,
-                    Kind = current.Offer.Kind, RemainingWork = current.RemainingWork };
+                data.ActiveJob = new FogActiveJobSnapshot { Id = current.JobID,
+                    Kind = current.Kind, RemainingWork = current.RemainingWork };
             }
         }
         return true;

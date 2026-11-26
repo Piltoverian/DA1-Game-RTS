@@ -5,6 +5,7 @@ using Unity.Mathematics;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(GridIslandSystem))]
 [UpdateBefore(typeof(IntegrationFieldSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct FlowFieldInvalidationSystem : ISystem
 {
     const int MinRecalcPerFrame = 12;
@@ -19,6 +20,7 @@ partial struct FlowFieldInvalidationSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var snapshot = SystemAPI.GetSingleton<GridComponent>();
         if (completed && completedGeneration == snapshot.generation) return;
         var grid = SystemAPI.GetSingletonRW<GridComponent>();

@@ -1,6 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.DebugDisplay;
+using Unity.Collections;
 public enum TargetChangeResult
 {
     Success,
@@ -9,6 +9,23 @@ public enum TargetChangeResult
 }
 public static class MovementAgentAPI
 {
+    // Keep field ownership intact; ClearTarget releases it separately.
+    public static void StopAgent(ref MovementAgentComponent agent, MovementStopReason reason)
+    {
+        agent.hastarget = false;
+        agent.velocity = float3.zero;
+        agent.preferredVelocity = float3.zero;
+        agent.stopReason = reason;
+    }
+
+    public static void StopAgent(ref MovementAgentComponent agent, ref MovementSteeringComponent steering, MovementStopReason reason)
+    {
+        StopAgent(ref agent, reason);
+        steering.isSettled = true;
+        steering.stuckTime = 0;
+        steering.minDistanceToTarget = float.MaxValue;
+    }
+
     public static TargetChangeResult SetTarget(EntityManager entityManager, Entity agentEntity, float3 worldTarget, GridComponent gridComponent, EntityCommandBuffer ecb)
     {
         if (!entityManager.HasComponent<MovementAgentComponent>(agentEntity))
@@ -51,15 +68,15 @@ public static class MovementAgentAPI
             return;
         }
         var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
-        var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
         FlowFieldHelper.ReleaseFieldFromMoveComponent(ref agentComponent, agentEntity, ecb, entityManager);
-        agentComponent.hastarget = false;
-        agentComponent.velocity= float3.zero;
+        if (entityManager.HasComponent<MovementSteeringComponent>(agentEntity))
+        {
+            var steering = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
+            StopAgent(ref agentComponent, ref steering, MovementStopReason.Released);
+            ecb.SetComponent(agentEntity, steering);
+        }
+        else StopAgent(ref agentComponent, MovementStopReason.Released);
         ecb.SetComponent(agentEntity, agentComponent);
-        steeringComponent.isSettled = true;
-        steeringComponent.stuckTime = 0;
-        steeringComponent.minDistanceToTarget = float.MaxValue;
-        ecb.SetComponent(agentEntity, steeringComponent);
     }
 
     public static void PauseAgent(EntityManager entityManager, Entity agentEntity, EntityCommandBuffer ecb)
@@ -69,17 +86,21 @@ public static class MovementAgentAPI
             return;
         }
         var agentComponent = entityManager.GetComponentData<MovementAgentComponent>(agentEntity);
-        var steeringComponent = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
-        agentComponent.hastarget = false;
-        agentComponent.velocity = float3.zero;
-        agentComponent.preferredVelocity = float3.zero;
-        agentComponent.stopReason = MovementStopReason.Paused;
+        if (entityManager.HasComponent<MovementSteeringComponent>(agentEntity))
+        {
+            var steering = entityManager.GetComponentData<MovementSteeringComponent>(agentEntity);
+            StopAgent(ref agentComponent, ref steering, MovementStopReason.Paused);
+            ecb.SetComponent(agentEntity, steering);
+        }
+        else StopAgent(ref agentComponent, MovementStopReason.Paused);
         ecb.SetComponent(agentEntity, agentComponent);
+    }
 
-        steeringComponent.isSettled = true;
-        steeringComponent.stuckTime = 0;
-        steeringComponent.minDistanceToTarget = float.MaxValue;
-        ecb.SetComponent(agentEntity, steeringComponent);
+    public static void PauseAgent(EntityManager entityManager, Entity agentEntity)
+    {
+        using var ecb = new EntityCommandBuffer(Allocator.Temp);
+        PauseAgent(entityManager, agentEntity, ecb);
+        ecb.Playback(entityManager);
     }
 
     public static void ResumeAgent(EntityManager entityManager, Entity agentEntity, EntityCommandBuffer ecb)
