@@ -1,5 +1,4 @@
 using gameManagerModule;
-using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using Unity.VisualScripting;
@@ -29,11 +28,9 @@ public class GameManager : MonoBehaviour
                     GameObject singletonObject = new GameObject();
                     instance = singletonObject.AddComponent<GameManager>();
                     singletonObject.name = typeof(GameManager).ToString();
-                    DontDestroyOnLoad(singletonObject);
                 }
                 else
                 {
-                    DontDestroyOnLoad(instance.gameObject);
                 }
             }
             return instance;
@@ -125,7 +122,6 @@ public class GameManager : MonoBehaviour
         if (instance == null)
         {
             instance = this;
-            DontDestroyOnLoad(this.gameObject);
         }
         else if (instance != this)
         {
@@ -135,6 +131,7 @@ public class GameManager : MonoBehaviour
         //All Module add in here
         AwakeAllModule();
     }
+    private void OnDestroy() { if (instance == this) instance = null; }
 
     private void Start()
     {

@@ -1,5 +1,17 @@
 # Việc tiếp theo — 14/10/2026
 
+## Ưu tiên bản demo — 25/11/2026
+
+Chủ dự án đã chọn 1 người đấu 1 AI để hoàn thiện một vòng chơi trên PC. Vòng
+thu thập/xây/sinh quân/combat/victory/restart đã PASS trong Play Mode; xem
+[kết quả hiện hành](../Guides/UIReportReadiness.md). Nghiệm thu bản Windows
+trước khi mở rộng tính năng. Sau đó ưu tiên phản hồi điều khiển/balance từ
+người chơi, polish model/animation và độ rõ địa hình. AI nhiều mức khó, tải
+nghìn quân và multiplayer là phạm vi riêng, không phải điều kiện bản demo này.
+
+Các mục ngày 14/10 bên dưới là lộ trình kỹ thuật lịch sử, không tự mở rộng
+phạm vi đã chốt hoặc yêu cầu duyệt lại công việc đã được người dùng cho phép.
+
 **Bắt đầu bằng đề xuất pipeline nghiệm thu builder clamp trong Play Mode. Trang này khoảng 2 phút.**
 
 [Trạng thái đã làm](CurrentState.md) · [Quy tắc lối chơi đã chốt](VerificationHistory.md)

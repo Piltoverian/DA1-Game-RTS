@@ -1,6 +1,107 @@
 # Hoàn thiện UI RTS để báo cáo
 
-Tài liệu cập nhật ngày 16/10/2026. Scene mục tiêu: `Assets/_Project/Scenes/Main.unity`.
+## Sửa click phải khai thác — 26/11/2026
+
+Người dùng chọn được worker trong Main nhưng click phải mỏ không khai thác.
+Nguyên nhân: UnitController.TryCommandGather chỉ raycast UnityEngine.Physics
+và đòi ResourceNodeReference trên GameObject, trong khi tài nguyên Main là
+entity đã bake có collider ECS. ResourceInspection vốn đã nhận được ECS.
+Gather và inspection nay dùng chung ResourceInspection.TryResolveNode;
+giữ kiểm tra worker/local owner và pipeline TargetTo/thanh toán hiện tại.
+Không tự cộng tài nguyên hoặc thay tốc độ khai thác.
+
+Unity Play Mode ngày 26/11: **PASS** bộ kiểm tra GatherPointerSmoke. Tia camera
+nhận đúng Gold/Wood/Food trong khi đường GameObject cũ đều không hit resource;
+không chọn worker thì từ chối lệnh, inspection giữ worker đã chọn; lệnh qua
+UnitController chạy tới khai thác thật, mỏ giảm và stock của cả ba loại tăng
+sau giao hàng. Biên nhận bền vững: `Artifacts/Verification/GatherPointer/report.txt`.
+Chạy lại qua Tools → RTS UI → Verify pointer gathering khi đã Stop Play.
+
+Bộ kiểm tra dùng vị trí màn hình và bộ dispatch runtime, thiết lập selection
+cho test; chưa giả lập click chuột hệ điều hành. Smoke vòng chơi ngày 25/11
+gửi lệnh ECS trực tiếp nên không bao phủ được lỗi pointer này. Bụi Food thấp
+bị TownHall che khuất không thể click xuyên công trình; test chọn nguồn Food
+khác nhìn thấy được. Khi nghiệm thu, click phần mỏ/cây nhìn thấy rõ trong Game View.
+
+Bản Windows được build lại ngày 26/11 sau sửa pointer: thành công, 0 lỗi,
+17 cảnh báo; `Builds/Windows/ImmortalRTS.exe` và DLL runtime đã được cập nhật.
+Kiểm chứng khai thác mới ở trên chạy trong Editor; không coi build lại là
+nghiệm thu tương tác chuột thủ công trên Player mới.
+
+## Đợt hoàn thiện vòng chơi — 25/11/2026
+
+Theo quyết định chủ dự án, Main chuyển sang 1 người đấu 1 AI đơn giản. Profile
+mới ở Data/Playable/SkirmishMap.asset và SkirmishStart.asset; profile 8 người cũ
+giữ làm tham khảo. Có đủ ba loại nguồn tài nguyên, mục tiêu phá TownHall,
+thắng/thua, chơi lại và menu restart/exit. Worker/lính tăng tốc 7 → 10; camera
+có Shift pan nhanh và giới hạn vùng nhìn theo map.
+
+Kiểm tra actual Play Mode đã bắt được lỗi worker đứng ngoài khoảng tương tác
+và worker không thoát trạng thái xây khi nhà đầy HP; đã sửa trong
+WorkerInteractionMath/WorkerGatherSystem và BuilderSystem. Kết quả vòng smoke
+mới nhất ở Temp/PlayableLoop/smoke-report.txt; chỉ coi PASS khi chạy hết cả
+chiến đấu, victory và restart. Biên dịch hoặc các checkpoint đầu chưa đủ để
+đánh dấu toàn bộ vòng chơi đạt.
+
+Kết quả Play Mode ngày 25/11: **PASS toàn vòng**, 82.7 giây thực với mô phỏng
+kiểm tra 2x (bản game bình thường 1x). Thu thập làm tăng stock và giảm mỏ thật;
+xây xong Barracks/Depot/Tower; tạo ba lính theo FIFO, di chuyển trên 5 đơn vị,
+nuôi quân tám lính bằng kinh tế; combat phá TownHall và hiện victory; ghi nhận
+26 đạn tháp; restart tạo world mới với hai căn cứ, năm worker local, không còn
+quân trận trước. Không ghi nhận Error/Exception/Assert mới trong lượt này.
+Biên nhận được sao lưu ở `Builds/Windows/Verification/editor-smoke-report.txt`.
+36 kiểm tra dùng source toán học reveal/interaction thực cũng đạt. Đây là
+smoke quy mô demo, không phải nghiệm thu tải hàng nghìn quân hoặc mọi edge case.
+
+### Bản Windows đã chạy thực tế
+
+- Release Windows x64: `Builds/Windows/ImmortalRTS.exe`, Main duy nhất; build
+  thành công với 0 lỗi và 22 cảnh báo. Lỗi Burst BC1028 trong SelectSystem
+  được sửa bằng SystemAPI singleton, giữ nguyên logic raycast/quyền sở hữu.
+- Khởi động: hai TownHall, mười worker tổng hai bên, ba loại tài nguyên,
+  bootstrap Ready; log map xác nhận 12/12 clusters và 33 nodes, missing=0.
+- Kiểm tra Player **có cửa sổ/render, 1280×720, simulation 1x**: AI tự thu thập,
+  tạo quân và phá TownHall local; màn DEFEAT lúc 02:34. 8.974 mẫu sau warmup
+  bốn giây: median 16.6668 ms, p95 16.6705 ms (~60 FPS, đã giới hạn 60).
+  GPU NVIDIA GeForce RTX 3050 6GB Laptop GPU; không ngoại suy sang máy khác,
+  độ phân giải khác hoặc tải lớn. Report không ghi Error/Exception mới.
+- Ảnh màn thua và JSON/log thật ở `Builds/Windows/Verification/VisiblePlayer`;
+  ảnh victory/restart và báo cáo Editor trong thư mục Verification gốc.
+  Lượt Startup chạy ẩn chỉ kiểm chứng dữ liệu, ảnh đen không dùng để nghiệm thu
+  render hoặc hiệu năng. Lượt Defeat chạy ẩn đã dừng, không phải kết quả đạt.
+
+Còn cảnh báo hệ thống ECS cũ về attribute thứ tự giữa các group và cảnh báo
+build; không coi build sạch cảnh báo. Native Player cũng ghi Curl error 35 từ
+dịch vụ kết nối, trong khi trận offline vẫn hoàn tất. Chưa nghiệm thu mọi
+trường hợp hủy queue/chặn lối, trận kéo dài hoặc nhiều trận liên tục trong Player.
+Mỹ thuật/animation prototype và các mép địa hình lộ mảng tam giác còn cần polish;
+đây là bản demo chơi trọn vòng, chưa phải bản phát hành thương mại hoàn chỉnh.
+
+## Lịch sử đợt công trình và tài nguyên — 05/11/2026
+
+Bản sửa sau ảnh người dùng: footprint tháp/kho/trại là 3/4/6 ô; hiệu ứng xây
+dùng bounds mesh thực thay trần +10; tháp ngắm độc lập collider; trại chờ cửa
+trống để sinh quân; kho chết bị loại khỏi nơi nhận tài nguyên. Chi tiết kiểm
+chứng và giới hạn cập nhật trong BuildingContentIntegration.md. Cần chạy lại
+Play để bake/entity mới nhận thay đổi.
+
+Chủ dự án đã nghiệm thu khung điều khiển bốn vùng. Đợt tiếp theo đã tích hợp
+ba loại Defense Tower/Resource Depot/Barracks thành asset mới, đăng ký registry
+và menu xây; bổ sung thông tin chức năng và thanh trữ lượng mỏ từ catalog thật.
+Chi tiết, thông số tạm và checklist: [BuildingContentIntegration.md](BuildingContentIntegration.md).
+Tại đợt 05/11: compiler/runtime-reference checks đạt; Unity batch thoát trước khi chạy audit,
+nên import/bake/Play Mode của công trình mới vẫn chưa được xác nhận.
+Các ma trận và trạng thái đợt cũ bên dưới được giữ làm lịch sử.
+
+## Bổ sung mới nhất: khung điều khiển chung
+
+Theo yêu cầu ngày 05/11/2026, đã triển khai khung dưới bốn vùng: thông tin →
+tác vụ → công việc/hàng chờ → minimap phải. Production và hàng xây worker
+dùng dữ liệu ECS thực; mục trùng liền nhau có badge số lượng, giữ thứ tự FIFO.
+Prompt, ưu tiên, giới hạn và checklist: [CommandDockImplementation.md](CommandDockImplementation.md).
+Khung này đã được chủ dự án nghiệm thu; các kết quả bố cục cũ bên dưới là lịch sử.
+
+Tài liệu cập nhật ngày 05/11/2026. Scene mục tiêu: `Assets/_Project/Scenes/Main.unity`.
 Phạm vi báo cáo là HUD và tương tác UI cho gameplay hiện có trên PC, dùng uGUI,
 chuột/bàn phím, chuẩn 1920×1080. Không coi mọi chi tiết trong concept là tính
 năng đã có. Giữ nguyên Gold/Wood/Food và các thông số simulation hiện tại.
@@ -129,6 +230,51 @@ phẳng grid, có thể khác biên nhìn theo địa hình cao. Chưa đo FPS/G
 > trận; các tính năng ngoài phạm vi được liệt kê riêng.
 
 ## Bằng chứng kiểm chứng của agent
+
+### Đợt hoàn thiện để nghiệm thu một lần
+
+- Cụm thông tin/lệnh/tooltip AOE được chủ dự án nghiệm thu trước đợt này.
+- Bổ sung HudSystemMenu vào UICanvas: Menu hoặc Escape mở; Resume/Escape đóng;
+  phím lên/xuống chọn nút, Submit theo Input System UI hiện tại. Escape khi
+  placement/xem mỏ giữ ưu tiên hủy placement/đóng inspection trước mở menu.
+- Menu có cỡ UI 80–120% (lưu khóa PlayerPrefs RTS.UI.Scale), bật/tắt âm thanh và
+  hướng dẫn chuột. Không có nút save/load/quit giả. Không đổi Time.timeScale;
+  luôn ghi rõ simulation vẫn chạy. Không thay đổi tên thời đại hoặc tài nguyên.
+- Modal chặn selection/lệnh/camera; đóng menu khóa input đến lúc thả chuột.
+  Tooltip đang hiện bị ẩn trong modal. Khôi phục focus khi đối tượng cũ còn tồn tại.
+- Tooltip nhóm có số lượng theo loại, tối đa bốn loại kèm số loại còn lại;
+  HP/công việc vẫn là thông tin đại diện, không biến thành tổng giả của nhóm.
+- Nút sản xuất có số job cùng loại đang xếp hàng, tách khỏi dấu !/OK. Không
+  thêm hủy queue, refund hoặc sửa luật simulation.
+- Có menu Editor Tools > RTS UI > Export content readiness report để xuất
+  Temp/HudContentReadiness.md từ registry và prefab thực, không sửa asset.
+  Công cụ này đã biên dịch nhưng agent chưa chạy trong Unity.
+- Compiler runtime và Editor đều exit 0; tham chiếu local prefab hợp lệ, không
+  trùng fileID. Tính hình học canvas ở 1080p/720p/4:3/ultrawide với UI 120% đạt
+  giới hạn card/menu. Đây không phải kiểm tra render/font/hitbox trong Game View.
+
+Checklist bổ sung cho lượt nghiệm thu cuối:
+
+- [ ] Menu mở/đóng bằng nút và Escape, focus bàn phím đúng; không phát lệnh world.
+- [ ] Khi mở menu, camera không pan/zoom; game vẫn chạy như dòng thông báo.
+- [ ] Đặt nhà hoặc xem mỏ rồi Escape: hành vi cũ giữ đúng ưu tiên, không mở menu cùng lúc.
+- [ ] Thử UI 80/100/120%, mở lại game kiểm tra lưu cỡ; panel/queue/tooltip không chồng nhau.
+- [ ] Toggle sound tắt rồi bật lại; Resume giữ nhóm chọn và không click xuyên UI.
+- [ ] Chọn nhóm nhiều loại: tooltip đếm đúng; queue badge đổi theo job thực tế.
+
+### Phạm vi chưa thể ghi là hoàn tất
+
+UI trên dữ liệu hiện có đã được mở rộng để nghiệm thu tập trung. Chưa có cơ sở
+đánh dấu **toàn bộ kế hoạch** hoàn thành: tháp/kho/trại lính legacy chưa được
+migrate và đăng ký thành gameplay hợp lệ trong Main; NewBuildingSO.asset hiện
+chưa gán BasedSO. Việc đó cần thêm authoring/definition/projectile/job hợp lệ,
+không được giải quyết bằng nhãn UI hoặc lấy field cũ làm dữ liệu runtime.
+Giữ các asset này nguyên trạng, không tự đặt balance để làm đủ màn hình.
+
+Player build, đo FPS/GC và nghiệm thu Game View toàn bộ vẫn chưa chạy. Không
+thêm fog/ping, mana/kỹ năng, objectives/thắng thua, pause simulation hoặc hủy
+queue khi gameplay tương ứng chưa được xác định. Những dòng này là phần còn
+lại hoặc ngoài phạm vi, không phải tính năng đã có chỉ vì concept có hình.
 
 - Compiler C# đi kèm Unity 6000.3.13f1: runtime biên dịch thành công sau các
   thay đổi. Có warning obsolete ShootVictimAuthoring và thông báo SGFE009 cũ.

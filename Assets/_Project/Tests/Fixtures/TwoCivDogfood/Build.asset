@@ -16,3 +16,6 @@ MonoBehaviour:
   Range: 2
   Buildings:
   - {fileID: 11400000, guid: 91d0a124679aca14cb65b2d249aa2908, type: 2}
+  - {fileID: 11400000, guid: d034fdfa81f440c2867fd93f9935a59b, type: 2}
+  - {fileID: 11400000, guid: b332c93e102b4d2d8da48263a86e3adf, type: 2}
+  - {fileID: 11400000, guid: c486041a9c664509839f318c7564f20a, type: 2}

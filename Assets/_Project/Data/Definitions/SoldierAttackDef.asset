@@ -19,7 +19,7 @@ MonoBehaviour:
   - ProjectilePrefab: {fileID: 6642296049775915417, guid: 8fc10f27c78a1e34e94da99dbbd2de49, type: 3}
     Damage: 10
     Cooldown: 2
-    ProjectileSpeed: 10
+    ProjectileSpeed: 28
     SpawnOffset:
       x: 1
       y: 0

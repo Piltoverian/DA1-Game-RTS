@@ -41,6 +41,7 @@ public class CommandTooltipView : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (HudSystemMenu.IsOpen) { Hide(null); return; }
         if (owner == null || !owner.isActiveAndEnabled) { Hide(null); return; }
         Position();
     }

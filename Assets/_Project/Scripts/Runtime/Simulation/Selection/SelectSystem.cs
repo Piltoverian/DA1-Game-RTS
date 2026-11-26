@@ -23,6 +23,7 @@ partial struct SelectSystem : ISystem
     {
         state.RequireForUpdate<SelectableBucketContainer>();
         state.RequireForUpdate<Selected>();
+        state.RequireForUpdate<PhysicsWorldSingleton>();
     }
 
     [BurstCompile]
@@ -172,8 +173,7 @@ partial struct SelectSystem : ISystem
         var rayInput = request.rayInput;
         Unity.Physics.RaycastHit raycastResults = new Unity.Physics.RaycastHit();
 
-        var physicsWorld = state.EntityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton))
-                                         .GetSingleton<PhysicsWorldSingleton>();
+        var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
 
         physicsWorld.CastRay(rayInput, out raycastResults);
         if (raycastResults.Entity != Entity.Null)

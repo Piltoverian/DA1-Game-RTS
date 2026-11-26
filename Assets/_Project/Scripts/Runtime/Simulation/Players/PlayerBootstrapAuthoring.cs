@@ -101,6 +101,7 @@ public class PlayerBootstrapAuthoring : MonoBehaviour
                     }
                     AddComponent(root, new MapResourceSettings {
                         Seed = authoring.MapConfig.Terrain.seed,
+                        EnsureMainResourceVariety = config.EnsureMainResourceVariety,
                         ClusterMin = config.ClusterMin, ClusterMax = config.ClusterMax,
                         Quotas = new Unity.Mathematics.int4(config.MainClusters, config.SecondaryClusters, config.AdvantageClusters, config.ContestedClusters),
                         MainDistanceCells = config.Main.DistanceCells, MainMineCount = config.Main.MinesPerCluster,

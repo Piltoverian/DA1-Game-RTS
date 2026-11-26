@@ -103,9 +103,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cc573c70762e0b46a0f63831bf06847, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MovementAgentAuthoring
-  speed: 7
+  speed: 10
   diameterCells: 0.75
-  arrivalRadius: 5.6
+  arrivalRadius: 3.5
   stoppingDistance: 0.5625
   rotationSpeed: 8
   useTestTarget: 0

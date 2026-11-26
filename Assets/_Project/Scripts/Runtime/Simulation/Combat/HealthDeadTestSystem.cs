@@ -96,24 +96,8 @@ public partial struct HealthDeadTestSystem : ISystem
         BufferLookup<LinkedEntityGroup> linkedGroupLookup,
         EntityCommandBuffer ecb)
     {
-        if (linkedGroupLookup.HasBuffer(rootEntity))
-        {
-            DynamicBuffer<LinkedEntityGroup> linkedEntities =
-                linkedGroupLookup[rootEntity];
-
-            for (int i = 0; i < linkedEntities.Length; i++)
-            {
-                Entity linkedEntity = linkedEntities[i].Value;
-
-                if (linkedEntity == Entity.Null)
-                    continue;
-
-                ecb.DestroyEntity(linkedEntity);
-            }
-
-            return;
-        }
-
+        // DestroyEntity expands LinkedEntityGroup. Do not queue a second destroy
+        // for each child after the root has already removed their components.
         ecb.DestroyEntity(rootEntity);
     }
 }

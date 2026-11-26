@@ -18,12 +18,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c126a5d65473fa94b95653723dfdaed1, type: 2}
   Buildings:
   - {fileID: 11400000, guid: 91d0a124679aca14cb65b2d249aa2908, type: 2}
-  - {fileID: 11400000, guid: 91d0a124679aca14cb65b2d249aa2908, type: 2}
+  - {fileID: 11400000, guid: d034fdfa81f440c2867fd93f9935a59b, type: 2}
+  - {fileID: 11400000, guid: b332c93e102b4d2d8da48263a86e3adf, type: 2}
+  - {fileID: 11400000, guid: c486041a9c664509839f318c7564f20a, type: 2}
   Abilities:
   - {fileID: 11400000, guid: 9fbcd506527868b4c9901751c549b12a, type: 2}
   - {fileID: 11400000, guid: 105fee079b464db1ab49f872225e0fc2, type: 2}
   - {fileID: 11400000, guid: 74e860504dc24a1f992027746a1262ce, type: 2}
   - {fileID: 11400000, guid: ef6c7f3ddd6d59848a7961c3f8006f46, type: 2}
+  - {fileID: 11400000, guid: 201c6e4ee59b4cc5b8e6a0c9e08c3df9, type: 2}
   Jobs:
   - {fileID: 11400000, guid: f81c840a7872891499f6612ae0390dac, type: 2}
   - {fileID: 11400000, guid: abd434f26afed964097f944b3a1e0252, type: 2}

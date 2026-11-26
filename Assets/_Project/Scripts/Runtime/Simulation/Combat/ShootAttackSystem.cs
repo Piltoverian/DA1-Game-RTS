@@ -3,14 +3,12 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[UpdateBefore(typeof(HealthDeadTestSystem))]
 public partial struct ShootAttackSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridComponent>();
         state.RequireForUpdate<GameDataRegistryComponent>();
-        state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
     }
 
     public void OnUpdate(ref SystemState state)
@@ -20,10 +18,9 @@ public partial struct ShootAttackSystem : ISystem
         GridComponent gridComponent =
             SystemAPI.GetSingleton<GridComponent>();
 
-        EntityCommandBuffer ecb =
-            SystemAPI
-                .GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
+        // Playback this update, before late death cleanup. A next-frame buffer can
+        // otherwise write movement/weapon data to a shooter destroyed this frame.
+        var ecb = new EntityCommandBuffer(Allocator.Temp);
 
         ComponentLookup<MoveOverride> moveOverrideLookup =
             SystemAPI.GetComponentLookup<MoveOverride>(true);
@@ -50,6 +47,9 @@ public partial struct ShootAttackSystem : ISystem
                          RefRO<EntityOwner>>()
                      .WithEntityAccess())
         {
+            if (SystemAPI.HasComponent<EntityHealth>(entity) && SystemAPI.GetComponent<EntityHealth>(entity).CurrentHP <= 0) continue;
+            for (int slot = 0; slot < weaponBuffer.Length; slot++)
+                weaponBuffer.ElementAt(slot).timer = math.max(0, weaponBuffer[slot].timer - deltaTime);
             if (SystemAPI.HasComponent<BuildingConstruction>(entity) && SystemAPI.GetComponent<BuildingConstruction>(entity).Phase != ConstructionPhase.Completed) continue;
             Entity targetEntity = target.ValueRO.targetEntity;
             var attackReference = registry.GetBlobByID<AttackBlob>(shootAttack.ValueRO.IDs, out var result);
@@ -83,17 +83,26 @@ public partial struct ShootAttackSystem : ISystem
             toTarget.y = 0f;
 
             float distanceSq = math.lengthsq(toTarget);
+            if (SystemAPI.HasComponent<BuildingComponent>(targetEntity) && SystemAPI.HasComponent<BlockageData>(targetEntity))
+            {
+                // A large building is reached at its footprint, not its blocked center.
+                var rect = SystemAPI.GetComponent<BlockageData>(targetEntity).LocalRect;
+                float2 closest = math.clamp(unitPosition.xz, targetPosition.xz + rect.MinPoint, targetPosition.xz + rect.MaxPoint);
+                distanceSq = math.distancesq(unitPosition.xz, closest);
+            }
 
             float attackDistanceSq =attackBlob.Range * attackBlob.Range;
             if (distanceSq > attackDistanceSq)
             {
-                if (SystemAPI.HasComponent<MovementAgentComponent>(entity)) MovementAgentAPI.SetTarget(
-                    state.EntityManager,
-                    entity,
-                    targetPosition,
-                    gridComponent,
-                    ecb
-                );
+                if (SystemAPI.HasComponent<MovementAgentComponent>(entity))
+                {
+                    var movement = SystemAPI.GetComponent<MovementAgentComponent>(entity);
+                    float refreshDistance = math.max(1f, gridComponent.cellsize);
+                    // Let a requested field finish. Reissuing every frame invalidates
+                    // navigation and prevents stable pursuit of a moving opponent.
+                    if (!movement.hastarget || math.distancesq(movement.currentworldtarget.xz, targetPosition.xz) > refreshDistance * refreshDistance)
+                        MovementAgentAPI.SetTarget(state.EntityManager, entity, targetPosition, gridComponent, ecb);
+                }
 
                 continue;
             }
@@ -109,15 +118,33 @@ public partial struct ShootAttackSystem : ISystem
                 );
             }
 
-            RotateYawOnlyTowardTarget(
-                ref localTransform.ValueRW,
-                toTarget,
-                deltaTime,
-                attackBlob.RotationSpeed,
-                ref steeringLookup
-            );
+            var facing = localTransform.ValueRO;
+            if (SystemAPI.HasComponent<StationaryDefenseAim>(entity))
+            {
+                // Capture the grid-fitted model only after runtime snapping has finished.
+                if (SystemAPI.HasComponent<Snapping>(entity) && SystemAPI.IsComponentEnabled<Snapping>(entity)) continue;
+                var aim = SystemAPI.GetComponent<StationaryDefenseAim>(entity);
+                if (!aim.Initialized)
+                {
+                    aim.RestModel = SystemAPI.HasComponent<PostTransformMatrix>(entity)
+                        ? SystemAPI.GetComponent<PostTransformMatrix>(entity).Value : float4x4.identity;
+                    aim.Rotation = quaternion.identity; aim.Initialized = true;
+                }
+                facing.Rotation = aim.Rotation;
+                RotateYawOnlyTowardTarget(ref facing, toTarget, deltaTime, attackBlob.RotationSpeed, ref steeringLookup);
+                aim.Rotation = facing.Rotation;
+                SystemAPI.SetComponent(entity, aim);
+                var model = new PostTransformMatrix { Value = math.mul(float4x4.TRS(float3.zero, aim.Rotation, new float3(1)), aim.RestModel) };
+                if (SystemAPI.HasComponent<PostTransformMatrix>(entity)) SystemAPI.SetComponent(entity, model);
+                else ecb.AddComponent(entity, model);
+            }
+            else
+            {
+                RotateYawOnlyTowardTarget(ref localTransform.ValueRW, toTarget, deltaTime, attackBlob.RotationSpeed, ref steeringLookup);
+                facing = localTransform.ValueRO;
+            }
 
-            if (!IsFacingTargetYawOnly(localTransform.ValueRO, toTarget))
+            if (!IsFacingTargetYawOnly(facing, toTarget))
                 continue;
 
             for (int i = 0; i < weaponBuffer.Length && i < attackBlob.Weapons.Length; i++)
@@ -126,8 +153,6 @@ public partial struct ShootAttackSystem : ISystem
                     ref weaponBuffer.ElementAt(i);
                 ref WeaponDefinitionBlob weaponDefinition =
                     ref attackBlob.Weapons[i];
-                weapon.timer -= deltaTime;
-
                 if (weapon.timer > 0f)
                     continue;
 
@@ -149,6 +174,8 @@ public partial struct ShootAttackSystem : ISystem
                 );
             }
         }
+        ecb.Playback(state.EntityManager);
+        ecb.Dispose();
     }
 
     private bool IsMoveOverrideActive(
@@ -265,8 +292,13 @@ public partial struct ShootAttackSystem : ISystem
          *
          * Ở đây ta convert local muzzle position sang world position.
          */
-        float3 spawnWorldPosition =
-            shooterTransform.TransformPoint(weapon.SpawnOffset);
+        float3 localSpawn = weapon.SpawnOffset;
+        // Grid-fitted buildings keep model scale/centering in PostTransformMatrix.
+        // Their muzzle must follow the same matrix as the visible model.
+        if (state.EntityManager.HasComponent<BuildingComponent>(shooterEntity) &&
+            state.EntityManager.HasComponent<PostTransformMatrix>(shooterEntity))
+            localSpawn = math.transform(state.EntityManager.GetComponentData<PostTransformMatrix>(shooterEntity).Value, localSpawn);
+        float3 spawnWorldPosition = shooterTransform.TransformPoint(localSpawn);
 
         ApplyProjectileTransform(
             ref state,

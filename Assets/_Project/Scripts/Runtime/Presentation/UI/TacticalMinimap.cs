@@ -5,6 +5,7 @@ using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TMPro;
 
 /// <summary>North-up tactical overview from the live ECS grid. No extra camera/render pass.</summary>
 [AddComponentMenu("UI/Tactical Minimap")]
@@ -18,6 +19,12 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
     [SerializeField] private Color allyColor = new Color(0.35f, 0.92f, 0.8f, 1f);
     [SerializeField] private Color enemyColor = new Color(1f, 0.4f, 0.35f, 1f);
     [SerializeField] private Color resourceColor = new Color(0.96f, 0.76f, 0.36f, 1f);
+    [SerializeField] private TextMeshProUGUI legend;
+    [SerializeField] private string waitingMapText = "Waiting for map...";
+    [SerializeField] private string waitingPlayerText = "Waiting for player...";
+    [SerializeField] private string readyLegend = "N +Z | Left-drag: camera\nAlly / Other / Resource";
+    [SerializeField] private string limitedLegend = "N +Z | Left-drag: camera\nMarker limit reached";
+    private bool canNavigate;
     private const int MaximumMarkers = 2048;
     private struct Marker { public Vector2 UV; public Color Color; public float Size; public bool Selected; }
     private readonly List<Marker> markers = new();
@@ -89,6 +96,7 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
         }
         markers.Clear();
         bool hasPlayer = SelectHelper.TryGetLocalPlayerId(out int player);
+        canNavigate = hasPlayer;
         // During bootstrap show terrain only, never mislabel every object as an enemy.
         if (hasPlayer)
         {
@@ -110,17 +118,27 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
                 AddMarker(p, allied ? allyColor : owner < 0 ? Color.gray : enemyColor, building ? 5f : 3f, selected);
             }
             using var nodes = nodesQuery.ToEntityArray(Allocator.Temp);
+            bool inspecting = ResourceInspection.TryGet(out var inspected);
             foreach (var node in nodes)
             {
                 if (markers.Count >= MaximumMarkers) break;
                 if (manager.HasComponent<ResourceNodePendingConfig>(node) || manager.GetComponentData<ResourceNodeData>(node).Amount <= 0) continue;
                 Vector3 p = manager.GetComponentData<LocalTransform>(node).Position;
                 if (manager.HasComponent<BlockageData>(node)) p = manager.GetComponentData<BlockageData>(node).GetWorldCenter(p);
-                AddMarker(p, resourceColor, 2.5f, false);
+                var kind = manager.GetComponentData<ResourceNodeData>(node).Type;
+                Color tint = kind == ResourceType.Wood ? new Color(.54f, .8f, .35f, 1f) :
+                    kind == ResourceType.Food ? new Color(1f, .63f, .32f, 1f) : resourceColor;
+                AddMarker(p, tint, 2.5f, inspecting && node == inspected);
             }
         }
         RefreshCamera();
+        SetLegend(!hasPlayer ? waitingPlayerText : markers.Count >= MaximumMarkers ? limitedLegend : readyLegend);
         SetVerticesDirty();
+    }
+
+    private void SetLegend(string text)
+    {
+        if (legend != null && legend.text != text) legend.text = text;
     }
 
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
@@ -200,7 +218,7 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
     public void OnDrag(PointerEventData data) { if (data.button == PointerEventData.InputButton.Left) Navigate(data); }
     private void Navigate(PointerEventData data)
     {
-        if (terrain == null || GameplayInputGate.BlocksWorldInput) return;
+        if (terrain == null || !canNavigate || GameplayInputGate.BlocksWorldInput) return;
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, data.position, data.pressEventCamera, out var point)) return;
         Rect r = MapRect();
         if (r.width <= 0 || r.height <= 0 || !r.Contains(point)) return;
@@ -217,6 +235,8 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
     }
     private void ClearMap()
     {
+        canNavigate = false;
+        SetLegend(waitingMapText);
         if (terrain == null && markers.Count == 0) return;
         terrain = null; markers.Clear(); hasCamera = false; SetVerticesDirty();
     }

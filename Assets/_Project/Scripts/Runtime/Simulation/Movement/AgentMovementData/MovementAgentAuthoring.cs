@@ -22,7 +22,7 @@ public class MovementAgentAuthoring : MonoBehaviour
 
         // Arrival Radius: Cần đủ lớn để bù đắp cho vân tốc speed = 10.
         // Tỷ lệ 0.8 * Speed là tiêu chuẩn cho hãm phanh mượt.
-        arrivalRadius = Mathf.Max(diameterCells * 0.5f * 4f, speed * 0.8f);
+        arrivalRadius = Mathf.Max(diameterCells * 0.5f * 4f, speed * 0.35f);
     }
 
 

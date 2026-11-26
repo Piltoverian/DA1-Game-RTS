@@ -108,7 +108,10 @@ public partial struct BuilderSystem : ISystem
                     {
                         float restoredHp = math.min(work * hpPerWork, health.MaxHP - health.CurrentHP);
                         if (restoredHp <= 0f)
+                        {
+                            StopBuilder(em, builderData, entity);
                             break;
+                        }
 
                         int playerId = em.GetComponentData<EntityOwner>(constructionSite).PlayerID;
                         float repairRatio = restoredHp / health.MaxHP;
@@ -139,7 +142,7 @@ public partial struct BuilderSystem : ISystem
                         em.SetComponentData(constructionSite, construction);
                         em.SetComponentData(constructionSite, health);
                         if (construction.CompletedWork >= building.WorkLoad)
-                            TryStartNextBuilding(em, builderData, entity);
+                            StopBuilder(em, builderData, entity);
                     }
                     break;
             }

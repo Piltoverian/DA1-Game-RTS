@@ -12,6 +12,7 @@ public class CommandMenu : MonoBehaviour
     [SerializeField] private GameObject ButtonPrefab;
     [SerializeField] private GameDataRegistry presentationRegistry;
     [SerializeField] private RectTransform selectionPanelRoot;
+    [SerializeField] private bool embeddedInDock;
     [SerializeField] private float infoWidth = 280f;
     [SerializeField] private float minimumHeight = 144f;
     [SerializeField] private float panelGap = 8f;
@@ -37,6 +38,7 @@ public class CommandMenu : MonoBehaviour
         public CommandHintTarget Hint;
         public string Header;
         public TextMeshProUGUI StatusBadge;
+        public TextMeshProUGUI QueueBadge;
     }
     private readonly List<ButtonEntry> entries = new();
     private float nextStateRefresh;
@@ -173,8 +175,8 @@ public class CommandMenu : MonoBehaviour
         float height = rows == 0 ? 0f : rows * grid.cellSize.y + (rows - 1) * grid.spacing.y;
         rect.sizeDelta = new Vector2(width, height);
         var background = GetComponent<Image>();
-        if (background != null) background.enabled = count > 0;
-        if (selectionPanelRoot != null)
+        if (background != null) background.enabled = count > 0 && !embeddedInDock;
+        if (selectionPanelRoot != null && !embeddedInDock)
             selectionPanelRoot.sizeDelta = new Vector2(infoWidth + (count > 0 ? panelGap + width : 0f),
                 Mathf.Max(minimumHeight, height + 16f));
     }
@@ -191,6 +193,7 @@ public class CommandMenu : MonoBehaviour
             Button = button, Image = image, OriginalColor = image != null ? image.color : Color.white,
             Command = command, Hint = hint,
             StatusBadge = tile.transform.Find("StatusBadge")?.GetComponent<TextMeshProUGUI>(),
+            QueueBadge = tile.transform.Find("QueueCount")?.GetComponent<TextMeshProUGUI>(),
             Header = (isBuild ? "Build " : offer.Kind == ProductionKind.Train ? "Train " : "Research ") +
                 (label != null ? label.text : string.Empty)
         };
@@ -241,9 +244,25 @@ public class CommandMenu : MonoBehaviour
             entry.StatusBadge.text = status.Completed ? completedBadgeText : blockedBadgeText;
             entry.StatusBadge.color = status.Completed ? completedBadgeColor : blockedBadgeColor;
         }
-        var text = new StringBuilder(entry.Header).AppendLine();
+        if (entry.QueueBadge != null)
+        {
+            int count = 0;
+            if (!entry.IsBuild && lastWorld != null && lastWorld.IsCreated)
+            {
+                var em = lastWorld.EntityManager;
+                if (em.Exists(lastSelected) && em.HasBuffer<ProductionQueueElement>(lastSelected))
+                    foreach (var item in em.GetBuffer<ProductionQueueElement>(lastSelected, true))
+                        if (item.Offer.JobID == entry.Offer.JobID && item.Offer.Kind == entry.Offer.Kind) count++;
+            }
+            entry.QueueBadge.enabled = count > 0;
+            if (count > 0) entry.QueueBadge.text = count.ToString();
+        }
+        var text = new StringBuilder("<color=#F0D394><b>")
+            .Append(entry.Header.Replace("<", "‹").Replace(">", "›"))
+            .AppendLine("</b></color>");
         if (!string.IsNullOrEmpty(status.Costs)) text.AppendLine(status.Costs);
-        text.Append(status.Reason);
+        text.Append(status.Allowed || status.Completed ? "<color=#73DEC2>" : "<color=#FFC261>")
+            .Append(status.Reason).Append("</color>");
         if (!string.IsNullOrEmpty(status.Detail)) text.AppendLine().Append(status.Detail);
         entry.Hint.SetContent(text.ToString());
         return status.Allowed;

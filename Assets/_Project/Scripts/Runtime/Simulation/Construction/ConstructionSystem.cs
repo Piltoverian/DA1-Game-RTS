@@ -33,6 +33,8 @@ public partial struct ConstructionSystem : ISystem
 
         ComponentLookup<Unity.Transforms.LocalTransform> transformLookup =
             SystemAPI.GetComponentLookup<Unity.Transforms.LocalTransform>(true);
+        var modelLookup = SystemAPI.GetComponentLookup<Unity.Transforms.PostTransformMatrix>(true);
+        var boundsLookup = SystemAPI.GetComponentLookup<ConstructionVisualBounds>(true);
 
         BufferLookup<LinkedEntityGroup> linkedEntityLookup =
             SystemAPI.GetBufferLookup<LinkedEntityGroup>(true);
@@ -47,6 +49,12 @@ public partial struct ConstructionSystem : ISystem
             float progress = math.saturate(buildingState.ValueRO.CompletedWork / totalWork);
             float baseHeight = transformLookup.HasComponent(entity) ? transformLookup[entity].Position.y : 0f;
             float revealValue = baseHeight + math.lerp(-10f, 10f, progress);
+            if (boundsLookup.HasComponent(entity))
+            {
+                float4x4 modelToWorld = transformLookup.HasComponent(entity) ? transformLookup[entity].ToMatrix() : float4x4.identity;
+                if (modelLookup.HasComponent(entity)) modelToWorld = math.mul(modelToWorld, modelLookup[entity].Value);
+                revealValue = ConstructionRevealMath.Height(boundsLookup[entity], modelToWorld, progress);
+            }
 
             SetRevealHeight(entity, revealValue, ref revealLookup, ecb);
 

@@ -69,7 +69,7 @@ public class BuildingPlacer : MonoBehaviour
 
     private void Update()
     {
-        if (!Application.isFocused || !isPlacing)
+        if (!Application.isFocused || HudSystemMenu.IsOpen || HudSystemMenu.HandledEscapeThisFrame || !isPlacing)
             return;
         if (currentGhost == null) { CancelPlacement(); return; }
 

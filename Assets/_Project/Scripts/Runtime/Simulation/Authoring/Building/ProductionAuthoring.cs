@@ -8,11 +8,15 @@ public class ProductionAuthoring : MonoBehaviour
 {
     public Transform SpawnOffset;
     public Transform RallyOffset;
+    [Tooltip("Apply the grid-fitted model matrix to spawn/rally bindings. Opt-in for migrated building models.")]
+    public bool offsetsFollowModel;
 }
 public struct ProductionData : IComponentData
 {
     public float3 SpawnOffset;
     public float3 RallyOffset;
+    public bool OffsetsFollowModel;
+    public bool ExitBlocked;
     public int NextItemID;
 }
 public enum ProductionKind : byte { Train, Research }

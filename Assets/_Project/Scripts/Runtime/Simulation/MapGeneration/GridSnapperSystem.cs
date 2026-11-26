@@ -77,6 +77,8 @@ public partial class GridSnapperSystem : SystemBase
             var blockage=em.GetComponentData<BlockageData>(entity);blockage.LocalRect=rect;em.SetComponentData(entity,blockage);
             if(em.HasComponent<BlockageNeedBakeTag>(entity))em.SetComponentEnabled<BlockageNeedBakeTag>(entity,true);
         }
+        if(em.HasComponent<StationaryDefenseAim>(entity))
+            em.SetComponentData(entity,new StationaryDefenseAim{Rotation=quaternion.identity});
         em.SetComponentEnabled<Snapping>(entity,false);
     }
     protected override void OnDestroy(){foreach(var collider in colliders.Values)if(collider.IsCreated)collider.Dispose();colliders.Clear();}

@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Collections.Generic;
+using System.Text;
 using TMPro;
 using Unity.Collections;
 using Unity.Entities;
@@ -21,6 +23,7 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Image healthFill;
     [SerializeField] private Image healthTrack;
     [SerializeField] private Image panelBackground;
+    [SerializeField] private bool showEmptyState;
     [SerializeField] private Image infoBackground;
     [SerializeField] private HudFrameGraphic infoFrame;
     [SerializeField] private HudFrameGraphic portraitFrame;
@@ -61,12 +64,14 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Sprite foodResourceIcon;
     [SerializeField] private string resourceNameFormat = "{0} deposit";
     [SerializeField] private string remainingFormat = "Remaining: {0:N0}";
+    [SerializeField] private string stockFormat = "Stock: {0:N0}/{1:N0}";
     [SerializeField] private string tierFormat = "Tier: {0}";
     [SerializeField] private string gatherHint = "Worker: right-click";
     private float nextContextRefresh;
 
     private World world;
     private EntityQuery selectedQuery;
+    private EntityQuery resourceCatalogQuery;
     private Entity displayedEntity;
     private FixedString64Bytes displayedDefinition;
     private GameDataRegistry displayedRegistry;
@@ -74,6 +79,7 @@ public class UnitInfoPanel : MonoBehaviour
     private float displayedMaxHealth = float.NaN;
     private bool displayedGroup;
     private int displayedCount = -1;
+    private readonly Dictionary<FixedString64Bytes, int> groupTypes = new();
 
     private void Awake() { if (infoHint != null) infoHint.Initialize(tooltip); }
 
@@ -91,6 +97,7 @@ public class UnitInfoPanel : MonoBehaviour
                 world = currentWorld;
                 // Same query and filtering/order as SelectHelper, also used by CommandMenu.
                 selectedQuery = world.EntityManager.CreateEntityQuery(typeof(Selected));
+                resourceCatalogQuery = world.EntityManager.CreateEntityQuery(typeof(MapResourcePrefab));
             }
         }
 
@@ -102,7 +109,7 @@ public class UnitInfoPanel : MonoBehaviour
 
         var manager = world.EntityManager;
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame &&
-            !GameplayInputGate.IsEditingText && !BuildingPlacer.IsPlacementActive) ResourceInspection.Clear();
+            !HudSystemMenu.IsOpen && !HudSystemMenu.HandledEscapeThisFrame && !GameplayInputGate.IsEditingText && !BuildingPlacer.IsPlacementActive) ResourceInspection.Clear();
         if (ResourceInspection.TryGet(out var resource))
         {
             ShowResource(manager, resource);
@@ -217,13 +224,28 @@ public class UnitInfoPanel : MonoBehaviour
         nextContextRefresh = Time.unscaledTime + 0.1f;
         var node = manager.GetComponentData<ResourceNodeData>(entity);
         SetText(nameText, string.Format(CultureInfo.CurrentCulture, resourceNameFormat, node.Type));
-        SetText(healthText, string.Format(CultureInfo.CurrentCulture, remainingFormat, node.Amount));
+        int initialStock = ResourceInitialStock(manager, entity, node.Type);
+        if (initialStock < node.Amount) initialStock = 0;
+        SetText(healthText, initialStock > 0
+            ? string.Format(CultureInfo.CurrentCulture, stockFormat, node.Amount, initialStock)
+            : string.Format(CultureInfo.CurrentCulture, remainingFormat, node.Amount));
+        if (initialStock > 0 && node.Amount <= initialStock)
+        {
+            if (healthTrack != null) healthTrack.enabled = true;
+            if (healthFill != null)
+            {
+                healthFill.enabled = true; healthFill.fillAmount = (float)node.Amount / initialStock;
+                healthFill.color = node.Type == ResourceType.Gold ? new Color(.96f, .76f, .36f) :
+                    node.Type == ResourceType.Wood ? new Color(.36f, .82f, .57f) : new Color(.95f, .58f, .3f);
+            }
+        }
         string tier = manager.HasComponent<MapResourceIdentity>(entity)
             ? string.Format(CultureInfo.CurrentCulture, tierFormat, manager.GetComponentData<MapResourceIdentity>(entity).Tier)
             : string.Empty;
         SetText(contextText, string.IsNullOrEmpty(tier) ? gatherHint : tier + "\n" + gatherHint);
         if (infoHint != null) infoHint.SetContent((nameText != null ? nameText.text : string.Empty) + "\n" +
             (healthText != null ? healthText.text : string.Empty) + "\n" + tier +
+            (initialStock > 0 ? "\nStock bar: remaining resource, not HP." : "\nInitial stock unavailable; no percentage shown.") +
             "\nSelect workers, then right-click a deposit to gather.\nYour previous unit selection is retained.");
         if (portrait != null) portrait.SetPortrait(node.Type switch
         {
@@ -232,6 +254,22 @@ public class UnitInfoPanel : MonoBehaviour
             ResourceType.Food => foodResourceIcon,
             _ => null
         }, true);
+    }
+
+    private int ResourceInitialStock(EntityManager manager, Entity entity, ResourceType type)
+    {
+        if (!manager.HasComponent<MapResourceIdentity>(entity) || resourceCatalogQuery.CalculateEntityCount() != 1) return 0;
+        var identity = manager.GetComponentData<MapResourceIdentity>(entity);
+        var catalog = manager.GetBuffer<MapResourcePrefab>(resourceCatalogQuery.GetSingletonEntity(), true);
+        int stock = 0;
+        foreach (var entry in catalog)
+        {
+            if (entry.Id != identity.DefinitionId || entry.Type != type || entry.Tier != identity.Tier) continue;
+            // An ambiguous catalog is not evidence of the original stock.
+            if (stock != 0 || entry.AmountPerMine <= 0) return 0;
+            stock = entry.AmountPerMine;
+        }
+        return stock;
     }
 
     private void RefreshContext(EntityManager manager, Entity entity, bool isGroup)
@@ -298,16 +336,41 @@ public class UnitInfoPanel : MonoBehaviour
         }
         if (isGroup && !string.IsNullOrEmpty(text))
             text = string.Format(CultureInfo.CurrentCulture, representativeFormat, text);
-        string stats = SelectionStats.Read(manager, entity, out var summary);
+        string stats = SelectionStats.Read(manager, entity, out var summary, presentationRegistry);
         if (!string.IsNullOrEmpty(summary))
         {
             if (string.IsNullOrEmpty(text)) text = isGroup ? string.Format(CultureInfo.CurrentCulture, representativeFormat, summary) : summary;
             else if (manager.HasComponent<BuildingConstruction>(entity) &&
-                manager.GetComponentData<BuildingConstruction>(entity).Phase == ConstructionPhase.Completed) text += "\n" + summary;
+                manager.GetComponentData<BuildingConstruction>(entity).Phase == ConstructionPhase.Completed)
+                text = summary.Contains("\n") ? (isGroup ? string.Format(CultureInfo.CurrentCulture, representativeFormat, summary) : summary) : text + "\n" + summary;
         }
         SetText(contextText, text);
         if (infoHint != null) infoHint.SetContent((nameText != null ? nameText.text : unknownName) + "\n" +
-            (isGroup ? "Representative details only\n" : string.Empty) + text + "\n" + stats);
+            (isGroup ? GroupComposition(manager) + "Representative details only\n" : string.Empty) + text + "\n" + stats);
+    }
+
+    private string GroupComposition(EntityManager manager)
+    {
+        groupTypes.Clear();
+        if (!SelectHelper.TryGetLocalPlayerId(out int playerId)) return string.Empty;
+        using var selected = selectedQuery.ToEntityArray(Allocator.Temp);
+        foreach (var entity in selected)
+        {
+            if (!manager.HasComponent<Selectable>(entity) || manager.GetComponentData<Selectable>(entity).playerID != playerId) continue;
+            FixedString64Bytes id = manager.HasComponent<UnitComponent>(entity) ? manager.GetComponentData<UnitComponent>(entity).DefinitionID :
+                manager.HasComponent<BuildingComponent>(entity) ? manager.GetComponentData<BuildingComponent>(entity).DefinitionID : default;
+            groupTypes.TryGetValue(id, out int count); groupTypes[id] = count + 1;
+        }
+        var result = new StringBuilder("Group composition:\n");
+        int shown = 0;
+        foreach (var pair in groupTypes)
+        {
+            if (shown++ >= 4) break;
+            result.Append(pair.Key.IsEmpty ? unknownName : EntityPresentation.GetName(pair.Key, presentationRegistry))
+                .Append(" x").Append(pair.Value).AppendLine();
+        }
+        if (groupTypes.Count > 4) result.Append('+').Append(groupTypes.Count - 4).AppendLine(" other types");
+        return result.ToString();
     }
 
     private void SetConstructionBar(bool visible, float fraction)
@@ -344,6 +407,7 @@ public class UnitInfoPanel : MonoBehaviour
         if (portrait != null) portrait.SetPortrait(null, false);
         HideHealthBar();
         SetVisible(false);
+        if (showEmptyState && nameText != null) nameText.enabled = true;
     }
 
     private void HideHealthBar()
@@ -354,7 +418,7 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void SetVisible(bool visible)
     {
-        // Draw only occupied cards; the outer rect is a layout container, not a large backdrop.
+        // A shared dock owns its backdrop; legacy standalone panels still hide theirs here.
         if (panelBackground != null) panelBackground.enabled = false;
         if (infoBackground != null) infoBackground.enabled = visible;
         if (infoFrame != null) infoFrame.enabled = visible;
@@ -370,7 +434,7 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void ReleaseQuery()
     {
-        if (world != null && world.IsCreated) selectedQuery.Dispose();
+        if (world != null && world.IsCreated) { selectedQuery.Dispose(); resourceCatalogQuery.Dispose(); }
         world = null;
     }
 

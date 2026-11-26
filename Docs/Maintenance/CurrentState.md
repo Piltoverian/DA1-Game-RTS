@@ -1,5 +1,18 @@
 # Trạng thái hiện tại — 15/10/2026
 
+## Bản demo hiện hành — 25/11/2026
+
+Main hiện là **1 người đấu 1 AI đơn giản**, dùng `Data/Playable/SkirmishMap.asset`
+và `SkirmishStart.asset` trong `Assets/_Project`. Mỗi bên có TownHall, năm worker
+và đủ Gold/Wood/Food. Có công trình kho/trại/tháp, tạo quân bằng tài nguyên thật,
+thắng/thua khi mất căn cứ và chơi lại với world ECS mới. Worker/lính tốc độ 10.
+Vòng Play Mode thu thập → xây → sản xuất → di chuyển → chiến đấu → victory →
+restart đã PASS ngày 25/11. Phạm vi và bằng chứng trong
+[UIReportReadiness](../Guides/UIReportReadiness.md), hướng dẫn chơi tại README gốc.
+
+Các phần ngày 15/10 bên dưới được giữ làm lịch sử; nhận định Main tám player,
+camera chưa sửa hoặc builder chưa xác nhận không mô tả bản demo hiện hành.
+
 **Bắt đầu từ [lộ trình](Roadmap.md) nếu muốn biết việc tiếp theo. Đọc trang này khoảng 3 phút.**
 
 ## Lối chơi và dữ liệu

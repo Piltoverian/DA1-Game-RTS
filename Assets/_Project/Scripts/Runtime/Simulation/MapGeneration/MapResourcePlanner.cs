@@ -46,7 +46,8 @@ public static class MapResourcePlanner
             var pool = Eligible(prefabs, role);
             var recipeRandom = role == 0 ? new Unity.Mathematics.Random(math.max(1u, config.Seed ^ 0x3517a91bu ^ (uint)c)) : rng;
             var recipe = new MapResourcePrefab[count];
-            for (int i = 0; i < count; i++) recipe[i] = Choose(pool, ref recipeRandom);
+            for (int i = 0; i < count; i++) recipe[i] = role == 0 && config.EnsureMainResourceVariety
+                ? pool[(c * count + i) % pool.Count] : Choose(pool, ref recipeRandom);
             if (role != 0) rng = recipeRandom;
             float radius = math.max(config.MinimumClusterRadius, math.sqrt(count) * config.RadiusPerSqrtCount);
             bool accepted = false;

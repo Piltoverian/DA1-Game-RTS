@@ -37,7 +37,7 @@ public class UnitController : MonoBehaviour
             return;
         }
 
-        if (TryCommandGather(entityManager))
+        if (TryCommandGather(entityManager, Camera.main, Mouse.current.position.ReadValue()))
         {
             return;
         }
@@ -80,21 +80,14 @@ public class UnitController : MonoBehaviour
         }
     }
 
-    private bool TryCommandGather(EntityManager entityManager)
+    // Both pointer inspection and commands must hit the same baked ECS resource.
+    public bool TryCommandGather(EntityManager entityManager, Camera camera, Vector2 screenPosition)
     {
         int playerId = GetCurrentPlayerId();
         if (playerId < 0)
             return false;
 
-        UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
-        if (!Physics.Raycast(ray, out UnityEngine.RaycastHit hit, 500f))
-            return false;
-
-        if (hit.collider.GetComponentInParent<ResourceNodeReference>() == null)
-            return false;
-
-        Entity resourceNode = FindResourceNodeEntityNearHit(entityManager, hit.point);
-        if (resourceNode == Entity.Null)
+        if (!ResourceInspection.TryResolveNode(camera, screenPosition, entityManager, out Entity resourceNode))
         {
             return false;
         }
@@ -133,50 +126,6 @@ public class UnitController : MonoBehaviour
     private int GetCurrentPlayerId()
     {
         return SelectHelper.TryGetLocalPlayerId(out int playerId) ? playerId : -1;
-    }
-
-    private Entity FindResourceNodeEntityNearHit(EntityManager entityManager, Vector3 hitPoint)
-    {
-        EntityQuery nodeQuery =
-            new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<ResourceNodeData, ResourceNodeTag, LocalTransform>()
-                .Build(entityManager);
-
-        if (nodeQuery.IsEmpty)
-        {
-            nodeQuery.Dispose();
-            return Entity.Null;
-        }
-
-        NativeArray<Entity> nodes = nodeQuery.ToEntityArray(Allocator.Temp);
-
-        Entity nearest = Entity.Null;
-        float bestDistSq = float.MaxValue;
-
-        for (int i = 0; i < nodes.Length; i++)
-        {
-            Entity node = nodes[i];
-            LocalTransform transform = entityManager.GetComponentData<LocalTransform>(node);
-            float3 centerPos = entityManager.HasComponent<BlockageData>(node)
-                ? entityManager.GetComponentData<BlockageData>(node).GetWorldCenter(transform.Position)
-                : transform.Position;
-
-            float distSq = Vector3.SqrMagnitude((Vector3)centerPos - hitPoint);
-
-            if (distSq < bestDistSq)
-            {
-                bestDistSq = distSq;
-                nearest = node;
-            }
-        }
-
-        nodes.Dispose();
-        nodeQuery.Dispose();
-
-        if (bestDistSq > 25f)
-            return Entity.Null;
-
-        return nearest;
     }
 
     private void CommandMove(EntityManager entityManager)

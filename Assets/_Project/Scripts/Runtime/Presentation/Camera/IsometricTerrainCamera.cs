@@ -27,7 +27,7 @@ public sealed class IsometricTerrainCamera : MonoBehaviour
     void Update()
     {
         if (!gameObject.scene.IsValid()) return;
-        if (Application.isPlaying && Application.isFocused && Mouse.current != null &&
+        if (Application.isPlaying && Application.isFocused && !HudSystemMenu.IsOpen && !PlayableSessionController.BlocksInput && Mouse.current != null &&
             !GameplayInputGate.IsEditingText && !GameplayInputGate.IsPointerOverUI())
         {
             float scroll = Mouse.current.scroll.ReadValue().y;

@@ -85,7 +85,8 @@ public abstract class EntityDefinitionBaker<T> : Baker<T> where T : Component
             AddComponent(entity, new ProductionData
             {
                 SpawnOffset = spawn != null ? (float3)root.InverseTransformPoint(spawn.position) : float3.zero,
-                RallyOffset = rally != null ? (float3)root.InverseTransformPoint(rally.position) : new float3(3, 0, 3)
+                RallyOffset = rally != null ? (float3)root.InverseTransformPoint(rally.position) : new float3(3, 0, 3),
+                OffsetsFollowModel = bindings != null && bindings.offsetsFollowModel
             });
             var jobs = AddBuffer<ProductionElement>(entity);
             foreach (var job in definition.Jobs)

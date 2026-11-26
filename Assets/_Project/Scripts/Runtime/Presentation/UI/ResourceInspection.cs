@@ -33,9 +33,19 @@ public static class ResourceInspection
 
     public static bool TryInspect(Camera camera, Vector2 screenPosition, EntityManager em, int localPlayer)
     {
+        if (!TryResolveNode(camera, screenPosition, em, out var candidate)) return false;
+        world = World.DefaultGameObjectInjectionWorld;
+        target = candidate;
+        playerId = localPlayer;
+        return true;
+    }
+
+    /// <summary>Shared pointer picking for inspection and gather; does not change selection or focus.</summary>
+    public static bool TryResolveNode(Camera camera, Vector2 screenPosition, EntityManager em, out Entity candidate)
+    {
+        candidate = Entity.Null;
         if (camera == null) return false;
         UnityEngine.Ray ray = camera.ScreenPointToRay(screenPosition);
-        Entity candidate = Entity.Null;
         // Prefer the exact ECS hit, where a resource collider exists.
         using (var physics = em.CreateEntityQuery(typeof(Unity.Physics.PhysicsWorldSingleton)))
         {
@@ -73,9 +83,6 @@ public static class ResourceInspection
         }
         if (candidate == Entity.Null || em.HasComponent<ResourceNodePendingConfig>(candidate) ||
             em.GetComponentData<ResourceNodeData>(candidate).Amount <= 0) return false;
-        world = World.DefaultGameObjectInjectionWorld;
-        target = candidate;
-        playerId = localPlayer;
         return true;
     }
 }

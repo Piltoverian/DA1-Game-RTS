@@ -45,6 +45,8 @@ public partial struct WorkerGatherSystem : ISystem
                      .WithEntityAccess())
         {
             if (bState.ValueRO.Phase != ConstructionPhase.Completed) continue;
+            if (state.EntityManager.HasComponent<EntityHealth>(entity) &&
+                state.EntityManager.GetComponentData<EntityHealth>(entity).CurrentHP <= 0) continue;
 
             float3 pos = transform.ValueRO.Position;
             if (blockageLookup.HasComponent(entity))
@@ -227,7 +229,9 @@ public partial struct WorkerGatherSystem : ISystem
         targetCache.ValueRW.lastTargetPosition = nodePos;
         targetCache.ValueRW.targetEntity = targetNode;
 
-        if (HasReachedTarget(workerPos, targetNode, rawNodePos, gather.ValueRO.StopDistanceSq, ref blockageLookup))
+        float reach = WorkerInteractionMath.ReachDistance(gather.ValueRO.StopDistanceSq, grid.cellsize,
+            steeringLookup.HasComponent(workerEntity) ? steeringLookup[workerEntity].stoppingDistance : 0);
+        if (HasReachedTarget(workerPos, targetNode, rawNodePos, reach * reach, ref blockageLookup))
         {
             StopMoving(ref ecb, workerEntity, ref agentLookup, ref steeringLookup);
             gather.ValueRW.State = WorkerGatherState.Gathering;
@@ -374,7 +378,9 @@ public partial struct WorkerGatherSystem : ISystem
             ? blockageLookup[targetDepot].GetWorldCenter(rawDepotPos)
             : rawDepotPos;
 
-        if (HasReachedTarget(workerPos, targetDepot, rawDepotPos, gather.ValueRO.StopDistanceSq, ref blockageLookup))
+        float reach = WorkerInteractionMath.ReachDistance(gather.ValueRO.StopDistanceSq, grid.cellsize,
+            steeringLookup.HasComponent(workerEntity) ? steeringLookup[workerEntity].stoppingDistance : 0);
+        if (HasReachedTarget(workerPos, targetDepot, rawDepotPos, reach * reach, ref blockageLookup))
         {
             StopMoving(ref ecb, workerEntity, ref agentLookup, ref steeringLookup);
 

@@ -355,7 +355,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 100, y: 1, z: 100}
+  m_LocalScale: {x: 25, y: 1, z: 25}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -372,7 +372,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 113fc79062260694d82ae1ce52e39293, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridAuthoring
-  Config: {fileID: 11400000, guid: 7b4420283f214f3b830ce5911ab600a3, type: 2}
+  Config: {fileID: 11400000, guid: ff73825f505121e46945cd3e8d0eec32, type: 2}
   MincellSize: 1
   mapType: 512
   generateTerrain: 1
@@ -386,6 +386,15 @@ MonoBehaviour:
     levelStep: 1
     cliffCells: 1
     rampWidth: 3
+    maximumRampCells: 12
+    smallIslandFillBudget: 0.02
+    mountainWavelength: 19
+    mountainThreshold: 0.2
+    mountainDensity: 1
+    mountainSpawnBuffer: 4
+    mountainMinimumClusterCells: 1
+    layoutClearings: 0
+    battlefieldRadius: 14
 --- !u!1 &1730583998
 GameObject:
   m_ObjectHideFlags: 0
@@ -415,32 +424,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: add333696e5545c9bad91bd9102d4be1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerBootstrapAuthoring
-  MapConfig: {fileID: 11400000, guid: 7b4420283f214f3b830ce5911ab600a3, type: 2}
-  Settings: {fileID: 11400000, guid: 8964479f7b4649f69ecf9687387ceebb, type: 2}
+  MapConfig: {fileID: 11400000, guid: ff73825f505121e46945cd3e8d0eec32, type: 2}
+  Settings: {fileID: 11400000, guid: 87381f9c99954d64da49beb2145c89c2, type: 2}
   Players:
   - PlayerId: 1
+    TeamID: -1
     SpawnSlot: 0
     Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   - PlayerId: 2
+    TeamID: -1
     SpawnSlot: 1
-    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
-  - PlayerId: 3
-    SpawnSlot: 2
-    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
-  - PlayerId: 4
-    SpawnSlot: 3
-    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
-  - PlayerId: 5
-    SpawnSlot: 4
-    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
-  - PlayerId: 6
-    SpawnSlot: 5
-    Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
-  - PlayerId: 7
-    SpawnSlot: 6
-    Civilization: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
-  - PlayerId: 8
-    SpawnSlot: 7
     Civilization: {fileID: 11400000, guid: b415abea85cdc014089ddcaa7ee34c8c, type: 2}
 --- !u!4 &1730584000
 Transform:
@@ -516,6 +509,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerContextAuthoring
   playerId: 1
+  teamId: -1
   civDef: {fileID: 11400000, guid: 6cec92f12a0da484f94abd23af80e176, type: 2}
   useBootstrapContext: 1
   age: 0

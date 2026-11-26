@@ -142,13 +142,13 @@ public partial struct MovementAgentActuatorSystem : ISystem
             if (math.any(pos.xz != transform.Position.xz) && PendingHeightLookup.HasComponent(entity))
                 PendingHeightLookup.SetComponentEnabled(entity, true);
 
-            if (math.lengthsq(move.velocity) > 0.01f)
+            if (move.hastarget && math.lengthsq(move.velocity) > 0.01f)
             {
                 float3 moveDir = math.normalizesafe(move.velocity);
                 quaternion targetRot = quaternion.LookRotationSafe(moveDir, math.up());
                 transform.Rotation = math.slerp(transform.Rotation, targetRot, DeltaTime * steering.rotationSpeed);
             }
-            else if (move.FieldEntity != Entity.Null)
+            else if (move.hastarget && move.FieldEntity != Entity.Null)
             {
                 float3 lookDir = move.currentworldtarget - transform.Position;
                 lookDir.y = 0;

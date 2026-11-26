@@ -15,6 +15,7 @@ public class MapGenConfig : ScriptableObject
 public class MapResourceConfig
 {
     public bool Enabled = true;
+    public bool EnsureMainResourceVariety;
     public System.Collections.Generic.List<MapResourceDefinition> Catalog = new();
     [Min(1)] public int ClusterMin = 2;
     [Min(1)] public int ClusterMax = 4;
@@ -40,6 +41,7 @@ public class MapResourceConfig
 public struct MapResourceSettings : Unity.Entities.IComponentData
 {
     public uint Seed;
+    public bool EnsureMainResourceVariety;
     public int ClusterMin, ClusterMax;
     public Unity.Mathematics.int4 Quotas;
     public float MainDistanceCells;

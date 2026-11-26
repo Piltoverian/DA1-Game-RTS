@@ -43,7 +43,19 @@ public class BuildingAuthoring : MonoBehaviour
                 costs.Add(new EntityResourceCost { Type = cost.Type, Amount = cost.Amount });
             var tags = AddBuffer<BuildingTagElement>(entity);
             foreach (var tag in authoring.buildingDef.Tags) tags.Add(new BuildingTagElement { Value = tag });
-            AddComponent(entity, new RevealHeightProperty { Value = math.lerp(-10f, 10f, progress) });
+            GetComponentsInChildren<Transform>(); // Track hierarchy edits that change mesh bounds.
+            GetComponentsInChildren<MeshRenderer>();
+            foreach (var filter in GetComponentsInChildren<MeshFilter>())
+                if (filter.sharedMesh != null) DependsOn(filter.sharedMesh);
+            foreach (var renderer in GetComponentsInChildren<SkinnedMeshRenderer>())
+                if (renderer.sharedMesh != null) DependsOn(renderer.sharedMesh);
+            var visual = ModelSnapSource.CaptureVisualBounds(authoring.gameObject, new Bounds(Vector3.zero, Vector3.one));
+            var bounds = new ConstructionVisualBounds { Min = visual.min, Max = visual.max };
+            AddComponent(entity, bounds);
+            AddComponent(entity, new RevealHeightProperty
+            {
+                Value = ConstructionRevealMath.Height(bounds, authoring.transform.localToWorldMatrix, progress)
+            });
             AddComponent(entity, new BuildingConstruction
             {
                 CompletedWork = progress * authoring.buildingDef.WorkLoad,

@@ -45,7 +45,7 @@ public static class GameplayInputGate
         }
     }
 
-    public static bool BlocksWorldInput => !Application.isFocused || IsEditingText || PlacementOwnsPointer;
+    public static bool BlocksWorldInput => !Application.isFocused || HudSystemMenu.IsOpen || PlayableSessionController.BlocksInput || IsEditingText || PlacementOwnsPointer;
 
     public static void SuppressWorldInputUntilRelease() => suppression.Block(Time.frameCount);
 
