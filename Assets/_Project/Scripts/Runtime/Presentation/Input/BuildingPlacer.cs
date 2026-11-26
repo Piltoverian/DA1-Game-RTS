@@ -32,11 +32,14 @@ public class BuildingPlacer : MonoBehaviour
     [Header("Ghost Materials")]
     [SerializeField] private Material validGhostMaterial;
     [SerializeField] private Material invalidGhostMaterial;
+    [SerializeField] private Material unknownGhostMaterial;
 
     [Header("Raycast")]
     [SerializeField] private LayerMask groundMask;
 
     private EntityManager entityManager;
+    private World presentationWorld;
+    private ulong presentationWorldSequence;
     private bool isPlacing;
     private FixedString64Bytes currentBuildingId;
     private Entity selectedBuildingPrefab;
@@ -45,6 +48,7 @@ public class BuildingPlacer : MonoBehaviour
 
     private GameObject currentGhost;
     private Renderer[] currentGhostRenderers;
+    private Material fallbackGhostMaterial;
     private Vector3 currentSnappedPosition;
     private StartEndRect currentLocalRect;
     private bool currentCanPlace;
@@ -59,9 +63,7 @@ public class BuildingPlacer : MonoBehaviour
 
     private void Start()
     {
-        var world = World.DefaultGameObjectInjectionWorld;
-        if (world != null)
-            entityManager = world.EntityManager;
+        RefreshWorld();
 
         if (groundMask.value == 0)
             groundMask = LayerMask.GetMask("Ground");
@@ -69,9 +71,13 @@ public class BuildingPlacer : MonoBehaviour
 
     private void Update()
     {
-        if (!Application.isFocused || HudSystemMenu.IsOpen || HudSystemMenu.HandledEscapeThisFrame || !isPlacing)
-            return;
+        if (!Application.isFocused || HudSystemMenu.IsOpen || HudSystemMenu.HandledEscapeThisFrame) return;
+        if (!RefreshWorld()) { CancelPlacement(); return; }
+        if (!isPlacing) return;
         if (currentGhost == null) { CancelPlacement(); return; }
+        if (!TryGetReadyPlayer(localPlayerId) || !entityManager.Exists(sourceWorkerEntity)
+            || !CommandAuthority.CanControl(entityManager, localPlayerId, sourceWorkerEntity))
+        { CancelPlacement(); return; }
 
         var mouse = Mouse.current;
         var keyboard = Keyboard.current;
@@ -101,10 +107,11 @@ public class BuildingPlacer : MonoBehaviour
 
     public void StartPlacementFromOfferIndex(int index, Entity sourceEntity, int playerID)
     {
-        if (sourceEntity == Entity.Null)
+        if (!RefreshWorld() || !TryGetReadyPlayer(playerID) || sourceEntity == Entity.Null
+            || !entityManager.Exists(sourceEntity) || !CommandAuthority.CanControl(entityManager, playerID, sourceEntity))
             return;
 
-        if (entityManager != default && entityManager.HasBuffer<BuildOffer>(sourceEntity))
+        if (entityManager.HasBuffer<BuildOffer>(sourceEntity))
         {
             var offers = entityManager.GetBuffer<BuildOffer>(sourceEntity);
             if (index >= 0 && index < offers.Length)
@@ -120,6 +127,13 @@ public class BuildingPlacer : MonoBehaviour
     public void StartPlacement(FixedString64Bytes buildingId, Entity sourceWorker, int playerId)
     {
         CancelPlacement();
+        if (!RefreshWorld() || !TryGetReadyPlayer(playerId) || sourceWorker == Entity.Null
+            || !entityManager.Exists(sourceWorker) || !CommandAuthority.CanControl(entityManager, playerId, sourceWorker)
+            || !entityManager.HasBuffer<BuildOffer>(sourceWorker)) return;
+        bool offered = false;
+        foreach (var offer in entityManager.GetBuffer<BuildOffer>(sourceWorker))
+            if (offer.DefinitionID == buildingId) { offered = true; break; }
+        if (!offered) return;
 
         currentBuildingId = buildingId;
         sourceWorkerEntity = sourceWorker;
@@ -143,7 +157,7 @@ public class BuildingPlacer : MonoBehaviour
             currentLocalRect.ExpandTo(new float2(1.5f, 1.5f));
         }
 
-        GameObject previewSource = EntityPresentation.BuildingPreview(buildingId);
+        GameObject previewSource = EntityPresentation.BuildingPreview(entityManager, buildingId);
         if (previewSource != null)
         {
             currentGhost = CreateGhostFromPrefab(previewSource);
@@ -160,7 +174,7 @@ public class BuildingPlacer : MonoBehaviour
         }
 
         currentGhostRenderers = currentGhost.GetComponentsInChildren<Renderer>(true);
-        SetGhostMaterial(true);
+        SetGhostMaterial(BuildingPreviewState.Unknown);
         isPlacing = true;
         UpdatePlacementPreview();
     }
@@ -199,7 +213,9 @@ public class BuildingPlacer : MonoBehaviour
             MeshRenderer newMr = part.AddComponent<MeshRenderer>();
             Shader urpShader = Shader.Find("Universal Render Pipeline/Lit");
             if (urpShader == null) urpShader = Shader.Find("Universal Render Pipeline/Unlit");
-            newMr.sharedMaterial = validGhostMaterial != null ? validGhostMaterial : (urpShader != null ? new Material(urpShader) : null);
+            if (validGhostMaterial == null && fallbackGhostMaterial == null && urpShader != null)
+                fallbackGhostMaterial = new Material(urpShader);
+            newMr.sharedMaterial = validGhostMaterial != null ? validGhostMaterial : fallbackGhostMaterial;
         }
 
         int ghostLayer = LayerMask.NameToLayer("Ghost");
@@ -218,14 +234,18 @@ public class BuildingPlacer : MonoBehaviour
         Vector3 hitPoint;
         if(TerrainVisualSurface.Active!=null && TerrainVisualSurface.Active.Raycast(ray,out var logical,out _)) hitPoint=logical;
         else if(Physics.Raycast(ray,out RaycastHit hit,500f,groundMask)) hitPoint=hit.point;
-        else {currentCanPlace=false;SetGhostMaterial(false);currentGhost.SetActive(false);return;}
+        else if (new Plane(Vector3.up, Vector3.zero).Raycast(ray, out float distance)) hitPoint = ray.GetPoint(distance);
+        else {currentCanPlace=false;SetGhostMaterial(BuildingPreviewState.Invalid);currentGhost.SetActive(false);return;}
         currentSnappedPosition=SnapToGrid(hitPoint);
         Vector3 visiblePosition=currentSnappedPosition;
         if(TerrainVisualSurface.Active!=null)visiblePosition.y+=TerrainVisualSurface.Active.Sample(visiblePosition.x,visiblePosition.z);
         currentGhost.transform.position=visiblePosition;
 
-        currentCanPlace = CanPlace(currentSnappedPosition) && CanAffordBuilding(selectedBuildingPrefab);
-        SetGhostMaterial(currentCanPlace);
+        var preview = BuildingPlacementPreview.Evaluate(entityManager, localPlayerId, currentSnappedPosition, currentLocalRect);
+        bool affordable = CanAffordBuilding(selectedBuildingPrefab);
+        if (preview == BuildingPreviewState.Valid && !affordable) preview = BuildingPreviewState.Invalid;
+        currentCanPlace = preview != BuildingPreviewState.Invalid && affordable;
+        SetGhostMaterial(preview);
         currentGhost.SetActive(true);
     }
 
@@ -256,21 +276,6 @@ public class BuildingPlacer : MonoBehaviour
         return new Vector3(Mathf.Round(hitPoint.x), 0f, Mathf.Round(hitPoint.z));
     }
 
-    private bool CanPlace(Vector3 rootPosition)
-    {
-        if (entityManager == default) return false;
-        using var gridQuery = entityManager.CreateEntityQuery(typeof(GridComponent));
-        if (gridQuery.CalculateEntityCount() != 1) return false;
-        Entity gridEntity = gridQuery.GetSingletonEntity();
-        var grid = entityManager.GetComponentData<GridComponent>(gridEntity);
-        if (!entityManager.HasBuffer<GridTerrain>(gridEntity) || !entityManager.HasBuffer<GridNodeCost>(gridEntity)) return false;
-        using var bucketQuery = entityManager.CreateEntityQuery(typeof(MovementAgentBucket));
-        var bucket = bucketQuery.CalculateEntityCount() == 1 ? bucketQuery.GetSingleton<MovementAgentBucket>().Bucket : default;
-        return BuildingPlacementValidator.Validate(grid, entityManager.GetBuffer<GridTerrain>(gridEntity).AsNativeArray(),
-            entityManager.GetBuffer<GridNodeCost>(gridEntity).AsNativeArray(), rootPosition, currentLocalRect, bucket, out _, out _)
-            == BuildingPlacementFailure.None;
-    }
-
     private bool CanAffordBuilding(Entity buildingPrefab)
     {
         if (buildingPrefab == Entity.Null || localPlayerId < 0 || entityManager == default
@@ -282,7 +287,8 @@ public class BuildingPlacer : MonoBehaviour
     }
     private void PlaceBuilding(Vector3 rootPosition, int playerId)
     {
-        if (selectedBuildingPrefab == Entity.Null || entityManager == default)
+        if (!RefreshWorld() || !TryGetReadyPlayer(playerId) || selectedBuildingPrefab == Entity.Null
+            || !entityManager.Exists(selectedBuildingPrefab))
             return;
 
         List<Entity> sources = SelectHelper.GetAllSelectedEntitiesByplayerID(playerId);
@@ -292,19 +298,9 @@ public class BuildingPlacer : MonoBehaviour
 
     private Entity GetBuildingPrefabEntityFromRegistry(FixedString64Bytes buildingId)
     {
-        if (entityManager == default)
+        if (!ClientPresentationCatalog.TryGet(entityManager, out var regEntity, out _))
             return Entity.Null;
 
-        EntityQuery query = entityManager.CreateEntityQuery(
-            ComponentType.ReadOnly<GameDataRegistryComponent>(),
-            ComponentType.ReadOnly<RegistryBlobElement>(),
-            ComponentType.ReadOnly<RegistryPrefabElement>()
-        );
-
-        if (query.IsEmpty)
-            return Entity.Null;
-
-        Entity regEntity = query.GetSingletonEntity();
         var blobBuffer = entityManager.GetBuffer<RegistryBlobElement>(regEntity);
         var prefabBuffer = entityManager.GetBuffer<RegistryPrefabElement>(regEntity);
 
@@ -315,7 +311,8 @@ public class BuildingPlacer : MonoBehaviour
         int pIndex = blobRef.Value.Base.PrefabIndex;
         if (pIndex >= 0 && pIndex < prefabBuffer.Length)
         {
-            return prefabBuffer[pIndex].Prefab;
+            var prefab = prefabBuffer[pIndex].Prefab;
+            return entityManager.Exists(prefab) ? prefab : Entity.Null;
         }
 
         return Entity.Null;
@@ -329,19 +326,49 @@ public class BuildingPlacer : MonoBehaviour
             Destroy(currentGhost);
 
         currentGhost = null;
+        if (fallbackGhostMaterial != null) Destroy(fallbackGhostMaterial);
+        fallbackGhostMaterial = null;
         currentGhostRenderers = null;
         isPlacing = false;
         currentBuildingId = default;
         selectedBuildingPrefab = Entity.Null;
+        sourceWorkerEntity = Entity.Null;
+        localPlayerId = -1;
+        currentLocalRect = default;
+        currentCanPlace = false;
     }
 
     private void OnDisable() => CancelPlacement();
 
-    private void SetGhostMaterial(bool canPlace)
+    private bool RefreshWorld()
+    {
+        if (!ClientPresentationCatalog.TryGetCurrent(out var world, out var em))
+        {
+            CancelPlacement();
+            presentationWorld = null;
+            presentationWorldSequence = 0;
+            entityManager = default;
+            return false;
+        }
+        if (!ReferenceEquals(presentationWorld, world) || presentationWorldSequence != world.SequenceNumber)
+        {
+            CancelPlacement();
+            presentationWorld = world;
+            presentationWorldSequence = world.SequenceNumber;
+            entityManager = em;
+        }
+        return ClientPresentationCatalog.IsReady(entityManager);
+    }
+
+    private bool TryGetReadyPlayer(int expectedId)
+        => expectedId >= 0 && SelectHelper.TryGetLocalPlayerId(out int currentId) && currentId == expectedId;
+
+    private void SetGhostMaterial(BuildingPreviewState preview)
     {
         if (currentGhostRenderers == null) return;
 
-        Material targetMat = canPlace ? validGhostMaterial : invalidGhostMaterial;
+        Material targetMat = preview == BuildingPreviewState.Valid ? validGhostMaterial : invalidGhostMaterial;
+        if (preview == BuildingPreviewState.Unknown) targetMat = unknownGhostMaterial;
         if (targetMat == null) return;
 
         foreach (var r in currentGhostRenderers)
@@ -349,6 +376,12 @@ public class BuildingPlacer : MonoBehaviour
             if (r != null)
                 r.sharedMaterial = targetMat;
         }
+    }
+
+    private void OnDestroy()
+    {
+        CancelPlacement();
+        if (_instance == this) _instance = null;
     }
 
     private void SetLayerRecursively(GameObject obj, int layer)

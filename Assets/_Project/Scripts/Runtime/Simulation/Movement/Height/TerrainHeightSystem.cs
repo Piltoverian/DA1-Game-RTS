@@ -28,7 +28,7 @@ public struct TerrainHeightData : IComponentData
 
 // Grid/revision owns cached geometry; renderer lifecycle is not a dependency.
 [UpdateInGroup(typeof(InitializationSystemGroup))]
-[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
 [UpdateAfter(typeof(GridSnapperSystem))]
 public partial class TerrainHeightCacheSystem : SystemBase
 {
@@ -113,7 +113,7 @@ public partial struct ApplyTerrainHeightJob : IJobEntity
 
 // Consume movement dirtiness in the same fixed tick, before the physics world is built.
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
 [UpdateAfter(typeof(SetupUnitMoverDefaultPositionSystem))]
 [UpdateBefore(typeof(PhysicsSystemGroup))]
@@ -130,10 +130,8 @@ public partial struct FixedTerrainHeightSystem : ISystem
 
 // Catch non-fixed spawns (production/building placement) before transform propagation.
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
 [UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
-[UpdateAfter(typeof(ProductionSystem))]
-[UpdateAfter(typeof(BuildingPlacementSystem))]
 [UpdateBefore(typeof(TransformSystemGroup))]
 public partial class TerrainHeightSystem : SystemBase
 {

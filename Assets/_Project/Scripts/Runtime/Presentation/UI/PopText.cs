@@ -31,6 +31,14 @@ public class PopText : UIComponent
         m_TextMeshPro.color = current >= maximum ? fullColor : normalColor;
     }
 
+    private void LateUpdate()
+    {
+        // Events are not replayed when the canvas loads late or is re-enabled.
+        if (!TryGetPlayer(out var em)
+            || PlayerContextHelper.GetContextData(em, playerId, out var context) != FunctionResult.Success) return;
+        SetPopulation(context.currentPopulation, context.maxPopulation);
+    }
+
     public void OnPopChange(PopulationUpdatedEvent populationUpdatedEvent)
     {
         if (playerId < 0 || populationUpdatedEvent.PlayerId != playerId)

@@ -7,4 +7,5 @@ public class TechDefinition : ScriptableObject
 {
     public FixedString64Bytes IDs;
     public List<ResourcePair> Cost = new();
+    public List<TechEffect> Effects = new();
 }

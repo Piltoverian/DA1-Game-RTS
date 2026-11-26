@@ -11,6 +11,8 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 // Footprints read LocalTransform.XZ directly; they do not need LocalToWorld propagation.
 [UpdateBefore(typeof(TransformSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+
 public partial struct BlockageGridBakeSystem : ISystem
 {
     EntityQuery pendingBake;

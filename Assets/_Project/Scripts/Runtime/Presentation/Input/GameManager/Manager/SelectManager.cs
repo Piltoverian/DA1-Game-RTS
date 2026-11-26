@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
@@ -16,7 +17,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 {
     [SerializeField] private StartEndRect selectingRect;
     public TestPlayer currentContext{ get; private set; }
-    float holdbuffer = 0;
+    float holdbuffer;
     bool leftHeld;
     bool pressStartedOverUI;
     Camera cam = null;  
@@ -29,7 +30,18 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
     {
         playerId = -1;
         var world = World.DefaultGameObjectInjectionWorld;
-        if (world == null || !world.IsCreated) return false;
+        if (world == null || !world.IsCreated)
+        {
+            return false;
+        }
+        if (world.IsClient())
+        {
+            if (!PlayerNetwork.TryLocal(world, out _, out var identity)) return false;
+            using var match = world.EntityManager.CreateEntityQuery(typeof(MatchState));
+            if (!match.TryGetSingleton<MatchState>(out var phase) || phase.Phase != MatchPhase.Running) return false;
+            playerId = identity.PlayerId;
+            return true;
+        }
         using var local = world.EntityManager.CreateEntityQuery(typeof(LocalTestPlayer));
         using var bootstrap = world.EntityManager.CreateEntityQuery(typeof(PlayerBootstrapState));
         int localCount = local.CalculateEntityCount();
@@ -90,9 +102,11 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
         }
         if (pressStartedOverUI) return;
         holdbuffer += Time.fixedDeltaTime;
-        if (holdbuffer <= 0.05f) return;
-        selectingRect.isNotNull = true;
         selectingRect.ExpandTo(mousePos);
+        float2 size = selectingRect.MaxPoint - selectingRect.MinPoint;
+        selectingRect.isNotNull = holdbuffer > 0.05f
+            && size.x > Screen.width / 40f;
+        if (!selectingRect.isNotNull) return;
         if (TryGetSelectionManager(out var manager)) DragSelect(mousePos, manager);
     }
 
@@ -113,7 +127,11 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
 
     public void SingleSelecting(Vector2 currentMousePos,EntityManager em)
     {
-        if (!TryGetPlayerId(out int playerId)) return;
+        if (!TryGetPlayerId(out int playerId))
+        {
+            Debug.LogWarning("SelectManager: Failed to get player ID for selection.");
+            return;
+        }
         if (cam==null)
         {
             return;
@@ -134,7 +152,7 @@ public class SelectManager : MonoBehaviour, IFixedUpdateModule
                 v2 = PhysicConvertHelper.ConvertScreenToWorldPos(selectingRect.MaxPoint, cam),
                 v3 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MinPoint.x, selectingRect.MaxPoint.y), cam),
                 v4 = PhysicConvertHelper.ConvertScreenToWorldPos(new float2(selectingRect.MaxPoint.x, selectingRect.MinPoint.y), cam),
-                rayInput = PhysicConvertHelper.GetRayCastInput(currentMousePos, cam, uint.MaxValue)//uint.MaxValue
+                rayInput = PhysicConvertHelper.GetRayCastInput(currentMousePos, cam, ~PhysicsLayersDefine.Ground)
             });
         }
 
@@ -226,7 +244,9 @@ public static class SelectHelper
         {
             for (int i = 0; i < query.Length; i++)
             {
-                if (entityManager.HasComponent<Selectable>(query[i]) && entityManager.GetComponentData<Selectable>(query[i]).playerID == playerId)
+                if (entityManager.HasComponent<Selectable>(query[i])
+                    && entityManager.HasComponent<EntityOwner>(query[i])
+                    && entityManager.GetComponentData<EntityOwner>(query[i]).PlayerID == playerId)
                 {
                     return query[i];
                 }
@@ -247,7 +267,9 @@ public static class SelectHelper
         {
             for (int i = 0; i < query.Length; i++)
             {
-                if (entityManager.HasComponent<Selectable>(query[i]) && entityManager.GetComponentData<Selectable>(query[i]).playerID == playerId)
+                if (entityManager.HasComponent<Selectable>(query[i])
+                    && entityManager.HasComponent<EntityOwner>(query[i])
+                    && entityManager.GetComponentData<EntityOwner>(query[i]).PlayerID == playerId)
                 {
                     selectedEntities.Add(query[i]);
                 }

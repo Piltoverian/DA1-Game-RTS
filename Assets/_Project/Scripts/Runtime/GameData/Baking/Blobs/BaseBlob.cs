@@ -12,6 +12,7 @@ public struct BaseBlob : IGameBlobAsset
 {
     public FixedString64Bytes ID;
     public float MaxHP;
+    public int VisionRadiusCells;
     public float WorkRate;
     public int JobCapacity;
     // Gameplay prefab index in RegistryPrefabElement on the Registry entity.

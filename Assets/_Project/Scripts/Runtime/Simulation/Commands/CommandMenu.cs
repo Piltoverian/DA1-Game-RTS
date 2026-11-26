@@ -56,7 +56,7 @@ public class CommandMenu : MonoBehaviour
             : Entity.Null;
         if (ResourceInspection.TryGet(out _)) selectedEntity = Entity.Null;
 
-        var world = World.DefaultGameObjectInjectionWorld;
+        var world = ClientPresentationCatalog.TryGetCurrent(out var activeWorld, out _) ? activeWorld : null;
         var registry = EntityPresentation.ResolveRegistry(presentationRegistry);
         if (selectedEntity == lastSelected && world == lastWorld && registry == lastRegistry && playerId == lastPlayerId &&
             OffersMatch(world, selectedEntity))
@@ -252,7 +252,7 @@ public class CommandMenu : MonoBehaviour
                 var em = lastWorld.EntityManager;
                 if (em.Exists(lastSelected) && em.HasBuffer<ProductionQueueElement>(lastSelected))
                     foreach (var item in em.GetBuffer<ProductionQueueElement>(lastSelected, true))
-                        if (item.Offer.JobID == entry.Offer.JobID && item.Offer.Kind == entry.Offer.Kind) count++;
+                        if (item.JobID == entry.Offer.JobID && item.Kind == entry.Offer.Kind) count++;
             }
             entry.QueueBadge.enabled = count > 0;
             if (count > 0) entry.QueueBadge.text = count.ToString();

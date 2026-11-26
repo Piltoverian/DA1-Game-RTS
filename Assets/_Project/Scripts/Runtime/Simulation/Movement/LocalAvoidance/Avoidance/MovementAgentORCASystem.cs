@@ -20,11 +20,13 @@ using Unity.Collections.LowLevel.Unsafe;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(MoveAgentSpatialSystem))]
 [UpdateAfter(typeof(MovementAgentTargetSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct MovementAgentORCASystem : ISystem
 {
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (!SystemAPI.HasSingleton<GridComponent>()) return;
 
         var grid = SystemAPI.GetSingleton<GridComponent>();

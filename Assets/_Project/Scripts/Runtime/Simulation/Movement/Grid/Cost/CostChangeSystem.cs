@@ -10,7 +10,7 @@ using UnityEngine;
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(GridInitSystem))]
 [UpdateBefore(typeof(GridIslandSystem))]
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct CostChangeSystem : ISystem
 {
     public const int HEARTBEAT_INTERVAL = 12;

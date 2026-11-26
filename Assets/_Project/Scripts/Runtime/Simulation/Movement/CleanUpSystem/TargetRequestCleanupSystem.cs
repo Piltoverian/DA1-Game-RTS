@@ -12,6 +12,7 @@ using Unity.Entities;
 /// </summary>
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(FlowFieldAssignmentSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(MovementAgentActuatorSystem))]
 public partial struct TargetRequestCleanupSystem : ISystem
 {

@@ -1,13 +1,12 @@
 using System;
-using System.Diagnostics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateBefore(typeof(CommandQueue))]
-[UpdateBefore(typeof(BlockageGridBakeSystem))]
 public partial struct BuildingPlacementSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
@@ -17,6 +16,7 @@ public partial struct BuildingPlacementSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         if (!SystemAPI.TryGetSingletonEntity<GridComponent>(out Entity gridEntity))
@@ -40,10 +40,14 @@ public partial struct BuildingPlacementSystem : ISystem
         using var requests = query.ToEntityArray(Allocator.Temp);
         foreach (Entity reqEntity in requests)
         {
-            Debug.WriteLine(em.HasComponent<PlaceBuildingRequest>(reqEntity), "Entity in PlaceBuildingRequest query does not have PlaceBuildingRequest component");
 
             PlaceBuildingRequest req = em.GetComponentData<PlaceBuildingRequest>(reqEntity);
-
+            Entity publishedSite = Entity.Null;
+            try
+            {
+            if (req.BuildOrder != Entity.Null && (!em.Exists(req.BuildOrder)
+                || em.GetComponentData<NetworkBuildOrder>(req.BuildOrder).Phase != NetworkBuildPhase.Placing))
+            { ecb.DestroyEntity(reqEntity); continue; }
             if (req.PrefabEntity == Entity.Null || !em.Exists(req.PrefabEntity))
             {
                 ecb.DestroyEntity(reqEntity);
@@ -66,6 +70,7 @@ public partial struct BuildingPlacementSystem : ISystem
                 foreach (var entry in em.GetBuffer<PlaceBuildingWorkerElement>(reqEntity))
                 {
                     if (!CommandAuthority.CanControl(em, req.PlayerId, entry.WorkerEntity)
+                        || (req.BuildOrder != Entity.Null && !NetworkBuildOrders.Current(em, entry.WorkerEntity, req.BuildOrder))
                         || !em.HasBuffer<BuildOffer>(entry.WorkerEntity)) continue;
                     foreach (var offer in em.GetBuffer<BuildOffer>(entry.WorkerEntity))
                         if (offer.DefinitionID == em.GetComponentData<BuildingComponent>(req.PrefabEntity).DefinitionID) allowed = true;
@@ -151,7 +156,6 @@ public partial struct BuildingPlacementSystem : ISystem
             {
                 var h = em.GetComponentData<EntityHealth>(building);
                 h.CurrentHP = math.min(1f, h.MaxHP);
-                h.Changed = true;
                 em.SetComponentData(building, h);
             }
 
@@ -174,6 +178,7 @@ public partial struct BuildingPlacementSystem : ISystem
                 {
                     Entity worker = workerBuffer[w].WorkerEntity;
                     if (CommandAuthority.CanControl(em, req.PlayerId, worker)
+                        && (req.BuildOrder == Entity.Null || NetworkBuildOrders.Current(em, worker, req.BuildOrder))
                         && EntityCapabilities.CanBuild(em, worker, building) && em.HasComponent<BuilderComponent>(worker))
                     {
                         CommandDataHelper.AddCommandToQueue(
@@ -181,7 +186,8 @@ public partial struct BuildingPlacementSystem : ISystem
                             req.PlayerId,
                             worker,
                             CommandType.Build,
-                            targetEntity: building
+                            targetEntity: building,
+                            buildOrder: req.BuildOrder
                         );
                     }
                 }
@@ -190,6 +196,7 @@ public partial struct BuildingPlacementSystem : ISystem
             ecb.DestroyEntity(reqEntity);
             paid.Dispose();
             gridModified = true;
+            publishedSite = building;
             }
             catch (Exception ex)
             {
@@ -207,6 +214,11 @@ public partial struct BuildingPlacementSystem : ISystem
                 }
                 ecb.DestroyEntity(reqEntity);
                 UnityEngine.Debug.LogWarning($"Building placement rolled back after publication failed: {ex.Message}");
+            }
+            }
+            finally
+            {
+                if (req.BuildOrder != Entity.Null) NetworkBuildOrders.Resolve(em, req.BuildOrder, publishedSite);
             }
         }
 

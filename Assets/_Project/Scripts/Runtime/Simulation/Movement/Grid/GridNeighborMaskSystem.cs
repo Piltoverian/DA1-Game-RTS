@@ -22,6 +22,7 @@ public struct GridNeighborMaskState : IComponentData
 [UpdateAfter(typeof(CostChangeSystem))]
 [UpdateAfter(typeof(GridIslandSystem))]
 [UpdateBefore(typeof(IntegrationFieldSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct GridNeighborMaskSystem : ISystem
 {
     private EntityQuery missingState;

@@ -1,16 +1,15 @@
 # Dự án RTS trên Unity
 
-Dự án game chiến thuật thời gian thực, xây dựng bằng Unity và kiến trúc DOTS/ECS. Người chơi điều khiển quân, khai thác tài nguyên, xây dựng công trình, huấn luyện đơn vị và nghiên cứu công nghệ trên bản đồ có địa hình nhiều tầng.
+> Merge 26/11/2026: tích hợp `Fog-of-wars` (fog of war và multiplayer/NetCode) vào bản HUD/demo. Các kết quả Play Mode/build ngày 25–26/11 bên dưới thuộc trước merge; cần nghiệm thu lại gameplay sau tích hợp. AI và restart demo chỉ chạy trong world local.
 
-Định hướng mỹ thuật là tu tiên với góc nhìn đẳng trục: nền đất, vách, dốc và dãy núi được dựng từ atlas vật liệu. Logic di chuyển và tương tác chạy trên mặt phẳng XZ; độ cao phục vụ hiển thị và vị trí đối tượng trên địa hình.
+Game chiến thuật thời gian thực dùng DOTS/ECS: điều khiển unit, khai thác, xây dựng, sản xuất và nghiên cứu trên terrain nhiều tầng với Fog of War.
 
-## Các phần chính
+**Bắt đầu tại [Docs/README.md](Docs/README.md)** — bộ tài liệu hỗ trợ code duy nhất.
 
-- **Bản đồ và địa hình:** sinh bản đồ theo cấu hình, tạo vùng khởi đầu, bố trí tài nguyên và dựng hình địa hình.
-- **Điều khiển quân:** nhận lệnh, tìm đường bằng trường hướng dùng chung, tránh vật cản và xử lý thay đổi lối đi.
-- **Kinh tế và xây dựng:** khai thác, vận chuyển, thanh toán tài nguyên, đặt nhà và tiến độ xây dựng.
-- **Dữ liệu gameplay:** cấu hình đơn vị, công trình, khả năng và công nghệ bằng ScriptableObject; chuyển dữ liệu sang BlobAsset để dùng trong ECS.
-- **Định hướng nhiều người chơi:** máy chủ quyết định trạng thái, máy khách gửi lệnh và nội suy hình ảnh. Phần mạng đang trong lộ trình phát triển.
+- [Mở project, phiên bản và tìm source](Docs/ProjectStructure.md)
+- [Trạng thái đã kiểm chứng và việc cần test tiếp](Docs/Maintenance/CurrentState.md)
+
+Mở project qua Unity Hub bằng phiên bản trong [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt), chờ import/compile rồi mở [Main](Assets/_Project/Scenes/Main.unity). Cách chọn local/host/client nằm trong docs.
 
 ## Công nghệ
 
@@ -18,7 +17,7 @@ Dự án game chiến thuật thời gian thực, xây dựng bằng Unity và k
 |---|---|
 | Unity Editor | 6000.3.13f1 |
 | Entities / Unity Physics | 1.4.5 |
-| Entities Graphics | 1.4.18 |
+| Entities Graphics | 1.5.0 |
 | Burst | 1.8.30 |
 | Universal Render Pipeline | 17.3.0 |
 

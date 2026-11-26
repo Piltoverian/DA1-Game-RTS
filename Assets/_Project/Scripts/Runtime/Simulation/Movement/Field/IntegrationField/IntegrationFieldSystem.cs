@@ -9,6 +9,7 @@ using Unity.Profiling;
 
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(GridIslandSystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 [UpdateAfter(typeof(GridNeighborMaskSystem))]
 public partial struct IntegrationFieldSystem : ISystem
 {
@@ -34,6 +35,7 @@ public partial struct IntegrationFieldSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (!SystemAPI.HasSingleton<GridComponent>())
             return;
 

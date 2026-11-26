@@ -18,7 +18,7 @@ public class MatchTimeTextMesh : MonoBehaviour
     private void Update()
     {
         if (textMesh == null) return;
-        var currentWorld = World.DefaultGameObjectInjectionWorld;
+        var currentWorld = ClientPresentationCatalog.TryGetCurrent(out var activeWorld, out _) ? activeWorld : null;
         if (currentWorld != world)
         {
             ReleaseQuery();

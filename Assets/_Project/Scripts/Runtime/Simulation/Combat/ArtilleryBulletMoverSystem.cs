@@ -5,6 +5,9 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateAfter(typeof(BulletMoverSystem))]
 partial struct ArtilleryBulletSystem : ISystem
 {
     private ComponentLookup<LocalTransform> transformLookup;
@@ -16,7 +19,7 @@ partial struct ArtilleryBulletSystem : ISystem
     {
         state.RequireForUpdate<GridComponent>();
         state.RequireForUpdate<UnitSpatialBucket>();
-        state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+        state.RequireForUpdate<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
 
         transformLookup = state.GetComponentLookup<LocalTransform>(true);
         healthLookup = state.GetComponentLookup<EntityHealth>(false);
@@ -26,11 +29,12 @@ partial struct ArtilleryBulletSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         transformLookup.Update(ref state);
         healthLookup.Update(ref state);
         unitLookup.Update(ref state);
 
-        var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         float deltaTime = SystemAPI.Time.DeltaTime;
         using var contexts = SystemAPI.QueryBuilder().WithAll<PlayerContext>().Build()
             .ToComponentDataArray<PlayerContext>(Allocator.Temp);
@@ -83,6 +87,8 @@ partial struct ArtilleryBulletSystem : ISystem
                 int radiusInCells = (int)math.ceil(aoeRadius / gridComponent.cellsize);
                 int2 aoeMin = math.clamp(centerCell - radiusInCells, 0, gridMax);
                 int2 aoeMax = math.clamp(centerCell + radiusInCells, 0, gridMax);
+                // A building may be indexed in several footprint cells inside this explosion.
+                using var visited = new NativeHashSet<Entity>(16, Allocator.Temp);
 
                 for (int y = aoeMin.y; y <= aoeMax.y; y++)
                 {
@@ -93,6 +99,7 @@ partial struct ArtilleryBulletSystem : ISystem
                         {
                             do
                             {
+                                if (!visited.Add(victim)) continue;
                                 if (unitLookup.HasComponent(victim) &&
                                     !PlayerContextHelper.AreAllies(contexts, unitLookup[victim].PlayerID, shooterPID))
                                 {
@@ -105,7 +112,6 @@ partial struct ArtilleryBulletSystem : ISystem
                                             if (hp.ValueRO.CurrentHP > 0f)
                                             {
                                                 hp.ValueRW.CurrentHP -= aoeDamage;
-                                                hp.ValueRW.Changed = true;
                                             }
                                         }
                                     }

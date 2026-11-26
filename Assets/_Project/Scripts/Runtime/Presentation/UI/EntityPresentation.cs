@@ -42,6 +42,12 @@ public static class EntityPresentation
         return null;
     }
 
+    public static Sprite JobIcon(ProductionQueueElement item, GameDataRegistry preferred = null) =>
+        JobIcon(new ProductionElement { JobID = item.JobID, Kind = item.Kind }, preferred);
+
+    public static string JobName(ProductionQueueElement item, GameDataRegistry preferred = null) =>
+        JobName(new ProductionElement { JobID = item.JobID, Kind = item.Kind }, preferred);
+
     public static Sprite JobIcon(ProductionElement offer, GameDataRegistry preferred = null)
     {
         var job = FindJob(offer.JobID, preferred);
@@ -65,6 +71,9 @@ public static class EntityPresentation
 
     public static string BuildingName(FixedString64Bytes buildingId, GameDataRegistry preferred = null) =>
         GetName(buildingId, preferred);
+
+    public static GameObject BuildingPreview(EntityManager em, FixedString64Bytes buildingId)
+        => ClientPresentationCatalog.TryGet(em, out _, out var catalog) ? catalog.GetBuildingPrefab(buildingId) : null;
 
     public static GameObject BuildingPreview(FixedString64Bytes buildingId)
     {

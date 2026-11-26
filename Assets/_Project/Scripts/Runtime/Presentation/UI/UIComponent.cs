@@ -13,6 +13,8 @@ public class UIComponent : MonoBehaviour
         OnContextUnavailable();
     }
 
+    protected bool TryGetPlayer(out EntityManager em) => UIManager.TryGetPlayer(out em, out playerId);
+
     internal bool NeedsSnapshotFor(int id) => needsSnapshot || playerId != id;
 
     internal void ApplyPlayerSnapshot(EntityManager manager, Entity entity, PlayerContext context)

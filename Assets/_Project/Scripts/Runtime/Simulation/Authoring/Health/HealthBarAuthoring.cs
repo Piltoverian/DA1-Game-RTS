@@ -23,4 +23,7 @@ public struct HealthBar: IComponentData
 {
     public Entity barVisualEntity;
     public Entity healthEntity;
+    public float LastDisplayedHP;
+    public float LastDisplayedMaxHP;
+    public bool Initialized;
 }

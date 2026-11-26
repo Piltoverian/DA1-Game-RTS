@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
@@ -12,6 +13,12 @@ using UnityEngine.Windows;
 public class UnitController : MonoBehaviour
 {
     public static UnitController Instance { get; private set; }
+
+    private static CollisionFilter NonGroundFilter => new CollisionFilter
+    {
+        BelongsTo = uint.MaxValue,
+        CollidesWith = ~PhysicsLayersDefine.Ground
+    };
 
     private void Awake()
     {
@@ -31,6 +38,9 @@ public class UnitController : MonoBehaviour
         if (!Mouse.current.rightButton.wasPressedThisFrame)
             return;
         var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        if (!entityManager.World.IsClient() && FogOrderRules.HasFog(entityManager)
+            && FogCommandPicking.Local(World.DefaultGameObjectInjectionWorld, GetCurrentPlayerId()) == null)
+        { CommandMove(entityManager); return; }
 
         if (TryCommandAttack(entityManager))
         {
@@ -44,7 +54,6 @@ public class UnitController : MonoBehaviour
 
         if (TryCommandBuild(entityManager))
         {
-            Debug.Log("Command Build issued.");
             return;
         }
 
@@ -70,12 +79,7 @@ public class UnitController : MonoBehaviour
         {
             if (entityManager.Exists(entity) && entityManager.HasComponent<BuildingConstruction>(entity))
             {
-                Entity req = entityManager.CreateEntity();
-                entityManager.AddComponentData(req, new CancelBuildingRequest
-                {
-                    BuildingEntity = entity,
-                    PlayerId = playerId
-                });
+                CommandDataHelper.CancelBuilding(entityManager, playerId, entity);
             }
         }
     }
@@ -83,9 +87,42 @@ public class UnitController : MonoBehaviour
     // Both pointer inspection and commands must hit the same baked ECS resource.
     public bool TryCommandGather(EntityManager entityManager, Camera camera, Vector2 screenPosition)
     {
+        if (camera == null || !entityManager.World.IsCreated) return false;
         int playerId = GetCurrentPlayerId();
         if (playerId < 0)
             return false;
+
+        var fog = FogCommandPicking.Local(entityManager.World, playerId);
+        if (entityManager.World.IsClient())
+        {
+            bool liveResource = TryPickNetworkEntity(entityManager, out var resource) && entityManager.HasComponent<ResourceNodeData>(resource);
+            ulong rememberedId = 0;
+            if (!liveResource && !NeutralMemoryPresentationSystem.TryPick(entityManager.World,
+                camera.ScreenPointToRay(screenPosition), FogRenderKind.Resource, out rememberedId)) return false;
+            int sent = 0;
+            foreach (var worker in SelectHelper.GetAllSelectedEntitiesByplayerID(playerId))
+            {
+                if (!entityManager.HasComponent<WorkerGatherData>(worker)) continue;
+                if (liveResource) CommandDataHelper.AddCommandToQueue(entityManager, playerId, worker, CommandType.TargetTo, targetEntity: resource);
+                else GameplayCommandNetwork.SendKnownNeutral(entityManager, worker, rememberedId);
+                sent++;
+            }
+            return sent > 0;
+        }
+        if (fog != null)
+        {
+            if (!FogCommandPicking.TryPick(fog, camera.ScreenPointToRay(screenPosition),
+                FogRenderKind.Resource, out var snapshot, out var known)) return false;
+            int sent = 0;
+            foreach (var worker in SelectHelper.GetAllSelectedEntitiesByplayerID(playerId))
+            {
+                if (!entityManager.HasComponent<WorkerGatherData>(worker) || !entityManager.HasComponent<MoveOverride>(worker)) continue;
+                CommandDataHelper.AddCommandToQueue(entityManager, playerId, worker, CommandType.TargetTo,
+                    targetEntity: snapshot.Entity, position: known.Position, knownTarget: known);
+                sent++;
+            }
+            return sent > 0;
+        }
 
         if (!ResourceInspection.TryResolveNode(camera, screenPosition, entityManager, out Entity resourceNode))
         {
@@ -173,7 +210,7 @@ public class UnitController : MonoBehaviour
         {
             Start = ray.origin,
             End = ray.origin + ray.direction * 2000f,
-            Filter = CollisionFilter.Default
+            Filter = NonGroundFilter
         };
 
         if (!physicsWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
@@ -191,6 +228,8 @@ public class UnitController : MonoBehaviour
         int hitEntityPlayerId = entityManager.GetComponentData<EntityOwner>(hitEntity).PlayerID;
         if (myPlayerId==hitEntityPlayerId)
             return false;
+        if (!FogOrderRules.IsVisible(entityManager, myPlayerId, hitEntity)) return false;
+        if (PlayerContextHelper.AreAllies(entityManager, myPlayerId, hitEntityPlayerId)) return false;
         var selectedEntities = SelectHelper.GetAllSelectedEntitiesByplayerID(myPlayerId);
         if (selectedEntities.Count == 0)
             return false;
@@ -205,7 +244,8 @@ public class UnitController : MonoBehaviour
                 myPlayerId,
                 unit,
                 CommandType.TargetTo,
-                targetEntity: hitEntity
+                targetEntity: hitEntity,
+                position: MouseWorldPosition.Instance.GetPosition()
             );
             attackCommandedCount++;
         }
@@ -217,6 +257,31 @@ public class UnitController : MonoBehaviour
         int playerId = GetCurrentPlayerId();
         if (playerId < 0)
             return false;
+
+        var fog = FogCommandPicking.Local(World.DefaultGameObjectInjectionWorld, playerId);
+        if (fog != null)
+        {
+            if (!FogCommandPicking.TryPick(fog, Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition),
+                FogRenderKind.Building, out var snapshot, out var known) || snapshot.OwnerId != playerId) return false;
+            if (snapshot.IsVisible && !BuildingHelper.CanBuildOrRepair(entityManager, snapshot.Entity)) return false;
+            bool unfinished = snapshot.ConstructionPhase == ConstructionPhase.Planned || snapshot.ConstructionPhase == ConstructionPhase.UnderConstruction;
+            // Even an apparently healthy remembered building may now need repair: inspect only on arrival.
+            int sent = 0;
+            foreach (var worker in SelectHelper.GetAllSelectedEntitiesByplayerID(playerId))
+            {
+                if (!entityManager.HasComponent<BuilderComponent>(worker) || !entityManager.HasComponent<MoveOverride>(worker)
+                    || !entityManager.HasBuffer<BuildOffer>(worker)) continue;
+                bool allowed = false;
+                foreach (var offer in entityManager.GetBuffer<BuildOffer>(worker))
+                    if (snapshot.GameRegId.HasValue && offer.DefinitionID == snapshot.GameRegId.Value) allowed = true;
+                if (!allowed) continue;
+                CommandDataHelper.AddCommandToQueue(entityManager, playerId, worker,
+                    unfinished ? CommandType.Build : CommandType.TargetTo,
+                    targetEntity: snapshot.Entity, position: known.Position, knownTarget: known);
+                sent++;
+            }
+            return sent > 0;
+        }
 
         UnityEngine.Ray ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
 
@@ -251,14 +316,28 @@ public class UnitController : MonoBehaviour
                 entityManager,
                 playerId,
                 worker,
-                CommandType.Build,
+                BuildingHelper.IsUnderConstruction(entityManager, targetBuilding) ? CommandType.Build : CommandType.TargetTo,
                 targetEntity: targetBuilding
             );
-            Debug.Log($"Command Build issued for worker {worker.Index} on building {targetBuilding.Index}.");
             queuedCount++;
         }
 
         return queuedCount > 0;
+    }
+
+    private static bool TryPickNetworkEntity(EntityManager em, out Entity entity)
+    {
+        entity = Entity.Null;
+        if (Camera.main == null) return false;
+        using var query = em.CreateEntityQuery(typeof(PhysicsWorldSingleton));
+        if (!query.TryGetSingleton<PhysicsWorldSingleton>(out var physics)) return false;
+        var ray = Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);
+        var input = new RaycastInput { Start = ray.origin, End = ray.origin + ray.direction * 2000f, Filter = NonGroundFilter };
+        if (!physics.CastRay(input, out Unity.Physics.RaycastHit hit)) return false;
+        entity = hit.Entity;
+        for (int i = 0; i < 16 && em.Exists(entity) && !em.HasComponent<GhostInstance>(entity) && em.HasComponent<Parent>(entity); i++)
+            entity = em.GetComponentData<Parent>(entity).Value;
+        return em.Exists(entity) && em.HasComponent<GhostInstance>(entity);
     }
 
     private Entity FindUnderConstructionBuildingNearHit(EntityManager entityManager, UnityEngine.Ray ray)
@@ -271,7 +350,7 @@ public class UnitController : MonoBehaviour
             {
                 Start = ray.origin,
                 End = ray.origin + ray.direction * 2000f,
-                Filter = CollisionFilter.Default
+                Filter = NonGroundFilter
             };
 
             if (physicsWorld.CastRay(input, out Unity.Physics.RaycastHit hit))

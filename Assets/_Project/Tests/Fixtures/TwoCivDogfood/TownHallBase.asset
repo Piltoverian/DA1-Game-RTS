@@ -15,6 +15,7 @@ MonoBehaviour:
   ID: dogfood.townhall
   Name: TownHall
   MaxHP: 1000
+  VisionRadiusCells: 7
   Icon: {fileID: 21300000, guid: 7abdadeaaba858b49bd4d444b750166c, type: 3}
   Prefab: {fileID: 7625297489629590005, guid: b05e4b17d59e310469b710283197b888, type: 3}
   WorkRate: 5

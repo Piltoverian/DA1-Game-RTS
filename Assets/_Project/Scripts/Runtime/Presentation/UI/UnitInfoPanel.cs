@@ -87,7 +87,7 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void Update()
     {
-        var currentWorld = World.DefaultGameObjectInjectionWorld;
+        var currentWorld = ClientPresentationCatalog.TryGetCurrent(out var activeWorld, out _) ? activeWorld : null;
         if (currentWorld != world)
         {
             ReleaseQuery();
@@ -121,8 +121,8 @@ public class UnitInfoPanel : MonoBehaviour
         {
             foreach (var entity in selected)
             {
-                if (!manager.Exists(entity) || !manager.HasComponent<Selectable>(entity) ||
-                    manager.GetComponentData<Selectable>(entity).playerID != playerId) continue;
+                if (!manager.Exists(entity) || !manager.HasComponent<Selectable>(entity) || !manager.HasComponent<EntityOwner>(entity) ||
+                    manager.GetComponentData<EntityOwner>(entity).PlayerID != playerId) continue;
                 if (representative == Entity.Null) representative = entity;
                 count++;
             }
@@ -356,7 +356,7 @@ public class UnitInfoPanel : MonoBehaviour
         using var selected = selectedQuery.ToEntityArray(Allocator.Temp);
         foreach (var entity in selected)
         {
-            if (!manager.HasComponent<Selectable>(entity) || manager.GetComponentData<Selectable>(entity).playerID != playerId) continue;
+            if (!manager.HasComponent<Selectable>(entity) || !manager.HasComponent<EntityOwner>(entity) || manager.GetComponentData<EntityOwner>(entity).PlayerID != playerId) continue;
             FixedString64Bytes id = manager.HasComponent<UnitComponent>(entity) ? manager.GetComponentData<UnitComponent>(entity).DefinitionID :
                 manager.HasComponent<BuildingComponent>(entity) ? manager.GetComponentData<BuildingComponent>(entity).DefinitionID : default;
             groupTypes.TryGetValue(id, out int count); groupTypes[id] = count + 1;

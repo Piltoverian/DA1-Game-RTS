@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -43,7 +44,10 @@ public sealed class PlayableSessionController : MonoBehaviour
     {
         if (restarting || Ended) return;
         var current = World.DefaultGameObjectInjectionWorld;
-        if (current == null || !current.IsCreated || !SelectHelper.TryGetLocalPlayerId(out int local)) return;
+        if (current == null || !current.IsCreated) return;
+        if (current.IsClient() || current.IsServer())
+        { objective.text = "Multiplayer match"; return; }
+        if (!SelectHelper.TryGetLocalPlayerId(out int local)) return;
         if (world != current) { world = current; elapsed = 0; framed = hadBothBases = false; opponent.Reset(); }
         var em = current.EntityManager;
         using (var bootstrap = em.CreateEntityQuery(typeof(PlayerBootstrapState)))
@@ -101,7 +105,12 @@ public sealed class PlayableSessionController : MonoBehaviour
         AddButton(card.transform, "Play again", -45, RestartMatch);
         AddButton(card.transform, "Exit game", -100, () => Application.Quit());
     }
-    public void RestartMatch() { if (!restarting) StartCoroutine(Restart()); }
+    public void RestartMatch()
+    {
+        var current = World.DefaultGameObjectInjectionWorld;
+        if (current != null && current.IsCreated && (current.IsClient() || current.IsServer())) return;
+        if (!restarting) StartCoroutine(Restart());
+    }
     private IEnumerator Restart()
     {
         restarting = true; Time.timeScale = 1; ResourceInspection.Clear();

@@ -3,6 +3,8 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct ShootAttackSystem : ISystem
 {
     public void OnCreate(ref SystemState state)
@@ -13,6 +15,7 @@ public partial struct ShootAttackSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         float deltaTime = SystemAPI.Time.DeltaTime;
 
         GridComponent gridComponent =
@@ -27,6 +30,9 @@ public partial struct ShootAttackSystem : ISystem
 
         ComponentLookup<MovementSteeringComponent> steeringLookup =
             SystemAPI.GetComponentLookup<MovementSteeringComponent>(true);
+        var transforms = SystemAPI.GetComponentLookup<LocalTransform>(true);
+        var footprints = SystemAPI.GetComponentLookup<BlockageData>(true);
+        bool hasFog = SystemAPI.TryGetSingleton<FogOfWarSpatialSystemData>(out var fog);
         var registryEntity = SystemAPI.GetSingletonEntity<GameDataRegistryComponent>();
         var registry = SystemAPI.GetBuffer<RegistryBlobElement>(registryEntity);
         var Prefab= SystemAPI.GetBuffer<RegistryPrefabElement>(registryEntity);
@@ -56,23 +62,50 @@ public partial struct ShootAttackSystem : ISystem
             if (result != FunctionResult.Success)
                 continue;
             ref var attackBlob = ref attackReference.Value;
-            if (!IsValidTarget(ref state, targetEntity, unit.ValueRO.PlayerID, contexts))
-            {
-                target.ValueRW.targetEntity = Entity.Null;
-                continue;
-            }
-
             /*
              * Nếu MoveOverride đang enabled nghĩa là người chơi đang ra lệnh move / hit-and-run.
              * ShootAttack không được StopAgent, không được chase, không được disable MoveOverride.
              */
             if (IsMoveOverrideActive(entity, ref moveOverrideLookup))
             {
+                target.ValueRW = default;
+                continue;
+            }
+
+            if (targetEntity == Entity.Null) continue;
+            if (!FogOrderRules.IsVisible(unit.ValueRO.PlayerID, targetEntity, hasFog, gridComponent, fog, transforms, footprints))
+            {
+                if (target.ValueRO.lastSeenEntity != targetEntity
+                    || !SystemAPI.HasComponent<MovementAgentComponent>(entity))
+                {
+                    ForgetTarget(state.EntityManager, entity, ref target.ValueRW, ecb);
+                    continue;
+                }
+                var agent = SystemAPI.GetComponent<MovementAgentComponent>(entity);
+                var lastSeen = target.ValueRO.lastSeenPosition;
+                float stoppingDistance = steeringLookup.HasComponent(entity)
+                    ? math.max(.1f, steeringLookup[entity].stoppingDistance) : .1f;
+                bool sameGoal = math.distancesq(agent.currentworldtarget, lastSeen) < .0001f;
+                bool finished = sameGoal && !agent.hastarget
+                    && (agent.stopReason == MovementStopReason.Arrived
+                        || agent.stopReason == MovementStopReason.CrowdedDestination
+                        || agent.stopReason == MovementStopReason.InvalidTarget);
+                if (math.distancesq(localTransform.ValueRO.Position.xz, lastSeen.xz) <= stoppingDistance * stoppingDistance || finished)
+                    ForgetTarget(state.EntityManager, entity, ref target.ValueRW, ecb);
+                else if (!sameGoal || !agent.hastarget)
+                    MovementAgentAPI.SetTarget(state.EntityManager, entity, lastSeen, gridComponent, ecb);
+                continue;
+            }
+            if (!IsValidTarget(ref state, targetEntity, unit.ValueRO.PlayerID, contexts))
+            {
+                ForgetTarget(state.EntityManager, entity, ref target.ValueRW, ecb);
                 continue;
             }
 
             LocalTransform targetTransform =
                 SystemAPI.GetComponent<LocalTransform>(targetEntity);
+            target.ValueRW.lastSeenEntity = targetEntity;
+            target.ValueRW.lastSeenPosition = targetTransform.Position;
 
             float3 unitPosition = localTransform.ValueRO.Position;
             float3 targetPosition = targetTransform.Position;
@@ -102,6 +135,11 @@ public partial struct ShootAttackSystem : ISystem
                     // navigation and prevents stable pursuit of a moving opponent.
                     if (!movement.hastarget || math.distancesq(movement.currentworldtarget.xz, targetPosition.xz) > refreshDistance * refreshDistance)
                         MovementAgentAPI.SetTarget(state.EntityManager, entity, targetPosition, gridComponent, ecb);
+                }
+                else
+                {
+                    // Stationary weapons cannot chase a target outside firing range.
+                    target.ValueRW = default;
                 }
 
                 continue;
@@ -176,6 +214,12 @@ public partial struct ShootAttackSystem : ISystem
         }
         ecb.Playback(state.EntityManager);
         ecb.Dispose();
+    }
+
+    private static void ForgetTarget(EntityManager em, Entity entity, ref Target target, EntityCommandBuffer ecb)
+    {
+        target = default;
+        MovementAgentAPI.ClearTarget(em, entity, ecb);
     }
 
     private bool IsMoveOverrideActive(

@@ -7,6 +7,8 @@ public struct DOTSSelectManagerComponent : IComponentData
     
 }
 
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
+
 partial struct DOTSSelectManagerSystem : ISystem
 {
     [BurstCompile]

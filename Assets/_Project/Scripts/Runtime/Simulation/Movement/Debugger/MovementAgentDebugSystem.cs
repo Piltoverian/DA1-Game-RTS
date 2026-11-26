@@ -9,6 +9,8 @@ using UnityEngine;
 /// Hệ thống Visual Debug cho Movement Agent.
 /// Chạy trên Main Thread để sử dụng UnityEngine.Debug.DrawLine.
 /// </summary>
+/// 
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation)]
 [UpdateInGroup(typeof(PresentationSystemGroup))]
 public partial struct MovementAgentDebugSystem : ISystem
 {

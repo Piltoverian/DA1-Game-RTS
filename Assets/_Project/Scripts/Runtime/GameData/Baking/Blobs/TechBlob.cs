@@ -6,6 +6,7 @@ public struct TechBlob : IGameBlobAsset
     // Copied from TechDefinition.IDs, matching tree and Civ prerequisite identities.
     public FixedString64Bytes ID;
     public BlobArray<ResourcePair> Cost;
+    public BlobArray<int> EffectIndices;
 
     public FixedString64Bytes GetID() => ID;
     public FixedString64Bytes getID() => GetID();

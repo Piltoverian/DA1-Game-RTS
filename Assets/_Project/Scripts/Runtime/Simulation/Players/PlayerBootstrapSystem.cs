@@ -106,7 +106,6 @@ public partial class PlayerBootstrapSystem : SystemBase
                 em.GetComponentData<MapResourceSettings>(root), em.GetBuffer<MapResourcePrefab>(root), out report); }
             catch (System.InvalidOperationException error) { Fail(root, status, error.Message); return; }
             em.SetComponentData(root, report);
-            Debug.Log($"Map resources: {report.PlacedClusters}/{report.RequestedClusters} clusters, {report.Nodes} nodes; missing={report.RequestedClusters - report.PlacedClusters}.");
             foreach (var node in nodes)
                 plan.Add(new Placement { Prefab = node.Prefab, Owner = -1, Position = node.Position, Resource = true,
                     ResourceId = node.DefinitionId, ResourceTier = node.Tier, ResourceRole = node.Role, AmountPerMine = node.AmountPerMine });
@@ -167,11 +166,8 @@ public partial class PlayerBootstrapSystem : SystemBase
                 continue;
             }
             commands.SetComponent(entity, new EntityOwner { PlayerID = placement.Owner });
-            var selection = em.GetComponentData<Selectable>(placement.Prefab);
-            selection.playerID = placement.Owner;
-            commands.SetComponent(entity, selection);
             var health = em.GetComponentData<EntityHealth>(placement.Prefab);
-            health.CurrentHP = health.MaxHP; health.Changed = true;
+            health.CurrentHP = health.MaxHP;
             commands.SetComponent(entity, health);
             if (placement.Building)
             {
@@ -184,9 +180,7 @@ public partial class PlayerBootstrapSystem : SystemBase
             {
                 if (!em.HasComponent<SetupUnitMoverDefaultPosition>(placement.Prefab)) commands.AddComponent<SetupUnitMoverDefaultPosition>(entity);
                 var agent = em.GetComponentData<MovementAgentComponent>(placement.Prefab);
-                agent.hastarget = false;
-                agent.velocity = float3.zero;
-                agent.preferredVelocity = float3.zero;
+                MovementAgentAPI.StopAgent(ref agent, MovementStopReason.Paused);
                 commands.SetComponent(entity, agent);
                 if (em.HasComponent<MoveOverride>(placement.Prefab)) commands.SetComponentEnabled<MoveOverride>(entity, false);
             }
@@ -228,7 +222,6 @@ public partial class PlayerBootstrapSystem : SystemBase
 [UpdateAfter(typeof(PopulationSystem))]
 [UpdateAfter(typeof(BlockageGridBakeSystem))]
 [UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
-[UpdateBefore(typeof(ProductionSystem))]
 public partial class PlayerBootstrapReadySystem : SystemBase
 {
     protected override void OnCreate() { RequireForUpdate<PlayerBootstrapState>(); RequireForUpdate<GridComponent>(); }

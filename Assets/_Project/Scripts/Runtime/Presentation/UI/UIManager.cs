@@ -1,6 +1,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using Unity.NetCode;
 
 public class UIManager : MonoBehaviour
 {
@@ -16,11 +17,45 @@ public class UIManager : MonoBehaviour
     // Kept for existing Inspector/API references; runtime identity comes from the local context.
     public int PlayerId { get => playerId; set { playerId = value; contextEntity = Entity.Null; } }
 
+    public static bool TryGetPlayer(out EntityManager em, out int id)
+    {
+        em = default;
+        id = -1;
+        World client = null, local = null;
+        foreach (var world in World.All)
+        {
+            if (!world.IsCreated) continue;
+            if (world.IsClient())
+            {
+                // A single UI cannot choose between multiple client sessions.
+                if (client != null) return false;
+                client = world;
+            }
+            else if (!world.IsServer() && (world.Flags & WorldFlags.Game) == WorldFlags.Game)
+            {
+                if (local != null) return false;
+                local = world;
+            }
+        }
+        if (client != null)
+        {
+            if (!PlayerNetwork.TryLocal(client, out _, out var player)) return false;
+            em = client.EntityManager;
+            id = player.PlayerId;
+            return true;
+        }
+        var manager = FindAnyObjectByType<UIManager>();
+        if (local == null || manager == null) return false;
+        em = local.EntityManager;
+        id = SelectHelper.TryGetLocalPlayerId(out int localId) ? localId : -1;
+        return id >= 0;
+    }
+
     private void Awake() => components = GetComponentsInChildren<UIComponent>(true);
 
     private void LateUpdate()
     {
-        var currentWorld = World.DefaultGameObjectInjectionWorld;
+        var currentWorld = TryGetPlayer(out var currentManager, out _) ? currentManager.World : null;
         if (currentWorld != world)
         {
             ReleaseQueries();
@@ -76,6 +111,11 @@ public class UIManager : MonoBehaviour
 
     private bool TryResolvePlayer(out int id)
     {
+        if (world != null && world.IsCreated && world.IsClient())
+        {
+            if (PlayerNetwork.TryLocal(world, out _, out var identity)) { id = identity.PlayerId; return true; }
+            id = -1; return false;
+        }
         id = -1;
         int bootstrapCount = bootstrapQuery.CalculateEntityCount();
         if (bootstrapCount > 1 || (bootstrapCount == 1 &&

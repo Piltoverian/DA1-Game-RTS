@@ -111,6 +111,7 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
                 bool building = manager.HasComponent<BuildingComponent>(obj);
                 if (!building && !manager.HasComponent<UnitComponent>(obj)) continue;
                 if (manager.HasComponent<EntityHealth>(obj) && manager.GetComponentData<EntityHealth>(obj).CurrentHP <= 0) continue;
+                if (!FogOrderRules.IsVisible(manager, player, obj)) continue;
                 int owner = manager.GetComponentData<EntityOwner>(obj).PlayerID;
                 bool selected = manager.HasComponent<Selected>(obj) && manager.IsComponentEnabled<Selected>(obj);
                 Vector3 p = manager.GetComponentData<LocalTransform>(obj).Position;
@@ -123,6 +124,7 @@ public class TacticalMinimap : MaskableGraphic, IPointerDownHandler, IDragHandle
             {
                 if (markers.Count >= MaximumMarkers) break;
                 if (manager.HasComponent<ResourceNodePendingConfig>(node) || manager.GetComponentData<ResourceNodeData>(node).Amount <= 0) continue;
+                if (!FogOrderRules.IsVisible(manager, player, node)) continue;
                 Vector3 p = manager.GetComponentData<LocalTransform>(node).Position;
                 if (manager.HasComponent<BlockageData>(node)) p = manager.GetComponentData<BlockageData>(node).GetWorldCenter(p);
                 var kind = manager.GetComponentData<ResourceNodeData>(node).Type;

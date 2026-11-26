@@ -2,17 +2,26 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using System.Collections.Generic;
+using Unity.Burst;
 
-[UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(PopulationSystem))]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation)]
+[UpdateAfter(typeof(ConstructionSystem))]
 public partial struct ProductionSystem : ISystem
 {
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<PlayerBootstrapState>();
+    }
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         if (SystemAPI.TryGetSingleton<PlayerBootstrapState>(out var bootstrap) && bootstrap.Phase != PlayerBootstrapPhase.Ready) return;
         var em = state.EntityManager;
         var ecb = new EntityCommandBuffer(Allocator.Temp);
         using var reservedExits = new NativeList<float3>(Allocator.Temp);
+        List<(Entity Player, FixedString64Bytes TechID, TechEffect[] Effects)> completedResearch = null;
         foreach (var pending in SystemAPI.Query<DynamicBuffer<PlayerPendingTech>>())
         {
             for (int i = pending.Length - 1; i >= 0; i--)
@@ -35,28 +44,28 @@ public partial struct ProductionSystem : ISystem
             item.RemainingWork = math.max(0, item.RemainingWork - math.max(0, work.ValueRO.Rate) * SystemAPI.Time.DeltaTime);
             queue[0] = item;
             if (item.RemainingWork > 0) continue;
-            if (item.Offer.Kind == ProductionKind.Research)
+            if (item.Kind == ProductionKind.Research)
             {
-                if (em.HasBuffer<PlayerPendingTech>(player))
+                if (!em.HasBuffer<PlayerTechnology>(player)) continue;
+                if (!TechUnlockHelper.IsTechCompleted(em, player, item.TechID))
                 {
-                    var pending = em.GetBuffer<PlayerPendingTech>(player);
-                    for (int i = pending.Length - 1; i >= 0; i--)
-                    {
-                        if (pending[i].TechID == item.TechID && pending[i].Producer == entity)
-                        {
-                            pending.RemoveAt(i);
-                            break;
-                        }
-                    }
-                }
-                if (em.HasBuffer<PlayerTechnology>(player))
-                {
-                    em.GetBuffer<PlayerTechnology>(player).Add(new PlayerTechnology { ID = item.TechID });
+                    if (!TryGetResearchEffects(em, item, out var effects)) continue;
+                    completedResearch ??= new List<(Entity, FixedString64Bytes, TechEffect[])>();
+                    completedResearch.Add((player, item.TechID, effects));
                 }
             }
             else
             {
-                Entity prefab = item.Offer.UnitPrefab;
+                Entity prefab = Entity.Null;
+                if (em.HasBuffer<ProductionElement>(entity))
+                {
+                    foreach (var offer in em.GetBuffer<ProductionElement>(entity, true))
+                    {
+                        if (offer.JobID != item.JobID || offer.Kind != item.Kind) continue;
+                        prefab = offer.UnitPrefab;
+                        break;
+                    }
+                }
                 if (!em.Exists(prefab) || !em.HasComponent<UnitComponent>(prefab)) { ProductionJobs.RemoveFirst(em, entity, true); continue; }
                 int cost = em.GetComponentData<UnitComponent>(prefab).PopulationCost;
                 if (cost > 0 && (long)context.currentPopulation + cost > context.maxPopulation) continue; // Ready: do not restart work.
@@ -84,10 +93,6 @@ public partial struct ProductionSystem : ISystem
                 ecb.AddComponent(unit, new PopulationAccount { PlayerID = item.PlayerID, Used = math.max(0, cost) });
                 if (cost > 0) PopulationSystem.Adjust(em, item.PlayerID, cost, 0);
                 ecb.SetComponent(unit, local);
-                if (em.HasComponent<Selectable>(prefab))
-                {
-                    var selectable = em.GetComponentData<Selectable>(prefab); selectable.playerID = item.PlayerID; ecb.SetComponent(unit, selectable);
-                }
                 if (em.HasComponent<MoveOverride>(prefab))
                 {
                     var move = em.GetComponentData<MoveOverride>(prefab);
@@ -98,5 +103,47 @@ public partial struct ProductionSystem : ISystem
             ProductionJobs.RemoveFirst(em, entity, false);
         }
         ecb.Playback(em); ecb.Dispose();
+        // Conduct may make structural changes. No query iteration, ECB playback or buffer references remain in use here.
+        if (completedResearch == null) return;
+        foreach (var completion in completedResearch)
+        {
+            var player = completion.Player;
+            if (!em.Exists(player) || !em.HasBuffer<PlayerTechnology>(player)
+                || TechUnlockHelper.IsTechCompleted(em, player, completion.TechID)) continue;
+            try
+            {
+                foreach (var effect in completion.Effects) effect.Conduct(em, player);
+                if (em.Exists(player) && em.HasBuffer<PlayerTechnology>(player)
+                    && !TechUnlockHelper.IsTechCompleted(em, player, completion.TechID))
+                    em.GetBuffer<PlayerTechnology>(player).Add(new PlayerTechnology { ID = completion.TechID });
+            }
+            catch (System.Exception exception)
+            {
+
+            }
+        }
+    }
+
+    private static bool TryGetResearchEffects(EntityManager em, ProductionQueueElement item, out TechEffect[] effects)
+    {
+        effects = null;
+        if (!ProductionJobs.TryRegistry(em, out var registryEntity)) return false;
+        var registry = em.GetBuffer<RegistryBlobElement>(registryEntity, true);
+        var research = registry.GetBlobByID<ResearchBlob>(item.JobID, out var found);
+        if (found != FunctionResult.Success || research.Value.Tech.ID != item.TechID) return false;
+        ref var indices = ref research.Value.Tech.EffectIndices;
+        if (indices.Length == 0) { effects = System.Array.Empty<TechEffect>(); return true; }
+        if (!em.HasBuffer<RegistryTechEffectElement>(registryEntity)) return false;
+        var catalog = em.GetBuffer<RegistryTechEffectElement>(registryEntity, true);
+        effects = new TechEffect[indices.Length];
+        for (int i = 0; i < indices.Length; i++)
+        {
+            int index = indices[i];
+            if (index < 0 || index >= catalog.Length) return false;
+            var effect = catalog[index].Effect.Value;
+            if (effect == null) return false;
+            effects[i] = effect;
+        }
+        return true;
     }
 }

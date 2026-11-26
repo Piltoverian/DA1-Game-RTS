@@ -25,7 +25,8 @@ public static class ResourceInspection
             !SelectHelper.TryGetLocalPlayerId(out int currentPlayer) || currentPlayer != playerId ||
             !world.EntityManager.Exists(target) || !world.EntityManager.HasComponent<ResourceNodeData>(target) ||
             world.EntityManager.HasComponent<ResourceNodePendingConfig>(target) ||
-            world.EntityManager.GetComponentData<ResourceNodeData>(target).Amount <= 0)
+            world.EntityManager.GetComponentData<ResourceNodeData>(target).Amount <= 0 ||
+            !FogOrderRules.IsVisible(world.EntityManager, currentPlayer, target))
         { Clear(); return false; }
         entity = target;
         return true;
@@ -34,7 +35,7 @@ public static class ResourceInspection
     public static bool TryInspect(Camera camera, Vector2 screenPosition, EntityManager em, int localPlayer)
     {
         if (!TryResolveNode(camera, screenPosition, em, out var candidate)) return false;
-        world = World.DefaultGameObjectInjectionWorld;
+        world = em.World;
         target = candidate;
         playerId = localPlayer;
         return true;
@@ -83,6 +84,8 @@ public static class ResourceInspection
         }
         if (candidate == Entity.Null || em.HasComponent<ResourceNodePendingConfig>(candidate) ||
             em.GetComponentData<ResourceNodeData>(candidate).Amount <= 0) return false;
+        if (SelectHelper.TryGetLocalPlayerId(out int viewer) && !FogOrderRules.IsVisible(em, viewer, candidate))
+        { candidate = Entity.Null; return false; }
         return true;
     }
 }

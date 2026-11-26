@@ -77,31 +77,31 @@ public class ProductionQueuePanel : MonoBehaviour
         {
             groups.Clear();
             foreach (var item in queue)
-                AddGroup(item.Offer.Kind + ":" + item.Offer.JobID,
-                    EntityPresentation.JobName(item.Offer, presentationRegistry),
-                    EntityPresentation.JobIcon(item.Offer, presentationRegistry));
+                AddGroup(item.Kind + ":" + item.JobID,
+                    EntityPresentation.JobName(item, presentationRegistry),
+                    EntityPresentation.JobIcon(item, presentationRegistry));
         }
         var text = new StringBuilder(string.Format(CultureInfo.CurrentCulture, titleFormat, queue.Length, work.JobCapacity));
-        text.Append(" - ").Append(EntityPresentation.JobName(first.Offer, presentationRegistry));
+        text.Append(" - ").Append(EntityPresentation.JobName(first, presentationRegistry));
         float totalWork = 0f;
         if (ProductionJobs.TryRegistry(em, out var registryEntity))
         {
             var registry = em.GetBuffer<RegistryBlobElement>(registryEntity, true);
-            if (first.Offer.Kind == ProductionKind.Train)
+            if (first.Kind == ProductionKind.Train)
             {
-                var job = registry.GetBlobByID<TrainBlob>(first.Offer.JobID, out var found);
+                var job = registry.GetBlobByID<TrainBlob>(first.JobID, out var found);
                 if (found == FunctionResult.Success) totalWork = job.Value.Job.WorkLoad;
             }
-            else if (first.Offer.Kind == ProductionKind.Research)
+            else if (first.Kind == ProductionKind.Research)
             {
-                var job = registry.GetBlobByID<ResearchBlob>(first.Offer.JobID, out var found);
+                var job = registry.GetBlobByID<ResearchBlob>(first.JobID, out var found);
                 if (found == FunctionResult.Success) totalWork = job.Value.Job.WorkLoad;
             }
         }
         bool progressKnown = Finite(totalWork) && totalWork > 0 && Finite(first.RemainingWork);
         float fraction = progressKnown
             ? Mathf.Clamp01(1f - first.RemainingWork / totalWork) : 0f;
-        bool populationBlocked = WaitingForPopulation(em, first, player);
+        bool populationBlocked = WaitingForPopulation(em, source, first, player);
         bool exitBlocked = em.HasComponent<ProductionData>(source) && em.GetComponentData<ProductionData>(source).ExitBlocked;
         text.AppendLine();
         bool construction = em.HasComponent<BuildingConstruction>(source) &&
@@ -121,7 +121,7 @@ public class ProductionQueuePanel : MonoBehaviour
             for (int i = 1; i < queue.Length && i <= 2; i++)
             {
                 if (i > 1) text.Append(" / ");
-                text.Append(EntityPresentation.JobName(queue[i].Offer, presentationRegistry));
+                text.Append(EntityPresentation.JobName(queue[i], presentationRegistry));
             }
             if (queue.Length > 3) text.Append(" +").Append(queue.Length - 3);
         }
@@ -135,7 +135,7 @@ public class ProductionQueuePanel : MonoBehaviour
         if (body != null && body.text != content) body.text = content;
         if (icon != null)
         {
-            icon.sprite = EntityPresentation.JobIcon(first.Offer, presentationRegistry);
+            icon.sprite = EntityPresentation.JobIcon(first, presentationRegistry);
             icon.enabled = icon.sprite != null;
         }
         if (embeddedInDock) RenderTiles();
@@ -260,13 +260,19 @@ public class ProductionQueuePanel : MonoBehaviour
         return label;
     }
     private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
-    private static bool WaitingForPopulation(EntityManager em, ProductionQueueElement item, int player)
+    private static bool WaitingForPopulation(EntityManager em, Entity producer, ProductionQueueElement item, int player)
     {
-        if (item.RemainingWork > 0 || item.Offer.Kind != ProductionKind.Train ||
-            !em.Exists(item.Offer.UnitPrefab) || !em.HasComponent<UnitComponent>(item.Offer.UnitPrefab) ||
+        if (item.RemainingWork > 0 || item.Kind != ProductionKind.Train ||
+            !em.HasBuffer<ProductionElement>(producer) ||
             PlayerContextHelper.GetContextData(em, player, out var context) != FunctionResult.Success) return false;
-        int cost = em.GetComponentData<UnitComponent>(item.Offer.UnitPrefab).PopulationCost;
-        return cost > 0 && (long)context.currentPopulation + cost > context.maxPopulation;
+        foreach (var offer in em.GetBuffer<ProductionElement>(producer, true))
+        {
+            if (offer.JobID != item.JobID || offer.Kind != item.Kind || !em.Exists(offer.UnitPrefab) ||
+                !em.HasComponent<UnitComponent>(offer.UnitPrefab)) continue;
+            int cost = em.GetComponentData<UnitComponent>(offer.UnitPrefab).PopulationCost;
+            return cost > 0 && (long)context.currentPopulation + cost > context.maxPopulation;
+        }
+        return false;
     }
     private void SetVisible(bool visible)
     {

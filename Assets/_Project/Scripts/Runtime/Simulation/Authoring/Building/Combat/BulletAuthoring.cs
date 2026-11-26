@@ -10,6 +10,7 @@ public class BulletAuthoring : MonoBehaviour
         public override void Bake(BulletAuthoring authoring)
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent<CustomGhostRelevancy>(entity);
             AddComponent(entity, new Bullet
             {
                 speed = authoring.speed,

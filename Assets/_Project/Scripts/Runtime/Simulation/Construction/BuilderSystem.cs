@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -6,14 +5,45 @@ using Unity.Transforms;
 
 [UpdateAfter(typeof(CommandQueue))]
 [UpdateBefore(typeof(ConstructionSystem))]
-
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 public partial struct BuilderSystem : ISystem
 {
-    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach (var (builderData, localTransform, entity) in SystemAPI.Query<RefRW<BuilderComponent>, RefRO<LocalTransform>>().WithEntityAccess())
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
+        using var ecb = new EntityCommandBuffer(Allocator.Temp);
+        foreach (var (builderData, localTransform, entity) in SystemAPI.Query<RefRW<BuilderComponent>, RefRO<LocalTransform>>().WithNone<FogTargetTravel>().WithEntityAccess())
         {
+            if (builderData.ValueRO.KnownTarget.HasValue)
+            {
+                int player = state.EntityManager.GetComponentData<EntityOwner>(entity).PlayerID;
+                var known = builderData.ValueRO.KnownTarget;
+                if (!FogOrderRules.KnownAreaVisible(state.EntityManager, player, known))
+                {
+                    if (builderData.ValueRO.FogApproachRequested && !state.EntityManager.IsComponentEnabled<MoveOverride>(entity)
+                        && math.distancesq(localTransform.ValueRO.Position.xz, math.clamp(localTransform.ValueRO.Position.xz, known.Min, known.Max))
+                            > builderData.ValueRO.BuildRange * builderData.ValueRO.BuildRange)
+                    { StopBuilder(state.EntityManager, builderData, entity); continue; }
+                    if (!KnownTargetOrders.Approach(state.EntityManager, entity, localTransform.ValueRO.Position, known.Min, known.Max, builderData.ValueRO.BuildRange))
+                    { builderData.ValueRW.FogApproachRequested = true; continue; }
+                }
+            }
+            if (builderData.ValueRO.WaitingForPlacement)
+            {
+                if (!state.EntityManager.Exists(builderData.ValueRO.PlacementRequest))
+                {
+                    builderData.ValueRW.WaitingForPlacement = false;
+                    builderData.ValueRW.PlannedPrefab = Entity.Null;
+                    StopBuilder(state.EntityManager, builderData, entity);
+                }
+                continue;
+            }
+            if (builderData.ValueRO.PlannedPrefab != Entity.Null)
+            {
+                UpdatePlan(state.EntityManager, builderData, entity, localTransform.ValueRO.Position, ecb);
+                continue;
+            }
             if (state.EntityManager.HasComponent<EntityWork>(entity))
                 builderData.ValueRW.BuildWorkLoadPerSecond = state.EntityManager.GetComponentData<EntityWork>(entity).Rate;
             switch (builderData.ValueRO.State)
@@ -127,7 +157,6 @@ public partial struct BuilderSystem : ISystem
                         repairPaid.Dispose();
 
                         health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + restoredHp);
-                        health.Changed = true;
                         em.SetComponentData(constructionSite, health);
                         if (health.CurrentHP >= health.MaxHP)
                             StopBuilder(em, builderData, entity);
@@ -138,7 +167,6 @@ public partial struct BuilderSystem : ISystem
                         work = math.min(work, math.max(0f, building.WorkLoad - construction.CompletedWork));
                         construction.CompletedWork = math.min(building.WorkLoad, construction.CompletedWork + work);
                         health.CurrentHP = math.min(health.MaxHP, health.CurrentHP + work * hpPerWork);
-                        health.Changed = true;
                         em.SetComponentData(constructionSite, construction);
                         em.SetComponentData(constructionSite, health);
                         if (construction.CompletedWork >= building.WorkLoad)
@@ -147,6 +175,7 @@ public partial struct BuilderSystem : ISystem
                     break;
             }
         }
+        ecb.Playback(state.EntityManager);
 
         static float2 GetClosestPointFromConstruction(ref SystemState state, RefRO<LocalTransform> localTransform, Entity constructionSite)
         {
@@ -159,15 +188,137 @@ public partial struct BuilderSystem : ISystem
         }
     }
 
+    public static void EnqueuePlan(EntityManager em, Entity worker, Entity prefab, float3 position, Entity networkBuildOrder = default)
+    {
+        var builder = em.GetComponentData<BuilderComponent>(worker);
+        if (em.IsComponentEnabled<BuilderComponent>(worker) && builder.State != BuilderState.Idle && !builder.RepairOnly)
+        {
+            if (em.HasBuffer<BuilderQueueElement>(worker)) em.GetBuffer<BuilderQueueElement>(worker).Add(
+                new BuilderQueueElement { Prefab = prefab, Position = position, NetworkBuildOrder = networkBuildOrder });
+            return;
+        }
+        CommandQueue.DeactiveAllAbility(em, worker);
+        builder = em.GetComponentData<BuilderComponent>(worker);
+        builder.RepairOnly = false; builder.KnownTarget = default; builder.FogApproachRequested = false;
+        builder.TargetConstructionSite = Entity.Null;
+        builder.PlannedPrefab = prefab; builder.PlannedPosition = position;
+        builder.NetworkBuildOrder = networkBuildOrder;
+        builder.WaitingForPlacement = false; builder.State = BuilderState.GoingToSite;
+        em.SetComponentData(worker, builder); em.SetComponentEnabled<BuilderComponent>(worker, true);
+        if (em.HasComponent<TargetCache>(worker)) em.SetComponentData(worker, new TargetCache { lastTargetPosition = position });
+    }
+
+    private static void UpdatePlan(EntityManager em, RefRW<BuilderComponent> builder, Entity worker, float3 position, EntityCommandBuffer ecb)
+    {
+        var networkOrder = builder.ValueRO.NetworkBuildOrder;
+        if (networkOrder != Entity.Null)
+        {
+            if (!NetworkBuildOrders.Current(em, worker, networkOrder))
+            { builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.NetworkBuildOrder = Entity.Null; StopBuilder(em, builder, worker); return; }
+            var order = em.GetComponentData<NetworkBuildOrder>(networkOrder);
+            if (order.Phase == NetworkBuildPhase.Failed || (order.Phase == NetworkBuildPhase.Site && !NetworkBuildOrders.CanContinue(em, order)))
+            { builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.NetworkBuildOrder = Entity.Null; StopBuilder(em, builder, worker); return; }
+            if (order.Phase == NetworkBuildPhase.Site)
+            {
+                builder.ValueRW.TargetConstructionSite = order.Site;
+                builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.NetworkBuildOrder = Entity.Null;
+                builder.ValueRW.State = BuilderState.GoingToSite;
+                return;
+            }
+        }
+        var prefab = builder.ValueRO.PlannedPrefab;
+        if (!em.Exists(prefab) || !em.HasComponent<BlockageData>(prefab))
+        { builder.ValueRW.PlannedPrefab = Entity.Null; StopBuilder(em, builder, worker); return; }
+        var root = builder.ValueRO.PlannedPosition;
+        var rect = em.GetComponentData<BlockageData>(prefab).LocalRect;
+        int player = em.GetComponentData<EntityOwner>(worker).PlayerID;
+        bool visible = FogOrderRules.TryGrid(em, out _, out var grid)
+            && PlayerSpawnPlacement.TryFootprint(grid, root, rect, out var min, out var max)
+            && FogOrderRules.CellsVisible(em, player, min, max, true);
+        if (!visible)
+        {
+            if (builder.ValueRO.FogApproachRequested && !em.IsComponentEnabled<MoveOverride>(worker)
+                && math.distancesq(position.xz, math.clamp(position.xz, root.xz + rect.MinPoint, root.xz + rect.MaxPoint))
+                    > builder.ValueRO.BuildRange * builder.ValueRO.BuildRange)
+            { builder.ValueRW.PlannedPrefab = Entity.Null; StopBuilder(em, builder, worker); return; }
+            if (!KnownTargetOrders.Approach(em, worker, position, root.xz + rect.MinPoint, root.xz + rect.MaxPoint, builder.ValueRO.BuildRange))
+            { builder.ValueRW.FogApproachRequested = true; return; }
+        }
+        // Network members share the one request published by NetworkBuildOrderSystem.
+        if (networkOrder != Entity.Null) return;
+        Entity request = ecb.CreateEntity();
+        ecb.AddComponent(request, new PlaceBuildingRequest { PlayerId = player, PrefabEntity = prefab, Position = root });
+        ecb.AddBuffer<PlaceBuildingWorkerElement>(request).Add(new PlaceBuildingWorkerElement { WorkerEntity = worker });
+        var data = builder.ValueRO;
+        data.WaitingForPlacement = true; data.PlacementRequest = request;
+        ecb.SetComponent(worker, data); // ECB remaps the deferred request entity.
+        if (em.HasComponent<MoveOverride>(worker)) em.SetComponentEnabled<MoveOverride>(worker, false);
+    }
+
+    private static bool TryNearbyBuilding(EntityManager em, RefRW<BuilderComponent> builder, Entity worker)
+    {
+        if (!FogOrderRules.TryGrid(em, out var gridEntity, out var grid) || !em.HasComponent<EntityOwner>(worker)) return false;
+        int player = em.GetComponentData<EntityOwner>(worker).PlayerID;
+        float3 center = em.GetComponentData<LocalTransform>(worker).Position;
+        if (em.HasComponent<TargetCache>(worker))
+        {
+            var last = em.GetComponentData<TargetCache>(worker).lastTargetPosition;
+            if (math.lengthsq(last) > .001f) center = last;
+        }
+        using var query = em.CreateEntityQuery(typeof(BuildingConstruction), typeof(BuildingComponent), typeof(LocalTransform), typeof(EntityHealth));
+        using var sites = query.ToEntityArray(Allocator.Temp);
+        Entity best = Entity.Null; float distance = float.MaxValue;
+        foreach (var site in sites)
+        {
+            var construction = em.GetComponentData<BuildingConstruction>(site);
+            var definition = em.GetComponentData<BuildingComponent>(site);
+            if ((construction.Phase != ConstructionPhase.Planned && construction.Phase != ConstructionPhase.UnderConstruction)
+                || construction.CompletedWork >= definition.WorkLoad || em.GetComponentData<EntityHealth>(site).CurrentHP <= 0
+                || !EntityCapabilities.CanBuild(em, worker, site) || !FogOrderRules.IsVisible(em, player, site)
+                || !KnownTargetOrders.IsNearbyReachable(em, worker, site, center, grid, gridEntity)) continue;
+            var pos = em.GetComponentData<LocalTransform>(site).Position;
+            if (em.HasComponent<BlockageData>(site)) pos = em.GetComponentData<BlockageData>(site).GetWorldCenter(pos);
+            float d = math.distancesq(pos.xz, center.xz);
+            if (d < distance) { best = site; distance = d; }
+        }
+        if (best == Entity.Null) return false;
+        builder.ValueRW.TargetConstructionSite = best; builder.ValueRW.State = BuilderState.GoingToSite;
+        builder.ValueRW.PlannedPrefab = Entity.Null; builder.ValueRW.KnownTarget = default; builder.ValueRW.FogApproachRequested = false;
+        if (em.HasComponent<TargetCache>(worker)) em.SetComponentData(worker, new TargetCache {
+            targetEntity = best, lastTargetPosition = em.GetComponentData<LocalTransform>(best).Position });
+        return true;
+    }
+
     private static bool TryStartNextBuilding(EntityManager em, RefRW<BuilderComponent> builder, Entity entity)
     {
+        if (builder.ValueRO.RepairOnly) return false;
         if (!em.HasBuffer<BuilderQueueElement>(entity))
             return false;
         var pending = em.GetBuffer<BuilderQueueElement>(entity);
         while (pending.Length > 0)
         {
-            Entity site = pending[0].BuildingEntity;
+            var next = pending[0];
+            Entity site = next.BuildingEntity;
             pending.RemoveAt(0);
+            if (next.NetworkBuildOrder != Entity.Null && !NetworkBuildOrders.Current(em, entity, next.NetworkBuildOrder)) continue;
+            builder.ValueRW.NetworkBuildOrder = next.NetworkBuildOrder;
+            builder.ValueRW.KnownTarget = default; builder.ValueRW.FogApproachRequested = false;
+            if (next.Prefab != Entity.Null)
+            {
+                builder.ValueRW.PlannedPrefab = next.Prefab;
+                builder.ValueRW.PlannedPosition = next.Position;
+                builder.ValueRW.TargetConstructionSite = Entity.Null;
+                builder.ValueRW.State = BuilderState.GoingToSite;
+                return true;
+            }
+            if (next.KnownTarget.HasValue && !FogOrderRules.IsVisible(em, em.GetComponentData<EntityOwner>(entity).PlayerID, site))
+            {
+                builder.ValueRW.TargetConstructionSite = site;
+                builder.ValueRW.State = BuilderState.GoingToSite;
+                // Approach the frozen position before consulting the live site.
+                builder.ValueRW.KnownTarget = next.KnownTarget;
+                return true;
+            }
             if (!EntityCapabilities.CanBuild(em, entity, site) || !em.HasComponent<BuildingConstruction>(site) ||
                 !em.HasComponent<BuildingComponent>(site) || !em.HasComponent<BuildingConstruction>(site) ||
                 !em.HasComponent<EntityHealth>(site) || !em.HasComponent<LocalTransform>(site) ||
@@ -182,6 +333,7 @@ public partial struct BuilderSystem : ISystem
                 continue;
 
             builder.ValueRW.TargetConstructionSite = site;
+            builder.ValueRW.KnownTarget = next.KnownTarget;
             builder.ValueRW.State = BuilderState.GoingToSite;
             float3 position = em.GetComponentData<LocalTransform>(site).Position;
             if (em.HasComponent<MoveOverride>(entity))
@@ -207,13 +359,15 @@ public partial struct BuilderSystem : ISystem
     private static void StopBuilder(EntityManager em, RefRW<BuilderComponent> builder, Entity entity)
     {
         RestoreStoppingDistance(em, builder, entity);
+        KnownTargetOrders.StopMove(em, entity);
+        builder.ValueRW.FogApproachRequested = false;
         if (TryStartNextBuilding(em, builder, entity))
             return;
+        if (!builder.ValueRO.RepairOnly && TryNearbyBuilding(em, builder, entity)) return;
         builder.ValueRW.State = BuilderState.Idle;
         builder.ValueRW.TargetConstructionSite = Entity.Null;
+        builder.ValueRW.KnownTarget = default;
         em.SetComponentEnabled<BuilderComponent>(entity, false);
-        if (em.HasComponent<MoveOverride>(entity))
-            em.SetComponentEnabled<MoveOverride>(entity, false);
     }
 
     private static void RestoreStoppingDistance(EntityManager em, RefRW<BuilderComponent> builder, Entity entity)
@@ -268,8 +422,8 @@ public partial struct BuilderSystem : ISystem
             var health = em.GetComponentData<EntityHealth>(site);
             float total = em.GetComponentData<BuildingComponent>(site).WorkLoad;
             valid = math.isfinite(total) && total > 0f && health.CurrentHP > 0f && health.MaxHP > 0f;
-            if (status == ConstructionPhase.Completed && TryStartNextBuilding(em, builder, entity))
-                return true;
+            if (status == ConstructionPhase.Completed && !builder.ValueRO.RepairOnly)
+            { StopBuilder(em, builder, entity); return true; }
             if (status == ConstructionPhase.Completed)
                 valid &= health.CurrentHP < health.MaxHP &&
                          em.HasComponent<EntityOwner>(site) && em.HasBuffer<EntityResourceCost>(site);

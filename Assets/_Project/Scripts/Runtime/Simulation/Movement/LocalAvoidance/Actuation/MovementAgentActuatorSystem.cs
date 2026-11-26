@@ -17,11 +17,13 @@ using Unity.Transforms;
 /// </summary>
 [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
 [UpdateAfter(typeof(MovementAgentORCASystem))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct MovementAgentActuatorSystem : ISystem
 {
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (!ServerMatch.isGamePlayCanRun(ref state)) return;
         var deltaTime = SystemAPI.Time.DeltaTime;
         bool hasGrid = SystemAPI.TryGetSingleton<GridComponent>(out var grid);
 
@@ -85,13 +87,7 @@ public partial struct MovementAgentActuatorSystem : ISystem
                 {
                     // Settle bình thường — khi settled, prefVel = 0
                     // → separation trở thành lực duy nhất → overlap tự giải
-                    move.hastarget = false;
-                    move.stopReason = MovementStopReason.CrowdedDestination;
-                    move.velocity = float3.zero;
-                    move.preferredVelocity = float3.zero;
-                    steering.isSettled = true;
-                    steering.stuckTime = 0;
-                    steering.minDistanceToTarget = float.MaxValue;
+                    MovementAgentAPI.StopAgent(ref move, ref steering, MovementStopReason.CrowdedDestination);
                     return;
                 }
             }

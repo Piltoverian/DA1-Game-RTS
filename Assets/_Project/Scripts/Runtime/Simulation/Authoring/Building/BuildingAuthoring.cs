@@ -31,6 +31,7 @@ public class BuildingAuthoring : MonoBehaviour
                 throw new InvalidOperationException("Initial construction progress must be between 0 and 1.");
 
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent<CustomGhostRelevancy>(entity);
             BakeBase(entity, authoring.buildingDef.basedSO, authoring.initialHealth);
             AddComponent(entity, new BuildingComponent
             {

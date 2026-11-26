@@ -1,10 +1,15 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
+using Unity.NetCode.Hybrid;
 using UnityEngine;
 
 public class GridAuthoring : MonoBehaviour
 {
     public MapGenConfig Config;
+    [Header("Terrain presentation and replication")]
+    public TerrainTheme TerrainTheme;
+    public GameObject TerrainGhostPrefab;
     public float MincellSize = 1f;
     public MapType mapType = MapType.Medium;
 
@@ -58,9 +63,23 @@ public class GridAuthoring : MonoBehaviour
             {
                 // TerrainMapRenderer renders the baked cells; retain the plane collider.
                 AddComponent<Unity.Rendering.DisableRendering>(entity);
-                AddComponent(entity,MapGenerationRecipe.From(authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings));
-                AddComponent(entity,new MapBuildState{Phase=MapBuildPhase.Requested,Revision=1});
-                AddBuffer<GridSpawnCell>(entity);
+                if (this.GetNetcodeTarget(false) != NetcodeConversionTarget.Client)
+                {
+                    AddComponent(entity, MapGenerationRecipe.From(authoring.Config ? authoring.Config.Terrain : authoring.terrainSettings));
+                    AddComponent(entity, new MapBuildState { Phase = MapBuildPhase.Requested, Revision = 1 });
+                    AddBuffer<GridSpawnCell>(entity);
+                }
+                if(authoring.TerrainTheme){
+                    DependsOn(authoring.TerrainTheme);
+                    var theme=authoring.TerrainTheme;
+                    if(theme.mountainCaps==null||theme.mountainCaps.Length!=16||!theme.mountainCaps[0])
+                        throw new System.InvalidOperationException("Terrain theme requires its mountain cap bank.");
+                    DependsOn(theme.mountainCaps[0]);
+                    AddComponent(entity,new TerrainSyncSettings{
+                        Prefab=authoring.TerrainGhostPrefab?GetEntity(authoring.TerrainGhostPrefab,TransformUsageFlags.None):Entity.Null,
+                        MountainTiers=theme.mountainVisualTiers,VisualSeed=theme.groundVisualSeed,
+                        CapPixels=theme.mountainCaps[0].height,GroundRegionCells=theme.groundRegionCells});
+                }
             }
         }
     }

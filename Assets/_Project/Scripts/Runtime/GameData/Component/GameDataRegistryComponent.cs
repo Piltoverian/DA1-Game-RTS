@@ -81,6 +81,12 @@ public struct RegistryPrefabElement : IBufferElementData
     public Entity Prefab;
 }
 
+[InternalBufferCapacity(0)]
+public struct RegistryTechEffectElement : IBufferElementData
+{
+    public UnityObjectRef<TechEffect> Effect;
+}
+
 public struct GameDataRegistryComponent : IComponentData
 {
     

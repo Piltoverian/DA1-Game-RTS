@@ -2,17 +2,25 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
 
 public struct PlayerContextCachePendingTag : IComponentData
 {
 }
 
+public enum FogMode : byte
+{
+    Player,
+    Team
+}
+
+
 public struct PlayerContextCache : IComponentData
 {
     public int PlayerId;
     public int TeamID;
-    public int civilizationId;
+    public FogMode FogMode;
     public FixedString64Bytes CivID;
     public Age age;
     public int currentPopulation;
@@ -22,7 +30,7 @@ public struct PlayerContextCache : IComponentData
     {
         PlayerId = context.PlayerId;
         TeamID = context.TeamID;
-        civilizationId = context.civilizationId;
+        FogMode = context.FogMode;
         CivID = context.CivID;
         this.age = context.age;
         currentPopulation = context.currentPopulation;
@@ -33,7 +41,7 @@ public struct PlayerContextCache : IComponentData
     {
         PlayerId = context.PlayerId;
         TeamID = context.TeamID;
-        civilizationId = context.civilizationId;
+        FogMode = context.FogMode;
         CivID = context.CivID;
         age = context.age;
         currentPopulation = context.currentPopulation;
@@ -48,10 +56,13 @@ public enum Age
     Future
 }
 
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 [System.Serializable]
 public struct ResourcePair : IBufferElementData
 {
+    [GhostField]
     public ResourceType Type;
+    [GhostField]
     public float Amount;
 
     public ResourcePair(ResourceType type, float amount)
@@ -73,22 +84,30 @@ public struct ResourcePairCache : IBufferElementData
     }
 }
 
+[GhostComponent(OwnerSendType = SendToOwnerType.SendToOwner)]
 [System.Serializable]
 public struct PlayerContext : IComponentData
 {
+    [GhostField]
     public int PlayerId;
+    [GhostField]
     public int TeamID;
-    public int civilizationId;
+    [GhostField]
+    public FogMode FogMode;
+    [GhostField]
     public FixedString64Bytes CivID;
+    [GhostField]
     public Age age;
+    [GhostField]
     public int currentPopulation;
+    [GhostField]    
     public int maxPopulation;
 
     public PlayerContext(int playerId, int civilizationId, Age age, FixedString64Bytes civId = default, int teamId = -1)
     {
         PlayerId = playerId;
         TeamID = teamId;
-        this.civilizationId = civilizationId;
+        FogMode = global::FogMode.Player;
         CivID = civId;
         this.age = age;
         currentPopulation = 0;
@@ -98,6 +117,25 @@ public struct PlayerContext : IComponentData
 
 public static class PlayerContextHelper
 {
+    public static bool AreAllies(EntityManager em, int firstPlayer, int secondPlayer)
+    {
+        if (firstPlayer == secondPlayer) return true;
+        using var rosterQuery = em.CreateEntityQuery(typeof(MatchPlayerRoster));
+        if (rosterQuery.CalculateEntityCount() == 1)
+        {
+            var roster = em.GetBuffer<MatchPlayerRoster>(rosterQuery.GetSingletonEntity(), true);
+            int firstTeam = -1, secondTeam = -1;
+            foreach (var player in roster)
+            {
+                if (player.PlayerId == firstPlayer) firstTeam = player.TeamId;
+                if (player.PlayerId == secondPlayer) secondTeam = player.TeamId;
+            }
+            return firstTeam >= 0 && firstTeam == secondTeam;
+        }
+        using var contexts = em.CreateEntityQuery(typeof(PlayerContext));
+        using var players = contexts.ToComponentDataArray<PlayerContext>(Allocator.Temp);
+        return AreAllies(players, firstPlayer, secondPlayer);
+    }
     // Unassigned/missing teams preserve individual-player hostility.
     public static bool AreAllies(NativeArray<PlayerContext> contexts, int firstPlayer, int secondPlayer)
     {
